@@ -1,0 +1,30 @@
+## Component metadata
+version: "1.0.0"
+description: "Board Support Package for ESP32-S3 hardware telemetry and display."
+url: "https://github.com/Humidyne-Labs/esp32-s3_bsp"
+repository: "https://github.com/Humidyne-Labs/esp32-s3_bsp.git"
+repository_info:
+  path: "components/bsp"
+license: "MIT"
+tags:
+  - bsp
+  - display
+  - lvgl
+  - esp32s3
+
+## Target hardware restrictions
+targets:
+  - esp32s3
+
+## Required dependencies and SDK versions
+dependencies:
+  idf: ">=5.0"
+  lvgl/lvgl: "^9.0.6"
+
+## File inclusion/exclusion rules (for registry packaging)
+files:
+  exclude:
+    - ".git*"
+    - "build/"
+    - "docs/"
+    - "*.png"
