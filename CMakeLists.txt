@@ -17,7 +17,7 @@ idf_component_register(
         esp_adc
         nvs_flash
         fatfs
-        lvgl
+        lvgl/lvgl
         log
         freertos
 )
