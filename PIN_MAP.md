@@ -1,4 +1,6 @@
-﻿The pin multiplexing tree for the ESP32-S3 Touch ePaper board is organized below by hardware peripheral and signal routing.
+# Aggregated from Waveshares Public Schematic  
+ 
+The pin multiplexing tree for the [ESP32-S3 ePaper board](https://www.waveshare.com/esp32-s3-epaper-1.54.htm?sku=32298) is organized below by hardware peripheral and signal routing.
 
 **ESP32-S3 Pin Multiplexing Map**
 
