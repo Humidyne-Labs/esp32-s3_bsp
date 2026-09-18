@@ -27,7 +27,7 @@ Download and install [Visual Studio Code](https://code.visualstudio.com/).
 ## 2. Opening and Configuring the Project
 
 1. In VS Code, open the repository workspace folder:
-   - `File -> Open Folder...` -> Select `humid1-os-stage` (or `examples/Unified_BSP_Demo`).
+   - `File -> Open Folder...` -> Select `esp32-s3_bsp` (or `examples/Unified_BSP_Demo`).
 
 2. **Set the Target Device**:
    - Click on the **ESP-IDF Target** icon in the VS Code bottom status bar (or press `Ctrl+Shift+P` and type `ESP-IDF: Set Espressif Device Target`).
@@ -57,12 +57,12 @@ The VS Code status bar at the bottom provides quick one-click icons for all deve
 
 ## 4. Hardware Configuration (`ESP32-S3-PICO-1-N8R8`)
 
-The project contains a pre-configured [`sdkconfig.defaults`](file:///c:/Users/Matt/Documents/GitHub/humid1-os-stage/examples/00_Unified_BSP_Demo/sdkconfig.defaults) file tailored for the Waveshare V2 hardware:
+The project contains a pre-configured [`sdkconfig.defaults`](examples/Unified_BSP_Demo/sdkconfig.defaults) file tailored for the Waveshare V2 hardware:
 
 - **Target**: `ESP32-S3`
 - **Flash Size**: 8 MB (Quad SPI / QSPI)
 - **PSRAM**: 8 MB (Octal SPI / OPI)
-- **Partition Table**: Custom dual-slot OTA [`partitions.csv`](file:///c:/Users/Matt/Documents/GitHub/humid1-os-stage/examples/00_Unified_BSP_Demo/partitions.csv)
+- **Partition Table**: Custom dual-slot OTA [`partitions.csv`](examples/Unified_BSP_Demo/partitions.csv)
 
 To visually inspect or edit board parameters:
 1. Press `Ctrl+Shift+P` and select **`ESP-IDF: SDK Configuration Editor`** (or click the Gear/Slider icon in the status bar).
