@@ -3,8 +3,6 @@ version: "1.0.0"
 description: "Board Support Package for ESP32-S3 hardware telemetry and display."
 url: "https://github.com/Humidyne-Labs/esp32-s3_bsp"
 repository: "https://github.com/Humidyne-Labs/esp32-s3_bsp.git"
-repository_info:
-  path: "components/bsp"
 license: "MIT"
 tags:
   - bsp
@@ -28,3 +26,4 @@ files:
     - "build/"
     - "docs/"
     - "*.png"
+    - "examples/"
