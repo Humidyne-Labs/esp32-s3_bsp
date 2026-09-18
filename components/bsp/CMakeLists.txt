@@ -1,0 +1,23 @@
+idf_component_register(
+    SRCS 
+        "src/bsp_common.c"
+        "src/bsp_i2c.c"
+        "src/bsp_power.c"
+        "src/bsp_display.cpp"
+        "src/bsp_touch.cpp"
+        "src/bsp_sensors.c"
+        "src/bsp_sdcard.c"
+        "src/bsp_audio.c"
+        "src/bsp_lvgl.cpp"
+        "src/bsp_nvs.c"
+    INCLUDE_DIRS 
+        "include"
+    REQUIRES 
+        driver
+        esp_adc
+        nvs_flash
+        fatfs
+        lvgl
+        log
+        freertos
+)
