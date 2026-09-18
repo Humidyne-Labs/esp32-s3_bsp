@@ -6,20 +6,20 @@ This repository provides a unified Board Support Package (BSP) for the **ESP32-S
 
 ## Hardware Architecture & Pin Map
 
-Detailed pin multiplexing and hardware routing can be found in [`REAL_PIN_MAP.md`](esp32-s3_bsp/PIN_MAP.md).
+Detailed pin multiplexing and hardware routing can be found in [`REAL_PIN_MAP.md`](PIN_MAP.md).
 
 | Peripherals | Chip / Interface | GPIO Pins | BSP Driver Header |
 | --- | --- | --- | --- |
-| **System & Power** | Power Hold & LED | GPIO0, GPIO2, GPIO38 | [`bsp_power.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_power.h) |
-| **Battery Monitoring** | ADC1 Channel 0 | GPIO1 | [`bsp_power.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_power.h) |
-| **Shared I2C Bus** | I2C Master (400kHz) | SCL: GPIO6, SDA: GPIO7 | [`bsp_i2c.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_i2c.h) |
-| **e-Paper Display** | 1.54" SPI 200x200 | CS:10, SCLK:11, MOSI:12, DC:8, RST:9, BUSY:13 | [`bsp_display.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_display.h) |
-| **Capacitive Touch** | FT6336 (I2C 0x38) | RST: GPIO4, INT: GPIO5 | [`bsp_touch.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_touch.h) |
-| **GUI Framework** | LVGL v9 Integration | Display Flush + Pointer Input | [`bsp_lvgl.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_lvgl.h) |
-| **Environment Sensor** | SHTC3 (I2C 0x70) | Temp (Kelvin & °C) + Humidity | [`bsp_sensors.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_sensors.h) |
-| **Audio Codec & Amp** | ES8311 + NS4168 PA | I2S: GPIO14-18, PA: GPIO47, 48 | [`bsp_audio.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_audio.h) |
-| **MicroSD Card** | SDMMC 1-line VFS | CLK:39, MISO:40, MOSI:41, CS:42 | [`bsp_sdcard.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_sdcard.h) |
-| **NVS Parameters** | Non-Volatile Flash | WiFi SSID/Passkey, Device Params | [`bsp_nvs.h`](esp32-s3_bsp/components/bsp/include/bsp/bsp_nvs.h) |
+| **System & Power** | Power Hold & LED | GPIO0, GPIO2, GPIO38 | [`bsp_power.h`](components/bsp/include/bsp/bsp_power.h) |
+| **Battery Monitoring** | ADC1 Channel 0 | GPIO1 | [`bsp_power.h`](components/bsp/include/bsp/bsp_power.h) |
+| **Shared I2C Bus** | I2C Master (400kHz) | SCL: GPIO6, SDA: GPIO7 | [`bsp_i2c.h`](components/bsp/include/bsp/bsp_i2c.h) |
+| **e-Paper Display** | 1.54" SPI 200x200 | CS:10, SCLK:11, MOSI:12, DC:8, RST:9, BUSY:13 | [`bsp_display.h`](components/bsp/include/bsp/bsp_display.h) |
+| **Capacitive Touch** | FT6336 (I2C 0x38) | RST: GPIO4, INT: GPIO5 | [`bsp_touch.h`](components/bsp/include/bsp/bsp_touch.h) |
+| **GUI Framework** | LVGL v9 Integration | Display Flush + Pointer Input | [`bsp_lvgl.h`](components/bsp/include/bsp/bsp_lvgl.h) |
+| **Environment Sensor** | SHTC3 (I2C 0x70) | Temp (Kelvin & °C) + Humidity | [`bsp_sensors.h`](components/bsp/include/bsp/bsp_sensors.h) |
+| **Audio Codec & Amp** | ES8311 + NS4168 PA | I2S: GPIO14-18, PA: GPIO47, 48 | [`bsp_audio.h`](components/bsp/include/bsp/bsp_audio.h) |
+| **MicroSD Card** | SDMMC 1-line VFS | CLK:39, MISO:40, MOSI:41, CS:42 | [`bsp_sdcard.h`](components/bsp/include/bsp/bsp_sdcard.h) |
+| **NVS Parameters** | Non-Volatile Flash | WiFi SSID/Passkey, Device Params | [`bsp_nvs.h`](components/bsp/include/bsp/bsp_nvs.h) |
 
 ---
 
