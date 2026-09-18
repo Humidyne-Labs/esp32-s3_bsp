@@ -6,7 +6,7 @@ This repository provides a unified Board Support Package (BSP) for the **ESP32-S
 
 ## Hardware Architecture & Pin Map
 
-Detailed pin multiplexing and hardware routing can be found in [`REAL_PIN_MAP.md`](PIN_MAP.md).
+Detailed pin multiplexing and hardware routing can be found in [`PIN_MAP.md`](PIN_MAP.md).
 
 | Peripherals | Chip / Interface | GPIO Pins | BSP Driver Header |
 | --- | --- | --- | --- |
