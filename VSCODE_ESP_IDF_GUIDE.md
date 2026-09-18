@@ -27,7 +27,7 @@ Download and install [Visual Studio Code](https://code.visualstudio.com/).
 ## 2. Opening and Configuring the Project
 
 1. In VS Code, open the repository workspace folder:
-   - `File -> Open Folder...` -> Select `humid1-os-stage` (or `examples/00_Unified_BSP_Demo`).
+   - `File -> Open Folder...` -> Select `humid1-os-stage` (or `examples/Unified_BSP_Demo`).
 
 2. **Set the Target Device**:
    - Click on the **ESP-IDF Target** icon in the VS Code bottom status bar (or press `Ctrl+Shift+P` and type `ESP-IDF: Set Espressif Device Target`).
