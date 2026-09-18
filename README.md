@@ -1,4 +1,4 @@
-# Unified ESP32-S3 Touch ePaper BSP
+# Unified ESP32-S3 Touch ePaper BSP (Still Needs Tested, Unsure of Actual Operation, 9/18/2026)
 
 This repository provides a unified Board Support Package (BSP) for the **ESP32-S3 Touch ePaper** hardware platform (`ESP32-S3-PICO-1-N8R8` with 8 MB QSPI Flash and 8 MB Octal SPI PSRAM).
 
