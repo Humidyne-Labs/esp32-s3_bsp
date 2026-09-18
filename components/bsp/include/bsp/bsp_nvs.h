@@ -5,7 +5,7 @@
  * Provides persistent key-value storage for Wi-Fi credentials (SSID/passkey),
  * device configuration parameters, and provisioning settings in flash NVS.
  * 
- * @copyright Copyright (c) 2026 Humidyne Labs / humid1-os-stage
+ * @copyright Copyright (c) 2026 Humidyne Labs / Humiditron
  * SPDX-License-Identifier: MIT
  */
 

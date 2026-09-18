@@ -8,7 +8,7 @@
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / humid1-os-stage
+ * - BSP Unification: Humidyne Labs / Humiditron
  * 
  * SPDX-License-Identifier: MIT
  */

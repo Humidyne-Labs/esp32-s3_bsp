@@ -11,7 +11,7 @@
  *  - MicroSD Card VFS mounting
  *  - LVGL v9 e-Paper GUI & Touch panel interaction
  * 
- * @copyright Copyright (c) 2026 Humidyne Labs / humid1-os-stage
+ * @copyright Copyright (c) 2026 Humidyne Labs / Humiditron
  * SPDX-License-Identifier: MIT
  */
 

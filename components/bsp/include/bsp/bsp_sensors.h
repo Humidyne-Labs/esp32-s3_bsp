@@ -6,7 +6,7 @@
  * from the SHTC3 sensor.
  * 
  * @note Based on Sensirion SHTC3 driver specifications & Waveshare ePaper sample library.
- * @copyright Copyright (c) 2026 Humidyne Labs / humid1-os-stage
+ * @copyright Copyright (c) 2026 Humidyne Labs / Humiditron
  * SPDX-License-Identifier: MIT
  */
 

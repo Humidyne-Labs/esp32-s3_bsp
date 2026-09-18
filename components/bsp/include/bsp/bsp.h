@@ -5,7 +5,7 @@
  * Provides master initialization, unique device ID helpers, NVS parameters,
  * and umbrella access to all hardware drivers.
  * 
- * @copyright Copyright (c) 2026 Humidyne Labs / humid1-os-stage
+ * @copyright Copyright (c) 2026 Humidyne Labs / Humiditron
  * SPDX-License-Identifier: MIT
  */
 

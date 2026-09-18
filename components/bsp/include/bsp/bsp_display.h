@@ -5,7 +5,7 @@
  * @attribution
  * - e-Paper Controller & Waveform LUTs: Waveshare Electronics (https://www.waveshare.com)
  * - SPI Driver Framework: Espressif Systems (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / humid1-os-stage
+ * - BSP Unification: Humidyne Labs / Humiditron
  * 
  * SPDX-License-Identifier: MIT
  */
