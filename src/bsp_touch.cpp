@@ -18,11 +18,10 @@ esp_err_t bsp_touch_init(void)
     bsp_touch_reset();
 
     /* Add FT6336 to shared I2C master bus */
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = BSP_TOUCH_I2C_ADDR,
-        .scl_speed_hz = 400000,
-    };
+    i2c_device_config_t dev_cfg = {};
+    dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+    dev_cfg.device_address = BSP_TOUCH_I2C_ADDR;
+    dev_cfg.scl_speed_hz = 400000;
 
     esp_err_t ret = bsp_i2c_add_device(&dev_cfg, &s_touch_dev_handle);
     if (ret != ESP_OK) {
@@ -36,13 +35,12 @@ esp_err_t bsp_touch_init(void)
 
 void bsp_touch_reset(void)
 {
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = (1ULL << BSP_GPIO_TOUCH_RST),
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-    };
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask = (1ULL << BSP_GPIO_TOUCH_RST);
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
     gpio_config(&io_conf);
 
     gpio_set_level((gpio_num_t)BSP_GPIO_TOUCH_RST, 1);

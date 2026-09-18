@@ -180,13 +180,12 @@ esp_err_t bsp_display_init(void)
     }
 
     /* Configure GPIOs */
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = (1ULL << BSP_GPIO_EPD_RST) | (1ULL << BSP_GPIO_EPD_DC) | (1ULL << BSP_GPIO_EPD_CS),
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-    };
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_RST) | (1ULL << BSP_GPIO_EPD_DC) | (1ULL << BSP_GPIO_EPD_CS);
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
     gpio_config(&io_conf);
 
     io_conf.mode = GPIO_MODE_INPUT;
@@ -197,21 +196,19 @@ esp_err_t bsp_display_init(void)
 
     /* Initialize SPI bus */
     if (s_spi_handle == NULL) {
-        spi_bus_config_t buscfg = {
-            .mosi_io_num = BSP_GPIO_EPD_MOSI,
-            .miso_io_num = -1,
-            .sclk_io_num = BSP_GPIO_EPD_SCLK,
-            .quadwp_io_num = -1,
-            .quadhd_io_num = -1,
-            .max_transfer_sz = BSP_DISPLAY_WIDTH * BSP_DISPLAY_HEIGHT,
-        };
+        spi_bus_config_t buscfg = {};
+        buscfg.mosi_io_num = BSP_GPIO_EPD_MOSI;
+        buscfg.miso_io_num = -1;
+        buscfg.sclk_io_num = BSP_GPIO_EPD_SCLK;
+        buscfg.quadwp_io_num = -1;
+        buscfg.quadhd_io_num = -1;
+        buscfg.max_transfer_sz = BSP_DISPLAY_WIDTH * BSP_DISPLAY_HEIGHT;
 
-        spi_device_interface_config_t devcfg = {
-            .mode = 0,
-            .clock_speed_hz = 10 * 1000 * 1000,
-            .spics_io_num = -1,
-            .queue_size = 7,
-        };
+        spi_device_interface_config_t devcfg = {};
+        devcfg.mode = 0;
+        devcfg.clock_speed_hz = 10 * 1000 * 1000;
+        devcfg.spics_io_num = -1;
+        devcfg.queue_size = 7;
 
         esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
         if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {

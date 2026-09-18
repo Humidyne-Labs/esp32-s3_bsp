@@ -31,7 +31,7 @@ esp_err_t bsp_audio_init(void)
     gpio_set_level((gpio_num_t)BSP_GPIO_PA_CTRL, 1);
 
     /* Initialize I2S Master TX channel */
-    i2s_chan_config_t chan_cfg = I2S_CHAN_CONFIG_DEFAULT(I2S_NUM_0, I2S_ROLE_MASTER);
+    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     esp_err_t ret = i2s_new_channel(&chan_cfg, &s_tx_chan, NULL);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create I2S TX channel: %s", esp_err_to_name(ret));
