@@ -18,7 +18,8 @@ targets:
 dependencies:
   idf: ">=5.0"
   #espressif/esp_lvgl_port: ^2.9.0
-  lvgl/lvgl: "^9.3.0"
+  #lvgl/lvgl: "^9.3.0"
+  lvgl/lvgl: "^9.6.0"
 
 ## File inclusion/exclusion rules (for registry packaging)
 files:
