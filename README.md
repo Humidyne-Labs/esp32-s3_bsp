@@ -1,8 +1,8 @@
-# humid1-os-stage: Unified ESP32-S3 Touch ePaper BSP
+# Unified ESP32-S3 Touch ePaper BSP
 
 This repository provides a unified Board Support Package (BSP) for the **ESP32-S3 Touch ePaper** hardware platform (`ESP32-S3-PICO-1-N8R8` with 8 MB QSPI Flash and 8 MB Octal SPI PSRAM).
 
----
+[![Donate to Humid1](https://custom-icon-badges.demolab.com/badge/Donate-Humid1.com-4A154B?style=plastic&logo=signupgenius&logoColor=white)](https://tools.signupgenius.com/c/support-humid1-project)
 
 ## Hardware Architecture & Pin Map
 
@@ -94,6 +94,14 @@ Detailed pin multiplexing and hardware routing can be found in [`REAL_PIN_MAP.md
 
 ---
 
-## License & Attribution
+## 📄 License
 
-Copyright (c) 2026 Humidyne Labs / humid1-os-stage. Licensed under the MIT License.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## 👥 Contributors
+
+[![none](https://wsrv.nl/?url=github.com/Humiditron.png&w=32&h=32&fit=cover&mask=circle&filt=greyscale "@Humiditron")](https://github.com/Humiditron/)
+[![none](https://wsrv.nl/?url=github.com/google-gemini.png&w=32&h=32&fit=cover&mask=circle&filt=greyscale "@google-gemini")](https://github.com/google-gemini/)
+
+© 2026 **Humidyne-Labs**
+
