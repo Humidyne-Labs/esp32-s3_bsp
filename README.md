@@ -50,7 +50,7 @@ Detailed pin multiplexing and hardware routing can be found in [`PIN_MAP.md`](PI
 │       ├── sdkconfig.defaults     # ESP32-S3-PICO-1-N8R8 hardware defaults
 │       ├── README.md              # Build & Flash instructions
 │       └── main/main.cpp
-├── REAL_PIN_MAP.md                # Pin multiplexing & hardware schema
+├── PIN_MAP.md                     # Pin multiplexing & hardware schema
 └── README.md
 ```
 
