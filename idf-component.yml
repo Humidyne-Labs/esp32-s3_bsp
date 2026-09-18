@@ -1,24 +1,25 @@
 ## Component metadata
 version: "1.0.0"
-description: "Board Support Package for ESP32-S3 hardware telemetry and display."
+description: "Unified Board Support Package for the Waveshare ESP32-S3 Touch ePaper 1.54 V2 (ESP32-S3-PICO-1-N8R8)."
 url: "https://github.com/Humidyne-Labs/esp32-s3_bsp"
 repository: "https://github.com/Humidyne-Labs/esp32-s3_bsp.git"
 license: "MIT"
 tags:
   - bsp
   - display
+  - epaper
   - lvgl
   - esp32s3
+  - touch
+  - audio
 
 ## Target hardware restrictions
 targets:
   - esp32s3
 
-## Required dependencies and SDK versions
+## Required dependencies
 dependencies:
-  idf: ">=5.0"
-  #espressif/esp_lvgl_port: ^2.9.0
-  #lvgl/lvgl: "^9.3.0"
+  idf: ">=5.1"
   lvgl/lvgl: "^9.6.0"
 
 ## File inclusion/exclusion rules (for registry packaging)
