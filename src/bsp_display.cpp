@@ -181,7 +181,8 @@ esp_err_t bsp_display_init(void)
 
     /* Configure GPIOs */
     gpio_config_t io_conf = {};
-    io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_RST) | (1ULL << BSP_GPIO_EPD_DC) | (1ULL << BSP_GPIO_EPD_CS);
+    io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_3V3_EN) | (1ULL << BSP_GPIO_EPD_RST) |
+                           (1ULL << BSP_GPIO_EPD_DC) | (1ULL << BSP_GPIO_EPD_CS);
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
@@ -192,6 +193,7 @@ esp_err_t bsp_display_init(void)
     io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_BUSY);
     gpio_config(&io_conf);
 
+    gpio_set_level((gpio_num_t)BSP_GPIO_EPD_3V3_EN, 1);
     epd_set_rst(1);
 
     /* Initialize SPI bus */

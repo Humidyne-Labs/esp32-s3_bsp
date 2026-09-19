@@ -18,29 +18,41 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
             int "BOOT Switch GPIO"
             default 0
 
-        config BSP_GPIO_BAT_ADC
-            int "Battery ADC GPIO"
-            default 1
-
-        config BSP_GPIO_PWR_KEY
-            int "Power Hold GPIO"
-            default 2
-
         config BSP_GPIO_USER_LED
             int "User Status LED GPIO"
-            default 38
+            default 3
+
+        config BSP_GPIO_BAT_ADC
+            int "Battery ADC GPIO"
+            default 4
+
+        config BSP_GPIO_BAT_CTRL
+            int "Battery Control GPIO"
+            default 17
+
+        config BSP_GPIO_BAT_KEY
+            int "Battery Key Switch GPIO"
+            default 18
+
+        config BSP_GPIO_RTC_INT
+            int "RTC Interrupt GPIO"
+            default 5
 
         config BSP_GPIO_I2C_SCL
             int "Shared I2C SCL GPIO"
-            default 6
+            default 48
 
         config BSP_GPIO_I2C_SDA
             int "Shared I2C SDA GPIO"
-            default 7
+            default 47
+
+        config BSP_GPIO_EPD_3V3_EN
+            int "Display 3V3 Power Enable GPIO"
+            default 6
 
         config BSP_GPIO_EPD_DC
             int "Display DC Control GPIO"
-            default 8
+            default 10
 
         config BSP_GPIO_EPD_RST
             int "Display Reset GPIO"
@@ -48,27 +60,27 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
 
         config BSP_GPIO_EPD_CS
             int "Display SPI Chip Select GPIO"
-            default 10
+            default 11
 
         config BSP_GPIO_EPD_SCLK
             int "Display SPI Clock GPIO"
-            default 11
+            default 12
 
         config BSP_GPIO_EPD_MOSI
-            int "Display SPI MOSI GPIO"
-            default 12
+            int "Display SPI MOSI (SDI) GPIO"
+            default 13
 
         config BSP_GPIO_EPD_BUSY
             int "Display Busy Status GPIO"
-            default 13
+            default 8
 
         config BSP_GPIO_TOUCH_RST
             int "Touch Panel Reset GPIO"
-            default 4
+            default 7
 
         config BSP_GPIO_TOUCH_INT
             int "Touch Panel Interrupt GPIO"
-            default 5
+            default 21
 
         config BSP_GPIO_SD_CLK
             int "MicroSD Clock GPIO"
@@ -82,10 +94,6 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
             int "MicroSD MOSI GPIO"
             default 41
 
-        config BSP_GPIO_SD_CS
-            int "MicroSD CS GPIO"
-            default 42
-
         config BSP_GPIO_I2S_MCLK
             int "Audio Codec MCLK GPIO"
             default 14
@@ -96,23 +104,23 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
 
         config BSP_GPIO_I2S_LRCK
             int "Audio Codec LRCK GPIO"
-            default 16
+            default 38
 
         config BSP_GPIO_I2S_ASOUT
             int "Audio Codec ASOUT GPIO"
-            default 17
+            default 16
 
         config BSP_GPIO_I2S_DSIN
             int "Audio Codec DSIN GPIO"
-            default 18
+            default 45
 
         config BSP_GPIO_PA_CTRL
             int "Power Amplifier Control GPIO"
-            default 47
+            default 46
 
         config BSP_GPIO_PA_EN
             int "Power Amplifier Enable GPIO"
-            default 48
+            default 42
 
     endmenu
 

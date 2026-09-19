@@ -11,19 +11,19 @@ extern "C" {
 /**
  * @brief Initialize power management GPIOs and battery ADC
  * 
- * Configures PWR_KEY (GPIO2), USER_LED (GPIO38), and ADC1 Channel 0 (GPIO1).
+ * Configures battery control, status LED, and the battery ADC GPIO.
  * 
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_power_init(void);
 
 /**
- * @brief Keep power on (latch PWR_KEY high)
+ * @brief Keep power on (latch the battery control GPIO high)
  */
 void bsp_power_hold(void);
 
 /**
- * @brief Turn power off (release PWR_KEY low)
+ * @brief Turn power off (release the battery control GPIO low)
  */
 void bsp_power_off(void);
 
