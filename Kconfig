@@ -6,6 +6,12 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
         help
             Identifier for the board target.
 
+    config BSP_ENABLE_TOUCH
+        bool "Enable touch panel"
+        default y
+        help
+            Initialize the FT6336 touch controller and expose it to LVGL.
+
     menu "Pinout Configuration"
 
         config BSP_GPIO_BOOT_KEY

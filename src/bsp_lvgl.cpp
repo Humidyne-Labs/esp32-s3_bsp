@@ -51,8 +51,10 @@ esp_err_t bsp_lvgl_init(void)
     esp_err_t ret = bsp_display_init();
     if (ret != ESP_OK) return ret;
 
+#if CONFIG_BSP_ENABLE_TOUCH
     ret = bsp_touch_init();
     if (ret != ESP_OK) return ret;
+#endif
 
     /* Initialize LVGL core library */
     lv_init();
