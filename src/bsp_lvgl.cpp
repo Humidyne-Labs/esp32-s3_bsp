@@ -75,11 +75,13 @@ esp_err_t bsp_lvgl_init(void)
     lv_display_set_flush_cb(s_lv_display, lvgl_display_flush_cb);
 
     /* Create LVGL Touch Input device */
+#if CONFIG_BSP_ENABLE_TOUCH
     s_lv_touch_indev = lv_indev_create();
     if (s_lv_touch_indev != NULL) {
         lv_indev_set_type(s_lv_touch_indev, LV_INDEV_TYPE_POINTER);
         lv_indev_set_read_cb(s_lv_touch_indev, lvgl_touch_read_cb);
     }
+#endif
 
     ESP_LOGI(TAG, "LVGL v9 port initialized successfully");
     return ESP_OK;
