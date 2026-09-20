@@ -18,14 +18,14 @@ extern "C" {
 esp_err_t bsp_audio_init(void);
 
 /**
- * @brief Enable or disable audio power amplifier (PA_EN on GPIO48)
+ * @brief Enable or disable the audio power amplifier (active-low PA_EN on GPIO42)
  * 
  * @param enable true to enable amplifier output, false to mute/disable
  */
 void bsp_audio_pa_enable(bool enable);
 
 /**
- * @brief Set speaker output volume
+ * @brief Set ES8311 speaker output volume over the shared I2C bus
  * 
  * @param volume Volume percentage (0.0 to 100.0)
  * @return esp_err_t ESP_OK on success

@@ -9,6 +9,9 @@
 #include "esp_heap_caps.h"
 #include "bsp/bsp_display.h"
 
+/* Adapted from .port_bsp_org/port_display.cpp, including the e-Paper command
+ * sequence, waveform tables, and frame-buffer addressing model. */
+
 static const char *TAG = "bsp_display";
 
 static const uint8_t WF_Full_1IN54[159] = {
@@ -218,7 +221,7 @@ esp_err_t bsp_display_init(void)
 
         spi_device_interface_config_t devcfg = {};
         devcfg.mode = 0;
-        devcfg.clock_speed_hz = 10 * 1000 * 1000;
+        devcfg.clock_speed_hz = 40 * 1000 * 1000;
         devcfg.spics_io_num = -1;
         devcfg.queue_size = 7;
 
@@ -255,6 +258,8 @@ esp_err_t bsp_display_init(void)
     epd_send_cmd(0x11);
     epd_send_data(0x01);
 
+    /* The controller's Y address increments in the reverse direction on this
+     * panel; preserve the legacy panel orientation. */
     epd_set_windows(0, BSP_DISPLAY_WIDTH - 1, BSP_DISPLAY_HEIGHT - 1, 0);
 
     epd_send_cmd(0x3C);

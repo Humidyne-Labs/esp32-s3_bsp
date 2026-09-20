@@ -12,7 +12,8 @@ extern "C" {
 /**
  * @brief Initialize shared I2C master bus for board peripherals
  * 
- * Configures GPIO6 (SCL) and GPIO7 (SDA) with internal pull-ups and glitch filter.
+ * Configures the board-selected SCL/SDA GPIOs with internal pull-ups and a
+ * glitch filter. The current board configuration uses SDA GPIO47 and SCL GPIO48.
  * 
  * @return esp_err_t ESP_OK on success
  */

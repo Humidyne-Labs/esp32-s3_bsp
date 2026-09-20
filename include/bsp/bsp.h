@@ -14,6 +14,8 @@
 
 #include "bsp/pinout.h"
 #include "bsp/bsp_i2c.h"
+#include "bsp/bsp_rtc.h"
+#include "bsp/bsp_button.h"
 #include "bsp/bsp_power.h"
 #include "bsp/bsp_display.h"
 #include "bsp/bsp_touch.h"

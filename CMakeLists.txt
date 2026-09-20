@@ -2,6 +2,8 @@ idf_component_register(
     SRCS 
         "src/bsp_common.c"
         "src/bsp_i2c.c"
+        "src/bsp_rtc.c"
+        "src/bsp_button.c"
         "src/bsp_power.c"
         "src/bsp_display.cpp"
         "src/bsp_touch.cpp"
@@ -26,4 +28,5 @@ idf_component_register(
         lvgl
         log
         freertos
+        esp_codec_dev
 )

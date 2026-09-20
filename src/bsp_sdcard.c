@@ -6,6 +6,9 @@
 #include "esp_log.h"
 #include "bsp/bsp_sdcard.h"
 
+/* SDMMC one-wire setup and capacity calculation adapted from
+ * .port_bsp_org/port_sdcard.cpp. */
+
 static const char *TAG = "bsp_sdcard";
 
 static sdmmc_card_t *s_sd_card = NULL;

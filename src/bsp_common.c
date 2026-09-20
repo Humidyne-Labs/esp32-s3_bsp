@@ -32,6 +32,12 @@ esp_err_t bsp_board_init(void)
         return ret;
     }
 
+    ret = bsp_button_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize buttons");
+        return ret;
+    }
+
     /* Shared I2C Master Bus */
     ret = bsp_i2c_init();
     if (ret != ESP_OK) {

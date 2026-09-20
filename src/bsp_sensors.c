@@ -15,6 +15,9 @@
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_sensors.h"
 
+/* SHTC3 command flow and CRC handling adapted from
+ * .port_bsp_org/port_shtc3.cpp. */
+
 static const char *TAG = "bsp_sensors";
 
 static i2c_master_dev_handle_t s_shtc3_dev_handle = NULL;

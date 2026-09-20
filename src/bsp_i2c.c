@@ -6,6 +6,8 @@
 #include "freertos/task.h"
 #include "bsp/bsp_i2c.h"
 
+/* Adapted from .port_bsp_org/port_i2c.cpp and port_i2c.h. */
+
 static const char *TAG = "bsp_i2c";
 
 static i2c_master_bus_handle_t s_i2c_bus_handle = NULL;

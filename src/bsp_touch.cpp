@@ -8,6 +8,9 @@
 #include "bsp/bsp_display.h"
 #include "bsp/bsp_touch.h"
 
+/* FT6336 reset and touch-register handling adapted from
+ * .port_bsp_org/port_ft6336.cpp. */
+
 static const char *TAG = "bsp_touch";
 
 static i2c_master_dev_handle_t s_touch_dev_handle = NULL;

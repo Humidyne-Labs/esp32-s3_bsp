@@ -6,6 +6,8 @@
 #include "bsp/bsp_touch.h"
 #include "bsp/bsp_lvgl.h"
 
+/* LVGL display/input integration adapted from .port_bsp_org/port_lvgl.cpp. */
+
 static const char *TAG = "bsp_lvgl";
 
 static lv_display_t *s_lv_display = NULL;

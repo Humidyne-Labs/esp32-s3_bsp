@@ -21,6 +21,7 @@ targets:
 dependencies:
   idf: ">=5.1"
   lvgl/lvgl: "^9.6.0"
+  espressif/esp_codec_dev: "^1.6.2"
 
 ## File inclusion/exclusion rules (for registry packaging)
 files:
