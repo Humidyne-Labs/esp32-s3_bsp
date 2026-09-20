@@ -11,12 +11,24 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_sensors.h"
 
 static const char *TAG = "bsp_sensors";
 
 static i2c_master_dev_handle_t s_shtc3_dev_handle = NULL;
+static bsp_shtc3_power_mode_t s_shtc3_power_mode =
+#if CONFIG_BSP_SHTC3_LOW_POWER
+    BSP_SHTC3_POWER_MODE_LOW;
+#else
+    BSP_SHTC3_POWER_MODE_NORMAL;
+#endif
+
+static uint16_t shtc3_measurement_command(void)
+{
+    return s_shtc3_power_mode == BSP_SHTC3_POWER_MODE_LOW ? 0x609C : 0x7866;
+}
 
 static uint8_t shtc3_calc_crc(const uint8_t *data, size_t len)
 {
@@ -59,6 +71,16 @@ esp_err_t bsp_shtc3_init(void)
     return ESP_OK;
 }
 
+esp_err_t bsp_shtc3_set_power_mode(bsp_shtc3_power_mode_t mode)
+{
+    if (mode != BSP_SHTC3_POWER_MODE_NORMAL && mode != BSP_SHTC3_POWER_MODE_LOW) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    s_shtc3_power_mode = mode;
+    return ESP_OK;
+}
+
 esp_err_t bsp_shtc3_read(bsp_shtc3_data_t *data)
 {
     if (data == NULL) return ESP_ERR_INVALID_ARG;
@@ -72,8 +94,11 @@ esp_err_t bsp_shtc3_read(bsp_shtc3_data_t *data)
     bsp_i2c_write_reg(s_shtc3_dev_handle, -1, cmd_wakeup, 2);
     vTaskDelay(pdMS_TO_TICKS(10));
 
-    /* Measure T first, then RH: 0x7866 */
-    uint8_t cmd_meas[2] = {0x78, 0x66};
+    uint16_t measurement_command = shtc3_measurement_command();
+    uint8_t cmd_meas[2] = {
+        (uint8_t)(measurement_command >> 8),
+        (uint8_t)(measurement_command & 0xFF),
+    };
     esp_err_t ret = bsp_i2c_write_reg(s_shtc3_dev_handle, -1, cmd_meas, 2);
     if (ret != ESP_OK) return ret;
 

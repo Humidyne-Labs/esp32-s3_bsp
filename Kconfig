@@ -12,6 +12,13 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
         help
             Initialize the FT6336 touch controller and expose it to LVGL.
 
+    config BSP_SHTC3_LOW_POWER
+        bool "Use SHTC3 low-power measurement mode"
+        default n
+        help
+            Use the SHTC3 polling, temperature-first low-power command by default.
+            The mode can also be changed at runtime with bsp_shtc3_set_power_mode().
+
     menu "Pinout Configuration"
 
         config BSP_GPIO_BOOT_KEY

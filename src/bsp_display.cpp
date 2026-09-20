@@ -168,6 +168,16 @@ static void epd_turn_on_display_part(void)
     epd_read_busy();
 }
 
+static void epd_write_frame(uint8_t command, uint8_t update_mode)
+{
+    epd_send_cmd(command);
+    epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+    epd_send_cmd(0x22);
+    epd_send_data(update_mode);
+    epd_send_cmd(0x20);
+    epd_read_busy();
+}
+
 esp_err_t bsp_display_init(void)
 {
     if (s_frame_buffer == NULL) {
@@ -193,7 +203,7 @@ esp_err_t bsp_display_init(void)
     io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_BUSY);
     gpio_config(&io_conf);
 
-    gpio_set_level((gpio_num_t)BSP_GPIO_EPD_3V3_EN, 1);
+    gpio_set_level((gpio_num_t)BSP_GPIO_EPD_3V3_EN, 0);
     epd_set_rst(1);
 
     /* Initialize SPI bus */
@@ -261,6 +271,11 @@ esp_err_t bsp_display_init(void)
     epd_read_busy();
 
     epd_set_lut(WF_Full_1IN54);
+
+    epd_write_frame(0x24, 0xC7);
+    epd_send_cmd(0x26);
+    epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+    bsp_display_init_partial();
     ESP_LOGI(TAG, "1.54 inch e-Paper display initialized");
     return ESP_OK;
 }
@@ -304,17 +319,13 @@ void bsp_display_clear(void)
 void bsp_display_flush(void)
 {
     if (s_frame_buffer == NULL) return;
-    epd_send_cmd(0x24);
-    epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
-    epd_turn_on_display();
+    epd_write_frame(0x24, 0xC7);
 }
 
 void bsp_display_flush_partial(void)
 {
     if (s_frame_buffer == NULL) return;
-    epd_send_cmd(0x24);
-    epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
-    epd_turn_on_display_part();
+    epd_write_frame(0x24, 0xCF);
 }
 
 void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color)

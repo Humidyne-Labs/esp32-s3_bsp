@@ -23,6 +23,11 @@ extern "C" {
 
 #define BSP_SHTC3_I2C_ADDR      (0x70)
 
+typedef enum {
+    BSP_SHTC3_POWER_MODE_NORMAL = 0,
+    BSP_SHTC3_POWER_MODE_LOW,
+} bsp_shtc3_power_mode_t;
+
 typedef struct {
     float temperature_k;       /**< Native Temperature in Kelvin (K) */
     float humidity_percent;    /**< Relative Humidity (%) */
@@ -34,6 +39,14 @@ typedef struct {
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_shtc3_init(void);
+
+/**
+ * @brief Select the SHTC3 measurement power mode.
+ *
+ * This setting applies to subsequent measurements and may be changed before
+ * or after initialization.
+ */
+esp_err_t bsp_shtc3_set_power_mode(bsp_shtc3_power_mode_t mode);
 
 /**
  * @brief Read current temperature (natively in Kelvin) and humidity from SHTC3

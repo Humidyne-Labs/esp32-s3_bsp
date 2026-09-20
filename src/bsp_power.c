@@ -14,6 +14,10 @@ static adc_cali_handle_t s_adc_cali_handle = NULL;
 static adc_channel_t s_battery_channel;
 static bool s_led_state = false;
 
+#define BATTERY_DIVIDER_RATIO 2.0f
+#define BATTERY_EMPTY_MV 3000
+#define BATTERY_FULL_MV 4100
+
 esp_err_t bsp_power_init(void)
 {
     /* Configure battery control and status LED GPIOs. */
@@ -68,7 +72,11 @@ esp_err_t bsp_power_init(void)
         .atten = ADC_ATTEN_DB_12,
         .bitwidth = ADC_BITWIDTH_12,
     };
-    adc_cali_create_scheme_curve_fitting(&cali_config, &s_adc_cali_handle);
+    ret = adc_cali_create_scheme_curve_fitting(&cali_config, &s_adc_cali_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "ADC calibration unavailable: %s", esp_err_to_name(ret));
+        s_adc_cali_handle = NULL;
+    }
 #endif
 
     ESP_LOGI(TAG, "Power management and Battery ADC initialized");
@@ -114,13 +122,11 @@ esp_err_t bsp_battery_get_voltage(uint32_t *voltage_mv, int *raw_adc)
 
     if (voltage_mv != NULL) {
         int voltage = 0;
-        if (s_adc_cali_handle != NULL) {
-            adc_cali_raw_to_voltage(s_adc_cali_handle, raw, &voltage);
-            /* Battery voltage divider: 2:1 ratio */
-            *voltage_mv = (uint32_t)voltage * 2;
+        if (s_adc_cali_handle != NULL &&
+            adc_cali_raw_to_voltage(s_adc_cali_handle, raw, &voltage) == ESP_OK) {
+            *voltage_mv = (uint32_t)((float)voltage * BATTERY_DIVIDER_RATIO);
         } else {
-            /* Fallback estimation if calibration unavailable */
-            *voltage_mv = ((uint32_t)raw * 3300 * 2) / 4095;
+            *voltage_mv = (uint32_t)((float)raw * 3300.0f * BATTERY_DIVIDER_RATIO / 4095.0f);
         }
     }
 
@@ -134,8 +140,8 @@ uint8_t bsp_battery_get_percentage(void)
         return 0;
     }
 
-    /* Li-Po / Li-Ion voltage range: 3300mV (0%) to 4200mV (100%) */
-    if (v_mv >= 4200) return 100;
-    if (v_mv <= 3300) return 0;
-    return (uint8_t)(((v_mv - 3300) * 100) / (4200 - 3300));
+    if (v_mv >= BATTERY_FULL_MV) return 100;
+    if (v_mv <= BATTERY_EMPTY_MV) return 0;
+    return (uint8_t)(((v_mv - BATTERY_EMPTY_MV) * 100) /
+                     (BATTERY_FULL_MV - BATTERY_EMPTY_MV));
 }

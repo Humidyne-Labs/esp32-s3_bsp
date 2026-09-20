@@ -10,6 +10,7 @@ static const char *TAG = "bsp_lvgl";
 
 static lv_display_t *s_lv_display = NULL;
 static lv_indev_t *s_lv_touch_indev = NULL;
+#define LVGL_BYTES_PER_PIXEL (LV_COLOR_FORMAT_GET_SIZE(LV_COLOR_FORMAT_RGB565))
 
 static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
@@ -20,9 +21,12 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
         for (int x = 0; x < width; x++) {
             uint16_t px_x = area->x1 + x;
             uint16_t px_y = area->y1 + y;
-            uint8_t pixel_val = px_map[y * width + x];
-            /* LVGL monomode / monochrome mapping */
-            bsp_display_draw_pixel(px_x, px_y, (pixel_val > 127) ? BSP_DISPLAY_COLOR_WHITE : BSP_DISPLAY_COLOR_BLACK);
+            uint16_t pixel_val = ((uint16_t *)px_map)[y * width + x];
+            uint8_t red = (pixel_val >> 11) & 0x1F;
+            uint8_t green = (pixel_val >> 5) & 0x3F;
+            uint8_t blue = pixel_val & 0x1F;
+            uint16_t luminance = (red * 255 / 31 + green * 255 / 63 + blue * 255 / 31) / 3;
+            bsp_display_draw_pixel(px_x, px_y, (luminance >= 128) ? BSP_DISPLAY_COLOR_WHITE : BSP_DISPLAY_COLOR_BLACK);
         }
     }
 
@@ -67,7 +71,7 @@ esp_err_t bsp_lvgl_init(void)
     }
 
     /* Allocate buffer for LVGL rendering */
-    size_t buf_size = BSP_DISPLAY_WIDTH * BSP_DISPLAY_HEIGHT;
+    size_t buf_size = BSP_DISPLAY_WIDTH * BSP_DISPLAY_HEIGHT * LVGL_BYTES_PER_PIXEL;
     uint8_t *buf1 = (uint8_t *)malloc(buf_size);
     assert(buf1 != NULL);
 
@@ -91,7 +95,8 @@ void bsp_lvgl_port_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "LVGL task started");
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(10));
+        lv_tick_inc(10);
         lv_timer_handler();
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
