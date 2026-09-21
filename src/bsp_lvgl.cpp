@@ -20,8 +20,8 @@
 #include "bsp/bsp_lvgl.h"
 #include "sdkconfig.h"
 
-#ifdef CONFIG_BSP_ENABLE_TOUCH
-    // If CONFIG_BSP_ENABLE_TOUCH is defined, apply the unused attribute to suppress warnings
+#ifndef CONFIG_BSP_ENABLE_TOUCH
+    // If CONFIG_BSP_ENABLE_TOUCH is NOT defined, apply the unused attribute to suppress warnings
     #define UNUSED_FUNC __attribute__((unused))
 #else
     // If CONFIG_BSP_ENABLE_TOUCH is not defined, the macro evaluates to nothing
