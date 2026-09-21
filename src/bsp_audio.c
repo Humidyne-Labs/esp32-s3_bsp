@@ -1,10 +1,22 @@
+/**
+ * @file bsp_audio.c
+ * @brief audio lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #include <stdio.h>
+#include <stdbool.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "driver/i2s_std.h"
 #include "esp_log.h"
-#include <stdbool.h>
 #include "esp_codec_dev.h"
 #include "esp_codec_dev_defaults.h"
 #include "bsp/bsp_i2c.h"
@@ -17,12 +29,17 @@ static i2s_chan_handle_t s_rx_chan = NULL;
 static esp_codec_dev_handle_t s_codec = NULL;
 static bool s_audio_inited = false;
 
+void bsp_audio_power_enable(bool enable)
+{
+    /* GPIO 42 controls the audio power rail MOSFET (Active-LOW: 0 = Power ON) */
+    gpio_set_level((gpio_num_t)BSP_GPIO_PA_EN, enable ? 0 : 1);
+}
+
 esp_err_t bsp_audio_init(void)
 {
     if (s_audio_inited) return ESP_OK;
 
-    /* Configure PA_EN only. ES8311 owns PA_CTRL through its codec GPIO
-     * interface; configuring it here causes the GPIO46 conflict warning. */
+    /* 1. Configure the Audio Subsystem Power Rail (GPIO 42) */
     gpio_config_t io_conf = {
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_OUTPUT,
@@ -32,16 +49,16 @@ esp_err_t bsp_audio_init(void)
     };
     gpio_config(&io_conf);
 
-    /* Turn off PA by default */
-    bsp_audio_pa_enable(false);
+    /* 2. Power ON the audio domain (ES8311 + PA) and wait for VDD to stabilize */
+    bsp_audio_power_enable(true);
+    vTaskDelay(pdMS_TO_TICKS(50));
 
-    /* Initialize the shared I2S master with both directions, matching the
-     * ES8311 board wiring and allowing the codec to operate in full-duplex
-     * mode. */
+    /* 3. Initialize I2S Channels (TX + RX full-duplex on I2S0) */
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    chan_cfg.auto_clear = true;
     esp_err_t ret = i2s_new_channel(&chan_cfg, &s_tx_chan, &s_rx_chan);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create I2S TX channel: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to create I2S channels: %s", esp_err_to_name(ret));
         return ret;
     }
 
@@ -64,7 +81,7 @@ esp_err_t bsp_audio_init(void)
 
     ret = i2s_channel_init_std_mode(s_tx_chan, &std_cfg);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to init I2S std mode: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to init I2S TX std mode: %s", esp_err_to_name(ret));
         return ret;
     }
 
@@ -74,19 +91,10 @@ esp_err_t bsp_audio_init(void)
         return ret;
     }
 
-    ret = i2s_channel_enable(s_tx_chan);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to enable I2S channel: %s", esp_err_to_name(ret));
-        return ret;
-    }
+    i2s_channel_enable(s_tx_chan);
+    i2s_channel_enable(s_rx_chan);
 
-    ret = i2s_channel_enable(s_rx_chan);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to enable I2S RX channel: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    /* Attach the ES8311 control interface to the shared board I2C bus. */
+    /* 4. Setup ES8311 Codec Interfaces */
     audio_codec_i2c_cfg_t i2c_cfg = {
         .port = I2C_NUM_0,
         .addr = ES8311_CODEC_DEFAULT_ADDR,
@@ -106,21 +114,22 @@ esp_err_t bsp_audio_init(void)
     const audio_codec_ctrl_if_t *ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
     const audio_codec_gpio_if_t *gpio_if = audio_codec_new_gpio();
     if (data_if == NULL || ctrl_if == NULL || gpio_if == NULL) {
-        ESP_LOGE(TAG, "Failed to create ES8311 codec interfaces");
+        ESP_LOGE(TAG, "Failed to create codec interface abstractions");
         return ESP_ERR_NO_MEM;
     }
 
+    /* 5. Create ES8311 Device (PA control pin is GPIO 46) */
     es8311_codec_cfg_t codec_cfg = {
         .codec_mode = ESP_CODEC_DEV_WORK_MODE_BOTH,
         .ctrl_if = ctrl_if,
         .gpio_if = gpio_if,
-        .pa_pin = BSP_GPIO_PA_CTRL,
+        .pa_pin = BSP_GPIO_PA_CTRL, // GPIO 46
         .use_mclk = true,
         .hw_gain.pa_gain = 6.0f,
     };
     const audio_codec_if_t *codec_if = es8311_codec_new(&codec_cfg);
     if (codec_if == NULL) {
-        ESP_LOGE(TAG, "Failed to create ES8311 codec");
+        ESP_LOGE(TAG, "Failed to probe and create ES8311 codec over I2C");
         return ESP_FAIL;
     }
 
@@ -146,19 +155,11 @@ esp_err_t bsp_audio_init(void)
         return ret;
     }
 
-    /* The factory BSP powers the external amplifier before codec start-up.
-     * Keep PA_EN asserted while the ES8311 enable sequence completes. */
-    bsp_audio_pa_enable(true);
+    esp_codec_dev_set_out_vol(s_codec, 80.0f);
 
     s_audio_inited = true;
-    ESP_LOGI(TAG, "ES8311 codec, I2C control, I2S data, and amplifier initialized");
+    ESP_LOGI(TAG, "ES8311 audio subsystem initialized successfully");
     return ESP_OK;
-}
-
-void bsp_audio_pa_enable(bool enable)
-{
-    /* The NS4168/PA enable input is active-low on this board. */
-    gpio_set_level((gpio_num_t)BSP_GPIO_PA_EN, enable ? 0 : 1);
 }
 
 esp_err_t bsp_audio_set_volume(float volume)
@@ -171,20 +172,16 @@ esp_err_t bsp_audio_set_volume(float volume)
         if (ret != ESP_OK) return ret;
     }
 
-    bsp_audio_pa_enable(volume > 0.0f);
     esp_err_t ret = esp_codec_dev_set_out_vol(s_codec, volume);
     if (ret == ESP_OK) {
         ret = esp_codec_dev_set_out_mute(s_codec, volume <= 0.0f);
-    }
-    if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "ES8311 output volume set to %.1f%% over I2C", volume);
     }
     return ret;
 }
 
 esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written)
 {
-    if (data == NULL || len == 0 || (len % (sizeof(int16_t) * 2)) != 0) {
+    if (data == NULL || len == 0) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -193,8 +190,6 @@ esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written)
         if (ret != ESP_OK) return ret;
     }
 
-    bsp_audio_pa_enable(true);
-    vTaskDelay(pdMS_TO_TICKS(1000));
     const uint8_t *cursor = (const uint8_t *)data;
     size_t remaining = len;
     size_t total_written = 0;

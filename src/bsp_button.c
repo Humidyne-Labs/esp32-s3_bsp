@@ -1,3 +1,15 @@
+/**
+ * @file bsp_button.c
+ * @brief button lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "bsp/bsp_button.h"

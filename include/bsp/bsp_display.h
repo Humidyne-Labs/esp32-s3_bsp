@@ -1,10 +1,10 @@
 /**
  * @file bsp_display.h
- * @brief ESP32-S3 ePaper BSP - 1.54 inch Monochrome e-Paper Display Driver
+ * @brief lvgl port backend
  * 
  * @attribution
- * - e-Paper Controller & Waveform LUTs: Waveshare Electronics (https://www.waveshare.com)
- * - SPI Driver Framework: Espressif Systems (https://www.espressif.com)
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Unification: Humidyne Labs / Humiditron
  * 
  * SPDX-License-Identifier: MIT
@@ -59,6 +59,16 @@ void bsp_display_flush(void);
  * @brief Send frame buffer to e-Paper display (partial refresh)
  */
 void bsp_display_flush_partial(void);
+
+/**
+ * @brief Flush a specific region to the e-Paper display (partial refresh)
+ * 
+ * @param x_start Starting X byte-aligned coordinate
+ * @param y_start Starting Y coordinate
+ * @param x_end Ending X byte-aligned coordinate
+ * @param y_end Ending Y coordinate
+ */
+void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end);
 
 /**
  * @brief Set pixel color in frame buffer

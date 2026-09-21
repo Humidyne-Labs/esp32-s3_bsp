@@ -1,10 +1,21 @@
+/**
+ * @file bsp_rtc.c
+ * @brief rtc controller lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ * Original License-Identifier: Apache License
+ * Adapted from: https://components.espressif.com/components/waveshare/pcf85063a/versions/2.1.0/readme
+ */
+
 #include <stdbool.h>
 #include "esp_log.h"
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_rtc.h"
-
-/* PCF85063A register behavior adapted from
- * .port_bsp_org/pcf85063a/pcf85063a.c, which is distributed under Apache-2.0. */
 
 #define BSP_RTC_I2C_ADDRESS 0x51
 #define BSP_RTC_REG_CONTROL_1 0x00

@@ -1,3 +1,15 @@
+/**
+ * @file bsp_sdcard.c
+ * @brief sdcard lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include "esp_vfs_fat.h"
@@ -5,9 +17,6 @@
 #include "driver/sdmmc_host.h"
 #include "esp_log.h"
 #include "bsp/bsp_sdcard.h"
-
-/* SDMMC one-wire setup and capacity calculation adapted from
- * .port_bsp_org/port_sdcard.cpp. */
 
 static const char *TAG = "bsp_sdcard";
 

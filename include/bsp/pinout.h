@@ -52,7 +52,7 @@ extern "C" {
 #define BSP_GPIO_SD_MISO        CONFIG_BSP_GPIO_SD_MISO
 #define BSP_GPIO_SD_MOSI        CONFIG_BSP_GPIO_SD_MOSI
 
-/* ES8311 Audio Codec & Power Amp */
+/* ES8311 Audio Codec & NS4150B Power Amp */
 #define BSP_GPIO_I2S_MCLK       CONFIG_BSP_GPIO_I2S_MCLK
 #define BSP_GPIO_I2S_SCLK       CONFIG_BSP_GPIO_I2S_SCLK
 #define BSP_GPIO_I2S_LRCK       CONFIG_BSP_GPIO_I2S_LRCK

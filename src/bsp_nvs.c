@@ -1,8 +1,12 @@
 /**
  * @file bsp_nvs.c
- * @brief ESP32-S3 Touch ePaper BSP - Non-Volatile Storage (NVS) Parameter Helper Implementation
+ * @brief nvs lib
  * 
- * @copyright Copyright (c) 2026 Humidyne Labs / humid1-os-stage
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
  * SPDX-License-Identifier: MIT
  */
 

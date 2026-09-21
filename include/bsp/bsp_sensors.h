@@ -1,12 +1,12 @@
 /**
- * @file bsp_sensors.h
- * @brief ESP32-S3 ePaper BSP - Onboard Environmental Sensors Driver (SHTC3)
+ * @file bsp_touch.h
+ * @brief touch controller lib
  * 
- * Provides native temperature in Kelvin (K) and relative humidity (%) readings
- * from the SHTC3 sensor.
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
  * 
- * @note Based on Sensirion SHTC3 driver specifications & Waveshare ePaper sample library.
- * @copyright Copyright (c) 2026 Humidyne Labs / Humiditron
  * SPDX-License-Identifier: MIT
  */
 

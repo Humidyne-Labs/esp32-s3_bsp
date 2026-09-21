@@ -1,11 +1,12 @@
 /**
  * @file bsp.h
- * @brief ESP32-S3 Touch ePaper Board Support Package - Master Umbrella Header
+ * @brief general header
  * 
- * Provides master initialization, unique device ID helpers, NVS parameters,
- * and umbrella access to all hardware drivers.
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
  * 
- * @copyright Copyright (c) 2026 Humidyne Labs / Humiditron
  * SPDX-License-Identifier: MIT
  */
 

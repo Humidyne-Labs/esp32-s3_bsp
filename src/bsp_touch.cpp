@@ -1,3 +1,15 @@
+/**
+ * @file bsp_touch.cpp
+ * @brief touch controller lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -7,9 +19,6 @@
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_display.h"
 #include "bsp/bsp_touch.h"
-
-/* FT6336 reset and touch-register handling adapted from
- * .port_bsp_org/port_ft6336.cpp. */
 
 static const char *TAG = "bsp_touch";
 

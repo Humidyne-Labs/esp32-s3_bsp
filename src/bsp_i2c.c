@@ -1,3 +1,15 @@
+/**
+ * @file bsp_i2c.c
+ * @brief i2c lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,8 +17,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "bsp/bsp_i2c.h"
-
-/* Adapted from .port_bsp_org/port_i2c.cpp and port_i2c.h. */
 
 static const char *TAG = "bsp_i2c";
 

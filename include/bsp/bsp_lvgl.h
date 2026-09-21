@@ -1,11 +1,11 @@
 /**
  * @file bsp_lvgl.h
- * @brief ESP32-S3 ePaper BSP - LVGL v9 Graphics Library Port
+ * @brief lvgl port
  * 
  * @attribution
- * - Graphics Engine: LVGL - Light and Versatile Graphics Library (https://lvgl.io)
- *   Licensed under MIT License by the LVGL Team.
- * - Hardware Interface & Flush Porting: Waveshare Electronics & Humidyne Labs
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -33,6 +33,10 @@ esp_err_t bsp_lvgl_init(void);
  * @brief LVGL timer task tick handler (call periodically or from FreeRTOS task)
  */
 void bsp_lvgl_port_task(void *pvParameters);
+
+void bsp_lvgl_lock(void);
+
+void bsp_lvgl_unlock(void);
 
 #ifdef __cplusplus
 }

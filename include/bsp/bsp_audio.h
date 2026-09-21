@@ -1,3 +1,15 @@
+/**
+ * @file bsp_audio.h
+ * @brief audio controller lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #ifndef BSP_AUDIO_H
 #define BSP_AUDIO_H
 
@@ -22,7 +34,7 @@ esp_err_t bsp_audio_init(void);
  * 
  * @param enable true to enable amplifier output, false to mute/disable
  */
-void bsp_audio_pa_enable(bool enable);
+void bsp_audio_power_enable(bool enable);
 
 /**
  * @brief Set ES8311 speaker output volume over the shared I2C bus

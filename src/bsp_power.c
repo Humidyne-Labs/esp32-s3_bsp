@@ -1,3 +1,15 @@
+/**
+ * @file bsp_power.c
+ * @brief power lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include "esp_log.h"
@@ -6,9 +18,6 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "bsp/bsp_power.h"
-
-/* GPIO power-control behavior adapted from .port_bsp_org/port_power.cpp.
- * Battery ADC behavior adapted from .port_bsp_org/port_adc.cpp. */
 
 static const char *TAG = "bsp_power";
 

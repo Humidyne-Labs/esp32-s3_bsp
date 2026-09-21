@@ -1,11 +1,12 @@
 /**
  * @file bsp_nvs.h
- * @brief ESP32-S3 Touch ePaper BSP - Non-Volatile Storage (NVS) Parameter Helper
+ * @brief nvs lib
  * 
- * Provides persistent key-value storage for Wi-Fi credentials (SSID/passkey),
- * device configuration parameters, and provisioning settings in flash NVS.
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
  * 
- * @copyright Copyright (c) 2026 Humidyne Labs / Humiditron
  * SPDX-License-Identifier: MIT
  */
 

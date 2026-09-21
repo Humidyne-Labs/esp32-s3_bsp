@@ -1,3 +1,15 @@
+/**
+ * @file bsp_rtc.h
+ * @brief rtc controller lib
+ * 
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
+ * SPDX-License-Identifier: MIT
+ */
+
 #ifndef BSP_RTC_H
 #define BSP_RTC_H
 

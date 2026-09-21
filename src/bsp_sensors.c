@@ -1,9 +1,12 @@
 /**
- * @file bsp_sensors.c
- * @brief ESP32-S3 ePaper BSP - SHTC3 Sensor Driver Implementation (Native Kelvin)
+ * @file bsp_sensor.c
+ * @brief sensor controller lib
  * 
- * @note Based on Sensirion SHTC3 driver & Waveshare ePaper sample library.
- * @copyright Copyright (c) 2026 Humidyne Labs / humid1-os-stage
+ * @attribution
+ * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
+ * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
+ * - BSP Unification: Humidyne Labs / Humiditron
+ * 
  * SPDX-License-Identifier: MIT
  */
 
@@ -14,9 +17,6 @@
 #include "sdkconfig.h"
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_sensors.h"
-
-/* SHTC3 command flow and CRC handling adapted from
- * .port_bsp_org/port_shtc3.cpp. */
 
 static const char *TAG = "bsp_sensors";
 
