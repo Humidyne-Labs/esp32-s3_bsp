@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
+#include <algorithm>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/spi_master.h"
@@ -23,48 +23,38 @@
 
 static const char *TAG = "bsp_display";
 
-static const uint8_t WF_Full_1IN54[159] = {
-    0x80, 0x48, 0x40, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
-    0x40, 0x48, 0x80, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
-    0x80, 0x48, 0x40, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
-    0x40, 0x48, 0x80, 0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,
-    0xA,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x8,  0x1,  0x0,  0x8,  0x1,  0x0,  0x2,  
-    0xA,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  0x0,  
-    0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x0,  0x0,  0x0,  
-    0x22, 0x17, 0x41, 0x0,  0x32, 0x20
-};
+#define EPD_FULL_REFRESH_TIMEOUT_MS    10000
+#define EPD_PARTIAL_REFRESH_TIMEOUT_MS 3000
 
+// SSD1681 Factory-calibrated 159-byte Partial LUT (Datasheet Figure 6-6 layout)
 static const uint8_t WF_PARTIAL_1IN54[159] = {
-    0x0, 0x40, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    0x80,0x80, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    0x40,0x40, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x80, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-    0xF, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x1, 0x1,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x0, 0x0,  0x0, 0x0, 0x0, 0x0, 0x0,
-    0x22,0x22, 0x22,0x22,0x22,0x22,0x0, 0x0, 0x0,
-    0x02,0x17, 0x41,0xB0,0x32,0x28
+    // 000..011: LUT0 (Black -> Black)
+    0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 012..023: LUT1 (Black -> White)
+    0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 024..035: LUT2 (White -> Black)
+    0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 036..047: LUT3 (White -> White)
+    0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 048..059: LUT4 (VCOM Modulation)
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // 060..143: Timing Groups 0 to 11 (TP, SR, RP)
+    0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 0 (TP0A = 15 frames)
+    0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 1
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 2
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 3
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 4
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 5
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 6
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 7
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 8
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 9
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 10
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Group 11
+    // 144..149: Frame Rates (FR0..FR11 = 50Hz) & 150..152: XON
+    0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x00, 0x00, 0x00,
+    // 153..158: EOPT (0x3F), Gate (0x03), Source (0x04), VCOM (0x2C)
+    0x02, 0x17, 0x41, 0xB0, 0x32, 0x28
 };
 
 static spi_device_handle_t s_spi_handle = NULL;
@@ -72,15 +62,27 @@ static uint8_t *s_frame_buffer          = NULL;
 static uint8_t *s_prev_frame_buffer     = NULL;
 static uint32_t s_partial_refresh_count = 0;
 
-static void epd_set_cs (uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_CS,  level); }
-static void epd_set_dc (uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_DC,  level); }
-static void epd_set_rst(uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_RST, level); }
+static inline void epd_set_cs (uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_CS,  level); }
+static inline void epd_set_dc (uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_DC,  level); }
+static inline void epd_set_rst(uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_RST, level); }
 
-static void epd_read_busy(void)
+esp_err_t bsp_display_wait_busy(uint32_t timeout_ms)
 {
+    // Short 10ms yield to allow SSD1681 internal charge pumps to engage and drive the line
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    TickType_t start_tick = xTaskGetTickCount();
+    TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
+
+    // SSD1681: High (1) = Busy, Low (0) = Ready
     while (gpio_get_level((gpio_num_t)BSP_GPIO_EPD_BUSY) == 1) {
+        if ((xTaskGetTickCount() - start_tick) > timeout_ticks) {
+            ESP_LOGE(TAG, "Busy pin wait timeout (%lu ms)", (unsigned long)timeout_ms);
+            return ESP_ERR_TIMEOUT;
+        }
         vTaskDelay(pdMS_TO_TICKS(5));
     }
+    return ESP_OK;
 }
 
 static void epd_send_byte(uint8_t data)
@@ -89,8 +91,7 @@ static void epd_send_byte(uint8_t data)
     memset(&t, 0, sizeof(t));
     t.length = 8;
     t.tx_buffer = &data;
-    esp_err_t ret = spi_device_polling_transmit(s_spi_handle, &t);
-    assert(ret == ESP_OK);
+    spi_device_polling_transmit(s_spi_handle, &t);
 }
 
 static void epd_send_cmd(uint8_t cmd)
@@ -111,89 +112,115 @@ static void epd_send_data(uint8_t data)
 
 static void epd_write_bytes(const uint8_t *data, size_t len)
 {
-    if (len == 0) return;
+    if (len == 0 || data == NULL) return;
     epd_set_dc(1);
     epd_set_cs(0);
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
     t.length = 8 * len;
     t.tx_buffer = data;
-    esp_err_t ret = spi_device_polling_transmit(s_spi_handle, &t);
-    assert(ret == ESP_OK);
+    spi_device_polling_transmit(s_spi_handle, &t);
     epd_set_cs(1);
 }
 
-static void epd_set_windows(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end)
+static void epd_set_windows(uint16_t x_start_byte, uint16_t y_start, uint16_t x_end_byte, uint16_t y_end)
 {
-    epd_send_cmd(0x44);
-    epd_send_data((x_start >> 3) & 0xFF);
-    epd_send_data((x_end >> 3) & 0xFF);
+    epd_send_cmd(0x44); // Set RAM X - address Start / End position
+    epd_send_data(x_start_byte & 0xFF);
+    epd_send_data(x_end_byte & 0xFF);
 
-    epd_send_cmd(0x45);
+    epd_send_cmd(0x45); // Set RAM Y - address Start / End position
     epd_send_data(y_start & 0xFF);
     epd_send_data((y_start >> 8) & 0xFF);
     epd_send_data(y_end & 0xFF);
     epd_send_data((y_end >> 8) & 0xFF);
 }
 
-static void epd_set_cursor(uint16_t x_start, uint16_t y_start)
+static void epd_set_cursor(uint16_t x_start_byte, uint16_t y_start)
 {
-    epd_send_cmd(0x4E);
-    epd_send_data((x_start >> 3) & 0xFF);
+    epd_send_cmd(0x4E); // Set RAM X address counter
+    epd_send_data(x_start_byte & 0xFF);
 
-    epd_send_cmd(0x4F);
+    epd_send_cmd(0x4F); // Set RAM Y address counter
     epd_send_data(y_start & 0xFF);
     epd_send_data((y_start >> 8) & 0xFF);
 }
 
-static void epd_set_lut(const uint8_t *lut)
+void epd_load_custom_lut(const uint8_t *lut_buffer)
 {
+    if (lut_buffer == NULL) return;
+
+    // 1. Write 153 bytes to LUT Register 0x32
     epd_send_cmd(0x32);
-    epd_write_bytes(lut, 153);
-    epd_read_busy();
+    epd_write_bytes(lut_buffer, 153);
 
+    // 2. End Option (0x3F)
     epd_send_cmd(0x3F);
-    epd_send_data(lut[153]);
+    epd_send_data(lut_buffer[153]);
 
+    // 3. Gate Driving Voltage (0x03)
     epd_send_cmd(0x03);
-    epd_send_data(lut[154]);
+    epd_send_data(lut_buffer[154]);
 
+    // 4. Source Driving Voltages (0x04)
     epd_send_cmd(0x04);
-    epd_send_data(lut[155]);
-    epd_send_data(lut[156]);
-    epd_send_data(lut[157]);
+    epd_send_data(lut_buffer[155]);
+    epd_send_data(lut_buffer[156]);
+    epd_send_data(lut_buffer[157]);
 
+    // 5. VCOM Driving Voltage (0x2C)
     epd_send_cmd(0x2C);
-    epd_send_data(lut[158]);
+    epd_send_data(lut_buffer[158]);
 }
 
-static void epd_write_frame(uint8_t command, uint8_t update_mode)
+static void epd_apply_core_registers(void)
 {
-    epd_send_cmd(command);
-    epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+    // Driver Output Control: 200 scan lines (0xC7), Normal scan direction
+    epd_send_cmd(0x01);
+    epd_send_data((BSP_DISPLAY_HEIGHT - 1) & 0xFF);
+    epd_send_data(((BSP_DISPLAY_HEIGHT - 1) >> 8) & 0xFF);
+    epd_send_data(0x00);
+
+    // Data Entry Mode: 0x03 -> Increment X, Increment Y (Address counter moves Left -> Right, Top -> Bottom)
+    epd_send_cmd(0x11);
+    epd_send_data(0x03);
+
+    // Border Waveform Control: Selected to maintain contrast and avoid dark frames
+    epd_send_cmd(0x3C);
+    epd_send_data(0x05);
+
+    // Built-in Temperature Sensor selection
+    epd_send_cmd(0x18);
+    epd_send_data(0x80);
+
+    // Load temperature and OTP waveform
     epd_send_cmd(0x22);
-    epd_send_data(update_mode);
+    epd_send_data(0xB1);
     epd_send_cmd(0x20);
-    epd_read_busy();
+    bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);    
+
+    // Set full screen window boundaries
+    epd_set_windows(0, 0, (BSP_DISPLAY_WIDTH / 8) - 1, BSP_DISPLAY_HEIGHT - 1);
+    epd_set_cursor(0, 0);
 }
 
 esp_err_t bsp_display_init(void)
 {
     if (s_frame_buffer == NULL) {
-        s_frame_buffer = (uint8_t *)heap_caps_malloc(BSP_DISPLAY_BUFFER_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        s_frame_buffer = (uint8_t *)heap_caps_malloc(BSP_DISPLAY_BUFFER_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
         if (s_frame_buffer == NULL) {
             s_frame_buffer = (uint8_t *)malloc(BSP_DISPLAY_BUFFER_SIZE);
         }
-        assert(s_frame_buffer != NULL);
+        if (s_frame_buffer == NULL) return ESP_ERR_NO_MEM;
         memset(s_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
     if (s_prev_frame_buffer == NULL) {
-        s_prev_frame_buffer = (uint8_t *)heap_caps_malloc(BSP_DISPLAY_BUFFER_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        s_prev_frame_buffer = (uint8_t *)heap_caps_malloc(BSP_DISPLAY_BUFFER_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
         if (s_prev_frame_buffer == NULL) {
             s_prev_frame_buffer = (uint8_t *)malloc(BSP_DISPLAY_BUFFER_SIZE);
         }
-        assert(s_prev_frame_buffer != NULL);
+        if (s_prev_frame_buffer == NULL) return ESP_ERR_NO_MEM;
         memset(s_prev_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
@@ -203,16 +230,17 @@ esp_err_t bsp_display_init(void)
     io_conf.mode         = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en   = GPIO_PULLUP_ENABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.intr_type    = GPIO_INTR_DISABLE;
     gpio_config(&io_conf);
 
-    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.mode         = GPIO_MODE_INPUT;
+    io_conf.pull_up_en   = GPIO_PULLUP_DISABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.intr_type    = GPIO_INTR_DISABLE;
     io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_BUSY);
     gpio_config(&io_conf);
 
-    gpio_set_level((gpio_num_t)BSP_GPIO_EPD_3V3_EN, 0);
-    epd_set_rst(1);
-
+    gpio_set_level((gpio_num_t)BSP_GPIO_EPD_3V3_EN, 0); // Power on
+    
     if (s_spi_handle == NULL) {
         spi_bus_config_t buscfg = {};        
         buscfg.mosi_io_num     = BSP_GPIO_EPD_MOSI;
@@ -241,78 +269,21 @@ esp_err_t bsp_display_init(void)
         }
     }
 
-    /* HW Reset */
+    /* Single Global Hardware Reset */
     epd_set_rst(1);
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(10));
     epd_set_rst(0);
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(10));
     epd_set_rst(1);
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(10));
 
-    epd_read_busy();
-    epd_send_cmd(0x12); // SW Reset
-    epd_read_busy();
+    bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
+    epd_send_cmd(0x12); // Software Reset
+    bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
 
-    // Driver output control
-    epd_send_cmd(0x01);
-    epd_send_data(0xC7);
-    epd_send_data(0x00);
-    epd_send_data(0x01);
+    epd_apply_core_registers();
 
-    epd_send_cmd(0x11); // Data entry mode
-    epd_send_data(0x01); // Y decrement, X increment
-
-    epd_set_windows(0, BSP_DISPLAY_WIDTH - 1, BSP_DISPLAY_HEIGHT - 1, 0);
-
-    epd_send_cmd(0x3C); // Border waveform
-    epd_send_data(0x01);
-
-    epd_send_cmd(0x18); // Temp sensor
-    epd_send_data(0x80);
-
-    epd_send_cmd(0x22);
-    epd_send_data(0xB1);
-    epd_send_cmd(0x20);
-
-    epd_set_cursor(0, BSP_DISPLAY_HEIGHT - 1);
-    epd_read_busy();
-
-    epd_set_lut(WF_Full_1IN54);
-
-    epd_write_frame(0x24, 0xC7);
-    epd_send_cmd(0x26);
-    epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
-    bsp_display_init_partial();
-    
-    ESP_LOGI(TAG, "1.54 inch e-Paper display initialized");
-    return ESP_OK;
-}
-
-esp_err_t bsp_display_init_partial(void)
-{
-    epd_set_rst(1);
-    vTaskDelay(pdMS_TO_TICKS(50));
-    epd_set_rst(0);
-    vTaskDelay(pdMS_TO_TICKS(20));
-    epd_set_rst(1);
-    vTaskDelay(pdMS_TO_TICKS(50));
-
-    epd_read_busy();
-    epd_set_lut(WF_PARTIAL_1IN54);
-
-    epd_send_cmd(0x37);
-    for (int i = 0; i < 5; i++) epd_send_data(0x00);
-    epd_send_data(0x40);
-    for (int i = 0; i < 4; i++) epd_send_data(0x00);
-
-    epd_send_cmd(0x3C);
-    epd_send_data(0x80);
-
-    epd_send_cmd(0x22);
-    epd_send_data(0xC0);
-    epd_send_cmd(0x20);
-    epd_read_busy();
-
+    ESP_LOGI(TAG, "SSD1681 1.54-inch EPD initialized successfully");
     return ESP_OK;
 }
 
@@ -327,25 +298,28 @@ void bsp_display_flush(void)
 {
     if (s_frame_buffer == NULL || s_prev_frame_buffer == NULL) return;
 
-    epd_set_windows(0, BSP_DISPLAY_WIDTH - 1, BSP_DISPLAY_HEIGHT - 1, 0);
-    epd_set_cursor(0, BSP_DISPLAY_HEIGHT - 1);
+    // 1. Reset RAM window to full bounds
+    epd_set_windows(0, 0, (BSP_DISPLAY_WIDTH / 8) - 1, BSP_DISPLAY_HEIGHT - 1);
 
+    // 2. Write New RAM (0x24)
+    epd_set_cursor(0, 0);
     epd_send_cmd(0x24);
     epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
-    epd_send_cmd(0x22);
-    epd_send_data(0xC7);
-    epd_send_cmd(0x20);
-    epd_read_busy();
 
-    // Synchronize hardware RAM 0x26 with the new image
-    epd_set_cursor(0, BSP_DISPLAY_HEIGHT - 1);
+    // 3. Write Current Frame to Old RAM (0x26) for differential base
+    epd_set_cursor(0, 0);
     epd_send_cmd(0x26);
     epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
 
-    memcpy(s_prev_frame_buffer, s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+    // 4. Full Refresh Update Sequence (0xC7)
+    epd_send_cmd(0x22);
+    epd_send_data(0xC7);
+    epd_send_cmd(0x20); // Master Activation
+    bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
 
+    // Synchronize local previous frame buffer
+    memcpy(s_prev_frame_buffer, s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
     s_partial_refresh_count = 0;
-    bsp_display_init_partial();
 }
 
 void bsp_display_flush_partial(void)
@@ -357,52 +331,66 @@ void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t
 {
     if (s_frame_buffer == NULL || s_prev_frame_buffer == NULL) return;
 
-    if (x_start >= BSP_DISPLAY_WIDTH)    x_start = BSP_DISPLAY_WIDTH  - 1;
-    if (x_end   >= BSP_DISPLAY_WIDTH)    x_end   = BSP_DISPLAY_WIDTH  - 1;
-    if (y_start >= BSP_DISPLAY_HEIGHT)   y_start = BSP_DISPLAY_HEIGHT - 1;
-    if (y_end   >= BSP_DISPLAY_HEIGHT)   y_end   = BSP_DISPLAY_HEIGHT - 1;
+    // Constrain coordinates to screen limits
+    x_start = std::min<uint16_t>(x_start, BSP_DISPLAY_WIDTH - 1);
+    x_end   = std::min<uint16_t>(x_end,   BSP_DISPLAY_WIDTH - 1);
+    y_start = std::min<uint16_t>(y_start, BSP_DISPLAY_HEIGHT - 1);
+    y_end   = std::min<uint16_t>(y_end,   BSP_DISPLAY_HEIGHT - 1);
 
-    // Align X bounds to byte boundaries
-    uint16_t x_s_byte = x_start & ~7;
-    uint16_t x_e_byte = x_end | 7;
-    if (x_e_byte >= BSP_DISPLAY_WIDTH) x_e_byte = BSP_DISPLAY_WIDTH - 1;
+    if (x_start > x_end) std::swap(x_start, x_end);
+    if (y_start > y_end) std::swap(y_start, y_end);
 
-    uint16_t bytes_per_line = (x_e_byte - x_s_byte + 1) / 8;
+    // Align X coordinates to full byte boundaries (8 pixels per byte)
+    uint16_t x_s_byte = x_start / 8;
+    uint16_t x_e_byte = x_end / 8;
+    uint16_t bytes_per_line = (x_e_byte - x_s_byte) + 1;
 
-    uint16_t hw_y_start = (BSP_DISPLAY_HEIGHT - 1) - y_start;
-    uint16_t hw_y_end   = (BSP_DISPLAY_HEIGHT - 1) - y_end;
+    // Set Partial Window Boundaries (Ensuring Ymin <= Ymax)
+    epd_set_windows(x_s_byte, y_start, x_e_byte, y_end);
 
-    epd_set_windows(x_s_byte, hw_y_start, x_e_byte, hw_y_end);
-
-    // 1. Write previous frame to RAM 0x26
-    epd_set_cursor(x_s_byte, hw_y_start);
+    // 1. Write Old RAM (0x26)
+    epd_set_cursor(x_s_byte, y_start);
     epd_send_cmd(0x26);
     for (uint16_t y = y_start; y <= y_end; y++) {
-        uint32_t offset = y * (BSP_DISPLAY_WIDTH / 8) + (x_s_byte >> 3);
+        uint32_t offset = (y * (BSP_DISPLAY_WIDTH / 8)) + x_s_byte;
         epd_write_bytes(&s_prev_frame_buffer[offset], bytes_per_line);
     }
 
-    // 2. Write new frame to RAM 0x24
-    epd_set_cursor(x_s_byte, hw_y_start);
+    // 2. Write New RAM (0x24)
+    epd_set_cursor(x_s_byte, y_start);
     epd_send_cmd(0x24);
     for (uint16_t y = y_start; y <= y_end; y++) {
-        uint32_t offset = y * (BSP_DISPLAY_WIDTH / 8) + (x_s_byte >> 3);
+        uint32_t offset = (y * (BSP_DISPLAY_WIDTH / 8)) + x_s_byte;
         epd_write_bytes(&s_frame_buffer[offset], bytes_per_line);
     }
 
-    // 3. Trigger partial refresh
-    epd_send_cmd(0x22);
-    epd_send_data(0xCF);
-    epd_send_cmd(0x20);
-    epd_read_busy();
+    // 3. Load Custom Partial LUT
+    epd_load_custom_lut(WF_PARTIAL_1IN54);
 
-    // 4. Update shadow buffer
+    // 4. Trigger Partial Display Update Sequence (0xC7)
+    epd_send_cmd(0x22);
+    epd_send_data(0xC7);
+    epd_send_cmd(0x20); // Master Activation
+    bsp_display_wait_busy(EPD_PARTIAL_REFRESH_TIMEOUT_MS);
+
+    // 5. Sync shadow buffer dirty region
     for (uint16_t y = y_start; y <= y_end; y++) {
-        uint32_t offset = y * (BSP_DISPLAY_WIDTH / 8) + (x_s_byte >> 3);
+        uint32_t offset = (y * (BSP_DISPLAY_WIDTH / 8)) + x_s_byte;
         memcpy(&s_prev_frame_buffer[offset], &s_frame_buffer[offset], bytes_per_line);
     }
 
     s_partial_refresh_count++;
+}
+
+void bsp_display_deep_sleep(void)
+{
+    // Set Border Waveform to High-Z / Floating
+    epd_send_cmd(0x3C);
+    epd_send_data(0x01);
+
+    // Enter Deep Sleep Mode (Mode 1: Retain internal state / RAM power cut)
+    epd_send_cmd(0x10);
+    epd_send_data(0x01);
 }
 
 void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color)
@@ -410,8 +398,9 @@ void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color)
     if (x >= BSP_DISPLAY_WIDTH || y >= BSP_DISPLAY_HEIGHT || s_frame_buffer == NULL) {
         return;
     }
-    uint16_t index = y * (BSP_DISPLAY_WIDTH / 8) + (x >> 3);
+    uint32_t index = y * (BSP_DISPLAY_WIDTH / 8) + (x >> 3);
     uint8_t bit = 7 - (x & 0x07);
+
     if (color == BSP_DISPLAY_COLOR_WHITE) {
         s_frame_buffer[index] |= (1 << bit);
     } else {

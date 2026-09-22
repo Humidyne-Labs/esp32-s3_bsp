@@ -70,6 +70,8 @@ void bsp_display_flush_partial(void);
  */
 void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end);
 
+void bsp_display_deep_sleep(void);
+
 /**
  * @brief Set pixel color in frame buffer
  * 

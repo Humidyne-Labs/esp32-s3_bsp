@@ -11,20 +11,21 @@
  */
 
 #include <stdio.h>
+#include <string.h>
+#include <algorithm>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "bsp/bsp_display.h"
 #include "bsp/bsp_touch.h"
 #include "bsp/bsp_lvgl.h"
 #include "sdkconfig.h"
 
 #ifndef CONFIG_BSP_ENABLE_TOUCH
-    // If CONFIG_BSP_ENABLE_TOUCH is NOT defined, apply the unused attribute to suppress warnings
     #define UNUSED_FUNC __attribute__((unused))
 #else
-    // If CONFIG_BSP_ENABLE_TOUCH is not defined, the macro evaluates to nothing
     #define UNUSED_FUNC
 #endif
 
@@ -54,55 +55,72 @@ void bsp_lvgl_unlock(void) {
     }
 }
 
+static uint32_t lvgl_tick_get_cb(void)
+{
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
+
 static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    const uint8_t *buf = px_map + LVGL_I1_PALETTE_SIZE;
+    const uint8_t *src_buf = px_map + LVGL_I1_PALETTE_SIZE;
+    uint8_t *dest_buf = bsp_display_get_buffer();
 
-    uint16_t width = (area->x2 - area->x1 + 1);
-    uint16_t height = (area->y2 - area->y1 + 1);
-    uint32_t stride = lv_draw_buf_width_to_stride(width, LV_COLOR_FORMAT_I1);
+    uint16_t area_w = (area->x2 - area->x1 + 1);
+    uint16_t area_h = (area->y2 - area->y1 + 1);
+    uint32_t src_stride = lv_draw_buf_width_to_stride(area_w, LV_COLOR_FORMAT_I1);
 
-    // 1. Copy LVGL 1-bit rendered pixels into the display driver's frame buffer
-    for (int y = 0; y < height; y++) {
-        const uint8_t *line_src = buf + (y * stride);
-        for (int x = 0; x < width; x++) {
-            uint8_t bit_val = (line_src[x >> 3] >> (7 - (x & 0x07))) & 0x01;
+    // Optimized Direct Monochrome Bit Blit
+    // If area is byte-aligned (multiple of 8), perform fast-path copy
+    if ((area->x1 % 8 == 0) && (area_w % 8 == 0) && (dest_buf != NULL)) {
+        uint16_t bytes_per_line = area_w / 8;
+        uint16_t start_byte_x = area->x1 / 8;
 
-            bsp_display_draw_pixel(
-                area->x1 + x, 
-                area->y1 + y, 
-                (bit_val != 0) ? BSP_DISPLAY_COLOR_WHITE : BSP_DISPLAY_COLOR_BLACK
-            );
+        for (uint16_t y = 0; y < area_h; y++) {
+            uint16_t dst_y = area->y1 + y;
+            uint32_t dst_offset = (dst_y * (BSP_DISPLAY_WIDTH / 8)) + start_byte_x;
+            const uint8_t *src_line = src_buf + (y * src_stride);
+            memcpy(&dest_buf[dst_offset], src_line, bytes_per_line);
+        }
+    } else {
+        // Pixel fallback for unaligned fractional bounding boxes
+        for (uint16_t y = 0; y < area_h; y++) {
+            const uint8_t *src_line = src_buf + (y * src_stride);
+            uint16_t dst_y = area->y1 + y;
+
+            for (uint16_t x = 0; x < area_w; x++) {
+                uint8_t bit_val = (src_line[x >> 3] >> (7 - (x & 0x07))) & 0x01;
+                bsp_display_draw_pixel(
+                    area->x1 + x,
+                    dst_y,
+                    (bit_val != 0) ? BSP_DISPLAY_COLOR_WHITE : BSP_DISPLAY_COLOR_BLACK
+                );
+            }
         }
     }
 
-    // 2. Expand dirty union box across all batched invalidation areas
-    if (area->x1 < s_dirty_x1) s_dirty_x1 = area->x1;
-    if (area->y1 < s_dirty_y1) s_dirty_y1 = area->y1;
-    if (area->x2 > s_dirty_x2) s_dirty_x2 = area->x2;
-    if (area->y2 > s_dirty_y2) s_dirty_y2 = area->y2;
+    // Accumulate bounding box
+    s_dirty_x1 = std::min<int16_t>(s_dirty_x1, area->x1);
+    s_dirty_y1 = std::min<int16_t>(s_dirty_y1, area->y1);
+    s_dirty_x2 = std::max<int16_t>(s_dirty_x2, area->x2);
+    s_dirty_y2 = std::max<int16_t>(s_dirty_y2, area->y2);
 
-    bool is_last = lv_display_flush_is_last(disp);
-
-    // 3. Only trigger the hardware refresh when ALL areas in the frame are drawn
-    if (is_last) {
+    // When all batched redraw areas are rendered, trigger hardware update
+    if (lv_display_flush_is_last(disp)) {
         if (s_first_boot_flush) {
-            // First frame must be a full refresh to clear physical particle state
-            bsp_display_flush();
+            bsp_display_flush(); // Full OTP update on boot
             s_first_boot_flush = false;
             s_flush_counter = 0;
         } else {
             s_flush_counter++;
             if (s_flush_counter >= PARTIAL_REFRESH_LIMIT) {
-                bsp_display_flush();
+                bsp_display_flush(); // Full refresh to neutralize charge build-up
                 s_flush_counter = 0;
             } else if (s_dirty_x2 >= 0 && s_dirty_y2 >= 0) {
-                // Refresh the combined bounding box covering all updated labels
                 bsp_display_flush_partial_area(s_dirty_x1, s_dirty_y1, s_dirty_x2, s_dirty_y2);
             }
         }
 
-        // Reset the dirty bounding box for the next frame
+        // Reset bounding box
         s_dirty_x1 = 32767; s_dirty_y1 = 32767;
         s_dirty_x2 = -1;    s_dirty_y2 = -1;
     }
@@ -142,6 +160,9 @@ esp_err_t bsp_lvgl_init(void)
 
     lv_init();
 
+    // Set hardware high-precision tick callback (eliminates manual lv_tick_inc)
+    lv_tick_set_cb(lvgl_tick_get_cb);
+
     s_lv_display = lv_display_create(BSP_DISPLAY_WIDTH, BSP_DISPLAY_HEIGHT);
     if (s_lv_display == NULL) {
         ESP_LOGE(TAG, "Failed to create LVGL display");
@@ -150,9 +171,13 @@ esp_err_t bsp_lvgl_init(void)
 
     lv_display_set_color_format(s_lv_display, LV_COLOR_FORMAT_I1);
 
+    // Allocate partial render buffer (e.g. 40 lines)
     uint32_t buffer_lines = 40;
     size_t buf_size = ((BSP_DISPLAY_WIDTH + 7) / 8) * buffer_lines + LVGL_I1_PALETTE_SIZE;
-    uint8_t *buf1 = (uint8_t *)malloc(buf_size);
+    uint8_t *buf1 = (uint8_t *)heap_caps_malloc(buf_size, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+    if (buf1 == NULL) {
+        buf1 = (uint8_t *)malloc(buf_size);
+    }
     assert(buf1 != NULL);
 
     lv_display_set_buffers(s_lv_display, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
@@ -172,12 +197,14 @@ esp_err_t bsp_lvgl_init(void)
 
 void bsp_lvgl_port_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "LVGL task started");
+    ESP_LOGI(TAG, "LVGL task running");
     while (1) {
         bsp_lvgl_lock();
-        lv_tick_inc(10);
-        lv_timer_handler();
+        uint32_t delay_ms = lv_timer_handler();
         bsp_lvgl_unlock();
-        vTaskDelay(pdMS_TO_TICKS(10));
+
+        if (delay_ms < 5)  delay_ms = 5;
+        if (delay_ms > 50) delay_ms = 50;
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
 }

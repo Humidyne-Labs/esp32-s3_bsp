@@ -49,22 +49,26 @@ esp_err_t bsp_audio_init(void)
     };
     gpio_config(&io_conf);
 
-    /* 2. Power ON the audio domain (ES8311 + PA) and wait for VDD to stabilize */
+    /* 2. Power ON the audio domain (ES8311 + PA) and allow rail to settle */
     bsp_audio_power_enable(true);
     vTaskDelay(pdMS_TO_TICKS(50));
 
-    /* 3. Initialize I2S Channels (TX + RX full-duplex on I2S0) */
+    /* 3. Initialize I2S Channels (TX Output Channel as Primary Master) */
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     chan_cfg.auto_clear = true;
-    esp_err_t ret = i2s_new_channel(&chan_cfg, &s_tx_chan, &s_rx_chan);
+
+    /* Create TX playback channel (Set &s_rx_chan to NULL if microphone recording is not required,
+       which completely eliminates the slave warning and saves DMA memory) */
+    esp_err_t ret = i2s_new_channel(&chan_cfg, &s_tx_chan, NULL);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create I2S channels: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to create I2S TX channel: %s", esp_err_to_name(ret));
         return ret;
     }
 
+    /* Configure Mono I2S Timing & Clocking */
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(16000),
-        .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(32, I2S_SLOT_MODE_STEREO),
+        .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
         .gpio_cfg = {
             .mclk = (gpio_num_t)BSP_GPIO_I2S_MCLK,
             .bclk = (gpio_num_t)BSP_GPIO_I2S_SCLK,
@@ -79,22 +83,18 @@ esp_err_t bsp_audio_init(void)
         },
     };
 
+    /* ES8311 Mono DAC expects audio data on the Left Slot */
+    std_cfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;
+
     ret = i2s_channel_init_std_mode(s_tx_chan, &std_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to init I2S TX std mode: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ret = i2s_channel_init_std_mode(s_rx_chan, &std_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to init I2S RX std mode: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
     i2s_channel_enable(s_tx_chan);
-    i2s_channel_enable(s_rx_chan);
 
-    /* 4. Setup ES8311 Codec Interfaces */
+    /* 4. Setup ES8311 Codec Control & Data Interfaces */
     audio_codec_i2c_cfg_t i2c_cfg = {
         .port = I2C_NUM_0,
         .addr = ES8311_CODEC_DEFAULT_ADDR,
@@ -108,7 +108,7 @@ esp_err_t bsp_audio_init(void)
     audio_codec_i2s_cfg_t i2s_cfg = {
         .port = I2S_NUM_0,
         .tx_handle = s_tx_chan,
-        .rx_handle = s_rx_chan,
+        .rx_handle = NULL,
     };
     const audio_codec_data_if_t *data_if = audio_codec_new_i2s_data(&i2s_cfg);
     const audio_codec_ctrl_if_t *ctrl_if = audio_codec_new_i2c_ctrl(&i2c_cfg);
@@ -118,9 +118,9 @@ esp_err_t bsp_audio_init(void)
         return ESP_ERR_NO_MEM;
     }
 
-    /* 5. Create ES8311 Device (PA control pin is GPIO 46) */
+    /* 5. Instantiate ES8311 Driver with Mono Speaker & PA on GPIO 46 */
     es8311_codec_cfg_t codec_cfg = {
-        .codec_mode = ESP_CODEC_DEV_WORK_MODE_BOTH,
+        .codec_mode = ESP_CODEC_DEV_WORK_MODE_DAC,
         .ctrl_if = ctrl_if,
         .gpio_if = gpio_if,
         .pa_pin = BSP_GPIO_PA_CTRL, // GPIO 46
@@ -144,10 +144,11 @@ esp_err_t bsp_audio_init(void)
         return ESP_FAIL;
     }
 
+    /* 6. Configure Mono Sample Attributes */
     esp_codec_dev_sample_info_t sample_info = {
         .sample_rate = 16000,
-        .channel = 2,
-        .bits_per_sample = 16,
+        .channel = 1,              // Mono Channel
+        .bits_per_sample = 16,     // 16-bit PCM
     };
     ret = esp_codec_dev_open(s_codec, &sample_info);
     if (ret != ESP_OK) {
@@ -158,7 +159,7 @@ esp_err_t bsp_audio_init(void)
     esp_codec_dev_set_out_vol(s_codec, 80.0f);
 
     s_audio_inited = true;
-    ESP_LOGI(TAG, "ES8311 audio subsystem initialized successfully");
+    ESP_LOGI(TAG, "ES8311 mono audio subsystem initialized successfully");
     return ESP_OK;
 }
 
