@@ -18,12 +18,27 @@
 
 static const char *TAG = "bsp_common";
 
+static bool s_led_state = false;
+
 esp_err_t bsp_board_init(void)
 {
     ESP_LOGI(TAG, "Initializing ESP32-S3 Touch ePaper BSP...");
 
+    esp_err_t ret = bsp_init_io();
+    if(ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize select IO");
+        return ret;
+    }
+
+    /* Initialize Buttons Flash */
+    ret = bsp_button_init(NULL);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize buttons");
+        return ret;
+    }
+
     /* Initialize NVS Flash */
-    esp_err_t ret = bsp_nvs_init();
+    ret = bsp_nvs_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize NVS flash");
         return ret;
@@ -33,12 +48,6 @@ esp_err_t bsp_board_init(void)
     ret = bsp_power_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize power management");
-        return ret;
-    }
-
-    ret = bsp_button_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize buttons");
         return ret;
     }
 
@@ -55,6 +64,29 @@ esp_err_t bsp_board_init(void)
     }
 
     ESP_LOGI(TAG, "ESP32-S3 Touch ePaper Board initialized successfully");
+    return ESP_OK;
+}
+
+esp_err_t bsp_init_io(void)
+{
+    gpio_config_t pwr_cfg = {
+        .pin_bit_mask = (1ULL << BSP_GPIO_BAT_CTRL)    | 
+                        (1ULL << BSP_GPIO_PA_EN)       |
+                        //(1ULL << BSP_GPIO_PA_CTRL)     |
+                        (1ULL << BSP_GPIO_USER_LED)    |
+                        (1ULL << BSP_GPIO_EPD_3V3_EN),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    esp_err_t ret = gpio_config(&pwr_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure Power GPIOs: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    bsp_led_set(false);
     return ESP_OK;
 }
 
@@ -84,4 +116,15 @@ esp_err_t bsp_get_device_name(char *buf, size_t max_len)
 
     snprintf(buf, max_len, "HumidOS-%02X%02X", mac[4], mac[5]);
     return ESP_OK;
+}
+
+void bsp_led_set(bool enable)
+{
+    s_led_state = enable;
+    gpio_set_level((gpio_num_t)BSP_GPIO_USER_LED, enable ? 1 : 0);
+}
+
+void bsp_led_toggle(void)
+{
+    bsp_led_set(!s_led_state);
 }

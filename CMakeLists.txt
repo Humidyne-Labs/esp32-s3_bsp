@@ -12,6 +12,7 @@ idf_component_register(
         "src/bsp_audio.c"
         "src/bsp_lvgl.cpp"
         "src/bsp_nvs.c"
+        "src/mmap_lvgl_decoder.c"
     INCLUDE_DIRS 
         "include"
     REQUIRES 
@@ -23,10 +24,13 @@ idf_component_register(
         esp_driver_sdmmc
         sdmmc
         esp_adc
+        esp_timer
         nvs_flash
         fatfs
         lvgl
         log
         freertos
         esp_codec_dev
+        esp_mmap_assets
+        esp_lv_fs
 )

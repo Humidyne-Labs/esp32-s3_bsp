@@ -25,6 +25,7 @@
 #include "bsp/bsp_sdcard.h"
 #include "bsp/bsp_lvgl.h"
 #include "bsp/bsp_nvs.h"
+#include "bsp/mmap_lvgl_decoder.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,12 @@ extern "C" {
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_board_init(void);
+
+/**
+ * @brief init IO
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_init_io(void);
 
 /**
  * @brief Retrieve unique chip device ID derived from ESP32-S3 eFuse factory MAC
@@ -60,6 +67,28 @@ esp_err_t bsp_get_device_id(char *buf, size_t max_len);
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_get_device_name(char *buf, size_t max_len);
+
+/**
+ * @brief Keep power on (latch the battery control GPIO high)
+ */
+//void bsp_power_hold(void);
+
+/**
+ * @brief Turn power off (release the battery control GPIO low)
+ */
+//void bsp_power_off(void);
+
+/**
+ * @brief Set status LED state
+ * 
+ * @param enable true for ON, false for OFF
+ */
+void bsp_led_set(bool enable);
+
+/**
+ * @brief Toggle status LED
+ */
+void bsp_led_toggle(void);
 
 #ifdef __cplusplus
 }

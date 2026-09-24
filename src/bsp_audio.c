@@ -24,10 +24,9 @@
 
 static const char *TAG = "bsp_audio";
 
-static i2s_chan_handle_t s_tx_chan = NULL;
-static i2s_chan_handle_t s_rx_chan = NULL;
-static esp_codec_dev_handle_t s_codec = NULL;
-static bool s_audio_inited = false;
+static i2s_chan_handle_t      s_tx_chan      = NULL;
+static esp_codec_dev_handle_t s_codec        = NULL;
+static bool                   s_audio_inited = false;
 
 void bsp_audio_power_enable(bool enable)
 {
@@ -39,23 +38,13 @@ esp_err_t bsp_audio_init(void)
 {
     if (s_audio_inited) return ESP_OK;
 
-    /* 1. Configure the Audio Subsystem Power Rail (GPIO 42) */
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = (1ULL << BSP_GPIO_PA_EN),
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-    };
-    gpio_config(&io_conf);
-
-    /* 2. Power ON the audio domain (ES8311 + PA) and allow rail to settle */
+    /* 1. Power ON the audio domain and allow rail to settle */
     bsp_audio_power_enable(true);
     vTaskDelay(pdMS_TO_TICKS(50));
 
-    /* 3. Initialize I2S Channels (TX Output Channel as Primary Master) */
+    /* 2. Initialize I2S Channels (TX Output Channel as Primary Master) */
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
-    chan_cfg.auto_clear = true;
+    chan_cfg.auto_clear        = true;
 
     /* Create TX playback channel (Set &s_rx_chan to NULL if microphone recording is not required,
        which completely eliminates the slave warning and saves DMA memory) */
@@ -91,7 +80,6 @@ esp_err_t bsp_audio_init(void)
         ESP_LOGE(TAG, "Failed to init I2S TX std mode: %s", esp_err_to_name(ret));
         return ret;
     }
-
     i2s_channel_enable(s_tx_chan);
 
     /* 4. Setup ES8311 Codec Control & Data Interfaces */
@@ -120,11 +108,11 @@ esp_err_t bsp_audio_init(void)
 
     /* 5. Instantiate ES8311 Driver with Mono Speaker & PA on GPIO 46 */
     es8311_codec_cfg_t codec_cfg = {
-        .codec_mode = ESP_CODEC_DEV_WORK_MODE_DAC,
-        .ctrl_if = ctrl_if,
-        .gpio_if = gpio_if,
-        .pa_pin = BSP_GPIO_PA_CTRL, // GPIO 46
-        .use_mclk = true,
+        .codec_mode      = ESP_CODEC_DEV_WORK_MODE_DAC,
+        .ctrl_if         = ctrl_if,
+        .gpio_if         = gpio_if,
+        .pa_pin          = BSP_GPIO_PA_CTRL, // GPIO 46
+        .use_mclk        = true,
         .hw_gain.pa_gain = 6.0f,
     };
     const audio_codec_if_t *codec_if = es8311_codec_new(&codec_cfg);
@@ -135,7 +123,7 @@ esp_err_t bsp_audio_init(void)
 
     esp_codec_dev_cfg_t dev_cfg = {
         .codec_if = codec_if,
-        .data_if = data_if,
+        .data_if  = data_if,
         .dev_type = ESP_CODEC_DEV_TYPE_OUT,
     };
     s_codec = esp_codec_dev_new(&dev_cfg);

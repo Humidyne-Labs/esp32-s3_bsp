@@ -17,9 +17,9 @@
 #include "nvs.h"
 #include "bsp/bsp_nvs.h"
 
-static const char *TAG = "bsp_nvs";
+static const char *TAG           = "bsp_nvs";
 static const char *NVS_NAMESPACE = "board_config";
-static bool s_nvs_inited = false;
+static bool s_nvs_inited         = false;
 
 esp_err_t bsp_nvs_init(void)
 {

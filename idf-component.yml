@@ -19,9 +19,11 @@ targets:
 
 ## Required dependencies
 dependencies:
-  idf: ">=5.1"
-  lvgl/lvgl: "^9.6.0"
-  espressif/esp_codec_dev: "^1.6.2"
+  idf:                        ">=5.1"
+  lvgl/lvgl:                  "==9.6.0"
+  espressif/esp_codec_dev:    "^1.6.2"
+  espressif/esp_mmap_assets:  "^2.0.1"
+  espressif/esp_lv_fs:        "^1.0.1"
 
 ## File inclusion/exclusion rules (for registry packaging)
 files:

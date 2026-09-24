@@ -31,14 +31,11 @@ esp_err_t bsp_i2c_init(void)
     }
 
     i2c_master_bus_config_t bus_config = {
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .i2c_port = I2C_NUM_0,
-        .scl_io_num = (gpio_num_t)BSP_GPIO_I2C_SCL,
-        .sda_io_num = (gpio_num_t)BSP_GPIO_I2C_SDA,
+        .clk_source        = I2C_CLK_SRC_DEFAULT,
+        .i2c_port          = I2C_NUM_0,
+        .scl_io_num        = (gpio_num_t)BSP_GPIO_I2C_SCL,
+        .sda_io_num        = (gpio_num_t)BSP_GPIO_I2C_SDA,
         .glitch_ignore_cnt = 7,
-        .flags = {
-            .enable_internal_pullup = true,
-        },
     };
 
     esp_err_t ret = i2c_new_master_bus(&bus_config, &s_i2c_bus_handle);

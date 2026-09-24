@@ -29,15 +29,15 @@
     #define UNUSED_FUNC
 #endif
 
-static const char *TAG = "bsp_lvgl";
-static lv_display_t *s_lv_display = NULL;
+static const char *TAG                          = "bsp_lvgl";
+static lv_display_t *s_lv_display               = NULL;
 UNUSED_FUNC static lv_indev_t *s_lv_touch_indev = NULL;
-static SemaphoreHandle_t s_lvgl_mutex = NULL;
+static SemaphoreHandle_t s_lvgl_mutex           = NULL;
 
 static uint32_t s_flush_counter = 0;
-static bool s_first_boot_flush = true;
+static bool s_first_boot_flush  = true;
 #define PARTIAL_REFRESH_LIMIT 20
-#define LVGL_I1_PALETTE_SIZE 8
+#define LVGL_I1_PALETTE_SIZE  8
 
 // Accumulator for batched partial redraw bounding boxes
 static int16_t s_dirty_x1 = 32767, s_dirty_y1 = 32767;
@@ -68,6 +68,38 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
     uint16_t area_w = (area->x2 - area->x1 + 1);
     uint16_t area_h = (area->y2 - area->y1 + 1);
     uint32_t src_stride = lv_draw_buf_width_to_stride(area_w, LV_COLOR_FORMAT_I1);
+
+    // --- PX_MAP INSPECTION BLOCK ---
+    /*
+    if (px_map != NULL) {
+        uint32_t total_src_bytes = area_h * src_stride;
+        uint32_t set_bits_count = 0;
+        
+        // Count active bits to see if it's completely empty or full
+        for (uint32_t i = 0; i < total_src_bytes; i++) {
+            // Built-in compiler function to quickly count set bits (population count)
+            set_bits_count += __builtin_popcount(src_buf[i]); 
+        }
+
+        uint32_t total_possible_bits = total_src_bytes * 8;
+        ESP_LOGI(TAG, "[INSPECT] Total buffer size: %lu bytes (%lu bits)", total_src_bytes, total_possible_bits);
+        ESP_LOGI(TAG, "[INSPECT] Set bits: %lu / %lu (%.1f%% filled)", 
+                 set_bits_count, total_possible_bits, ((float)set_bits_count / total_possible_bits) * 100.0);
+        
+        // Safe hex dump of just the first line to check structure without flooding logs
+        if (src_stride > 0) {
+            char hex_dump[64] = {0};
+            uint32_t dump_len = (src_stride > 16) ? 16 : src_stride;
+            for(uint32_t i = 0; i < dump_len; i++) {
+                sprintf(&hex_dump[i * 3], "%02X ", src_buf[i]);
+            }
+            ESP_LOGI(TAG, "[INSPECT] First line start bytes: %s", hex_dump);
+        }
+    } else {
+        ESP_LOGE(TAG, "[INSPECT] px_map is NULL!");
+    }
+    */
+    // --- END INSPECTION BLOCK ---
 
     // Optimized Direct Monochrome Bit Blit
     // If area is byte-aligned (multiple of 8), perform fast-path copy
@@ -159,8 +191,6 @@ esp_err_t bsp_lvgl_init(void)
 #endif
 
     lv_init();
-
-    // Set hardware high-precision tick callback (eliminates manual lv_tick_inc)
     lv_tick_set_cb(lvgl_tick_get_cb);
 
     s_lv_display = lv_display_create(BSP_DISPLAY_WIDTH, BSP_DISPLAY_HEIGHT);

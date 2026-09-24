@@ -30,28 +30,6 @@ extern "C" {
 esp_err_t bsp_power_init(void);
 
 /**
- * @brief Keep power on (latch the battery control GPIO high)
- */
-void bsp_power_hold(void);
-
-/**
- * @brief Turn power off (release the battery control GPIO low)
- */
-void bsp_power_off(void);
-
-/**
- * @brief Set status LED state
- * 
- * @param enable true for ON, false for OFF
- */
-void bsp_led_set(bool enable);
-
-/**
- * @brief Toggle status LED
- */
-void bsp_led_toggle(void);
-
-/**
  * @brief Read battery voltage in millivolts
  * 
  * @param voltage_mv Pointer to store calculated voltage in mV
