@@ -24,6 +24,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 #include "bsp/bsp_nvs.h"
 #include "bsp/bsp_wifi.h"
 

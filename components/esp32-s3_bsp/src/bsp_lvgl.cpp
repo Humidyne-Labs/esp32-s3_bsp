@@ -1,6 +1,6 @@
 /**
  * @file bsp_lvgl.cpp
- * @brief lvgl port
+ * @brief LVGL v9 FreeRTOS Integration Port & Thread-Safe Mutex Lock Implementation
  * 
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
@@ -18,21 +18,18 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_heap_caps.h"
 #include "bsp/bsp_display.h"
 #include "bsp/bsp_touch.h"
 #include "bsp/bsp_lvgl.h"
 #include "sdkconfig.h"
 
-#ifndef CONFIG_BSP_ENABLE_TOUCH
-    #define UNUSED_FUNC __attribute__((unused))
-#else
-    #define UNUSED_FUNC
-#endif
-
 static const char *TAG                          = "bsp_lvgl";
 static lv_display_t *s_lv_display               = NULL;
-UNUSED_FUNC static lv_indev_t *s_lv_touch_indev = NULL;
+static lv_indev_t   *s_lv_touch_indev           = NULL;
 static SemaphoreHandle_t s_lvgl_mutex           = NULL;
+static TaskHandle_t s_lvgl_task_handle          = NULL;
+static bool s_lvgl_task_running                 = false;
 
 static uint32_t s_flush_counter = 0;
 static bool s_first_boot_flush  = true;
@@ -43,10 +40,14 @@ static bool s_first_boot_flush  = true;
 static int16_t s_dirty_x1 = 32767, s_dirty_y1 = 32767;
 static int16_t s_dirty_x2 = -1,    s_dirty_y2 = -1;
 
-void bsp_lvgl_lock(void) {
+// Forward declaration of port task
+static void bsp_lvgl_port_task(void *pvParameters);
+
+bool bsp_lvgl_lock(void) {
     if (s_lvgl_mutex) {
-        xSemaphoreTake(s_lvgl_mutex, portMAX_DELAY);
+        return (xSemaphoreTake(s_lvgl_mutex, portMAX_DELAY) == pdTRUE);
     }
+    return false;
 }
 
 void bsp_lvgl_unlock(void) {
@@ -68,38 +69,6 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
     uint16_t area_w = (area->x2 - area->x1 + 1);
     uint16_t area_h = (area->y2 - area->y1 + 1);
     uint32_t src_stride = lv_draw_buf_width_to_stride(area_w, LV_COLOR_FORMAT_I1);
-
-    // --- PX_MAP INSPECTION BLOCK ---
-    /*
-    if (px_map != NULL) {
-        uint32_t total_src_bytes = area_h * src_stride;
-        uint32_t set_bits_count = 0;
-        
-        // Count active bits to see if it's completely empty or full
-        for (uint32_t i = 0; i < total_src_bytes; i++) {
-            // Built-in compiler function to quickly count set bits (population count)
-            set_bits_count += __builtin_popcount(src_buf[i]); 
-        }
-
-        uint32_t total_possible_bits = total_src_bytes * 8;
-        ESP_LOGI(TAG, "[INSPECT] Total buffer size: %lu bytes (%lu bits)", total_src_bytes, total_possible_bits);
-        ESP_LOGI(TAG, "[INSPECT] Set bits: %lu / %lu (%.1f%% filled)", 
-                 set_bits_count, total_possible_bits, ((float)set_bits_count / total_possible_bits) * 100.0);
-        
-        // Safe hex dump of just the first line to check structure without flooding logs
-        if (src_stride > 0) {
-            char hex_dump[64] = {0};
-            uint32_t dump_len = (src_stride > 16) ? 16 : src_stride;
-            for(uint32_t i = 0; i < dump_len; i++) {
-                sprintf(&hex_dump[i * 3], "%02X ", src_buf[i]);
-            }
-            ESP_LOGI(TAG, "[INSPECT] First line start bytes: %s", hex_dump);
-        }
-    } else {
-        ESP_LOGE(TAG, "[INSPECT] px_map is NULL!");
-    }
-    */
-    // --- END INSPECTION BLOCK ---
 
     // Optimized Direct Monochrome Bit Blit
     // If area is byte-aligned (multiple of 8), perform fast-path copy
@@ -160,7 +129,7 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
     lv_display_flush_ready(disp);
 }
 
-UNUSED_FUNC static void lvgl_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+static void lvgl_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     uint16_t touch_x = 0;
     uint16_t touch_y = 0;
@@ -177,6 +146,10 @@ UNUSED_FUNC static void lvgl_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *d
 
 esp_err_t bsp_lvgl_init(void)
 {
+    if (s_lv_display != NULL) {
+        return ESP_OK;
+    }
+
     if (s_lvgl_mutex == NULL) {
         s_lvgl_mutex = xSemaphoreCreateMutex();
         assert(s_lvgl_mutex != NULL);
@@ -185,10 +158,7 @@ esp_err_t bsp_lvgl_init(void)
     esp_err_t ret = bsp_display_init();
     if (ret != ESP_OK) return ret;
 
-#if CONFIG_BSP_ENABLE_TOUCH
-    ret = bsp_touch_init();
-    if (ret != ESP_OK) return ret;
-#endif
+    bsp_touch_init();
 
     lv_init();
     lv_tick_set_cb(lvgl_tick_get_cb);
@@ -201,7 +171,7 @@ esp_err_t bsp_lvgl_init(void)
 
     lv_display_set_color_format(s_lv_display, LV_COLOR_FORMAT_I1);
 
-    // Allocate partial render buffer (e.g. 40 lines)
+    // Allocate partial render buffer (40 lines)
     uint32_t buffer_lines = 40;
     size_t buf_size = ((BSP_DISPLAY_WIDTH + 7) / 8) * buffer_lines + LVGL_I1_PALETTE_SIZE;
     uint8_t *buf1 = (uint8_t *)heap_caps_malloc(buf_size, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
@@ -213,20 +183,15 @@ esp_err_t bsp_lvgl_init(void)
     lv_display_set_buffers(s_lv_display, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(s_lv_display, lvgl_display_flush_cb);
 
-#if CONFIG_BSP_ENABLE_TOUCH
     s_lv_touch_indev = lv_indev_create();
     if (s_lv_touch_indev != NULL) {
         lv_indev_set_type(s_lv_touch_indev, LV_INDEV_TYPE_POINTER);
         lv_indev_set_read_cb(s_lv_touch_indev, lvgl_touch_read_cb);
     }
-#endif
 
     ESP_LOGI(TAG, "LVGL v9 port initialized in 1-bit monochrome mode");
     return ESP_OK;
 }
-
-static TaskHandle_t s_lvgl_task_handle = NULL;
-static bool s_lvgl_task_running = false;
 
 esp_err_t bsp_lvgl_start(int task_priority, int core_id)
 {
@@ -247,7 +212,7 @@ esp_err_t bsp_lvgl_start(int task_priority, int core_id)
             "bsp_lvgl_task",
             4096,
             NULL,
-            task_priority > 0 ? task_priority : 4,
+            task_priority > 0 ? task_priority : 5,
             &s_lvgl_task_handle,
             core_id
         );
@@ -257,7 +222,7 @@ esp_err_t bsp_lvgl_start(int task_priority, int core_id)
             "bsp_lvgl_task",
             4096,
             NULL,
-            task_priority > 0 ? task_priority : 4,
+            task_priority > 0 ? task_priority : 5,
             &s_lvgl_task_handle
         );
     }
@@ -269,7 +234,7 @@ esp_err_t bsp_lvgl_start(int task_priority, int core_id)
     }
 
     ESP_LOGI(TAG, "LVGL background task started (Priority %d, Core %d)", 
-             task_priority > 0 ? task_priority : 4, core_id);
+             task_priority > 0 ? task_priority : 5, core_id);
     return ESP_OK;
 }
 
@@ -286,7 +251,7 @@ esp_err_t bsp_lvgl_stop(void)
     return ESP_OK;
 }
 
-void bsp_lvgl_port_task(void *pvParameters)
+static void bsp_lvgl_port_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "LVGL port task active");
     while (s_lvgl_task_running) {

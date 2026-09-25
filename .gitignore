@@ -1,4 +1,6 @@
 /examples/Unified_BSP_Demo/.vscode
 /examples/Unified_BSP_Demo/build
 /examples/Unified_BSP_Demo/managed_components
+examples/Unified_BSP_Demo/sdkconfig.old
 *.lock
+

@@ -32,6 +32,11 @@ static app_ota_status_cb_t s_ota_cb = NULL;
 static app_shared_config_cb_t s_config_cb = NULL;
 static app_rpc_handler_cb_t s_rpc_cb = NULL;
 
+static EventGroupHandle_t s_mqtt_sync_evg = NULL;
+#define MQTT_SYNC_CONNECTED_BIT BIT0
+#define MQTT_SYNC_PUBLISHED_BIT BIT1
+static int s_pending_msg_id = -1;
+
 static app_shared_config_t s_shared_config = {
     .email_alerts_enabled = true,
     .auto_update_enabled  = true,
@@ -246,6 +251,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Secure MQTTS Connected to ThingsBoard");
         s_is_connected = true;
+        if (s_mqtt_sync_evg) {
+            xEventGroupSetBits(s_mqtt_sync_evg, MQTT_SYNC_CONNECTED_BIT);
+        }
 
         // 1. Subscribe to Live Shared Attribute Updates
         esp_mqtt_client_subscribe(s_mqtt_client, "v1/devices/me/attributes", 1);
@@ -263,6 +271,15 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGW(TAG, "Disconnected from ThingsBoard Broker");
         s_is_connected = false;
+        if (s_mqtt_sync_evg) {
+            xEventGroupClearBits(s_mqtt_sync_evg, MQTT_SYNC_CONNECTED_BIT);
+        }
+        break;
+
+    case MQTT_EVENT_PUBLISHED:
+        if (event->msg_id == s_pending_msg_id && s_mqtt_sync_evg) {
+            xEventGroupSetBits(s_mqtt_sync_evg, MQTT_SYNC_PUBLISHED_BIT);
+        }
         break;
 
     case MQTT_EVENT_DATA: {
@@ -413,6 +430,10 @@ esp_err_t app_mqtt_init(const char *broker_uri,
     s_config_cb = config_cb;
     s_rpc_cb    = rpc_cb;
 
+    if (s_mqtt_sync_evg == NULL) {
+        s_mqtt_sync_evg = xEventGroupCreate();
+    }
+
     char final_token[128] = {0};
 
     // 1. Resolve Access Token
@@ -426,9 +447,9 @@ esp_err_t app_mqtt_init(const char *broker_uri,
             bsp_get_device_name(dev_name, sizeof(dev_name));
             
             esp_err_t prov_ret = app_mqtt_auto_provision(broker_uri, dev_name,
-                                                        CONFIG_THINGSBOARD_PROVISION_KEY,
-                                                        CONFIG_THINGSBOARD_PROVISION_SECRET,
-                                                        final_token, sizeof(final_token), 10000);
+                                                         CONFIG_THINGSBOARD_PROVISION_KEY,
+                                                         CONFIG_THINGSBOARD_PROVISION_SECRET,
+                                                         final_token, sizeof(final_token), 10000);
             if (prov_ret != ESP_OK) {
                 ESP_LOGW(TAG, "Auto-provisioning failed or timed out. Proceeding with unauthenticated connection.");
             }
@@ -461,6 +482,22 @@ esp_err_t app_mqtt_init(const char *broker_uri,
     return esp_mqtt_client_start(s_mqtt_client);
 }
 
+esp_err_t app_mqtt_wait_connected(uint32_t timeout_ms)
+{
+    if (s_is_connected) return ESP_OK;
+    if (s_mqtt_sync_evg == NULL) return ESP_ERR_INVALID_STATE;
+
+    EventBits_t bits = xEventGroupWaitBits(
+        s_mqtt_sync_evg,
+        MQTT_SYNC_CONNECTED_BIT,
+        pdFALSE,
+        pdFALSE,
+        pdMS_TO_TICKS(timeout_ms)
+    );
+
+    return (bits & MQTT_SYNC_CONNECTED_BIT) ? ESP_OK : ESP_ERR_TIMEOUT;
+}
+
 esp_err_t app_mqtt_publish_telemetry(float temp_k, float rh_pct, uint8_t battery_pct, int rssi_dbm)
 {
     if (!s_is_connected || s_mqtt_client == NULL) {
@@ -468,13 +505,50 @@ esp_err_t app_mqtt_publish_telemetry(float temp_k, float rh_pct, uint8_t battery
     }
 
     char payload[180];
-    /* Matches Python test script & Rule Chain: {"temp": Kelvin, "rh": %, "battery": %, "rssi": dBm} */
     snprintf(payload, sizeof(payload),
              "{\"temp\":%.2f,\"rh\":%.2f,\"battery\":%u,\"rssi\":%d}",
              temp_k, rh_pct, battery_pct, rssi_dbm);
 
     int msg_id = esp_mqtt_client_publish(s_mqtt_client, "v1/devices/me/telemetry", payload, 0, 1, 0);
     return (msg_id >= 0) ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t app_mqtt_publish_telemetry_sync(float temp_k, float rh_pct, uint8_t battery_pct, int rssi_dbm, uint32_t timeout_ms)
+{
+    if (!s_is_connected || s_mqtt_client == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    char payload[180];
+    snprintf(payload, sizeof(payload),
+             "{\"temp\":%.2f,\"rh\":%.2f,\"battery\":%u,\"rssi\":%d}",
+             temp_k, rh_pct, battery_pct, rssi_dbm);
+
+    if (s_mqtt_sync_evg) {
+        xEventGroupClearBits(s_mqtt_sync_evg, MQTT_SYNC_PUBLISHED_BIT);
+    }
+
+    s_pending_msg_id = esp_mqtt_client_publish(s_mqtt_client, "v1/devices/me/telemetry", payload, 0, 1, 0);
+    if (s_pending_msg_id < 0) {
+        return ESP_FAIL;
+    }
+
+    if (s_mqtt_sync_evg) {
+        EventBits_t bits = xEventGroupWaitBits(
+            s_mqtt_sync_evg,
+            MQTT_SYNC_PUBLISHED_BIT,
+            pdTRUE,
+            pdFALSE,
+            pdMS_TO_TICKS(timeout_ms)
+        );
+        if (!(bits & MQTT_SYNC_PUBLISHED_BIT)) {
+            ESP_LOGW(TAG, "Synchronous telemetry publish ACK timed out");
+            return ESP_ERR_TIMEOUT;
+        }
+    }
+
+    ESP_LOGI(TAG, "Telemetry published & acknowledged by ThingsBoard (QoS 1)");
+    return ESP_OK;
 }
 
 esp_err_t app_mqtt_publish_claim_token(const char *secret_key, uint32_t duration_ms)

@@ -3,7 +3,7 @@
  * @brief LVGL v9 FreeRTOS Integration Port & Thread-Safe Mutex Lock API
  * 
  * FreeRTOS Multithreading Model:
- *  - Spawns a dedicated FreeRTOS render task (`bsp_lvgl_port_task`) pinned to Core 1 at Priority 5.
+ *  - Spawns a dedicated FreeRTOS render task (`bsp_lvgl_port_task`) pinned to Core 1.
  *  - All external task accesses to LVGL API objects MUST be encapsulated between
  *    `bsp_lvgl_lock()` and `bsp_lvgl_unlock()` to avoid rendering collisions.
  * 
@@ -43,6 +43,13 @@ esp_err_t bsp_lvgl_init(void);
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_lvgl_start(int priority, int core_id);
+
+/**
+ * @brief Stop LVGL Background FreeRTOS Execution Task
+ * 
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_lvgl_stop(void);
 
 /**
  * @brief Acquire LVGL Reentrant Mutex Lock

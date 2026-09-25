@@ -17,7 +17,6 @@ idf_component_register(
     INCLUDE_DIRS 
         "include"
     REQUIRES 
-        driver
         esp_driver_gpio
         esp_driver_i2c
         esp_driver_i2s
@@ -28,12 +27,8 @@ idf_component_register(
         esp_timer
         nvs_flash
         fatfs
-        lvgl
         log
         freertos
-        esp_codec_dev
-        esp_mmap_assets
-        esp_lv_fs
         esp_wifi
         esp_netif
         esp_event

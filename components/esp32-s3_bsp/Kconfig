@@ -2,133 +2,27 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
 
     config BSP_BOARD_NAME
         string "Board Name"
-        default "ESP32-S3 Touch ePaper 1.54 inch"
+        default "Waveshare ESP32-S3 Touch ePaper 1.54 V2"
         help
             Identifier for the board target.
 
     config BSP_ENABLE_TOUCH
-        bool "Enable touch panel"
+        bool "Enable touch panel subsystem"
         default y
         help
-            Initialize the FT6336 touch controller and expose it to LVGL.
+            Initialize the FT6336 capacitive touch controller and register the LVGL input device.
 
     config BSP_SHTC3_LOW_POWER
         bool "Use SHTC3 low-power measurement mode"
-        default n
+        default y
         help
-            Use the SHTC3 polling, temperature-first low-power command by default.
-            The mode can also be changed at runtime with bsp_shtc3_set_power_mode().
+            Use the SHTC3 polling, temperature-first low-power measurement command by default.
 
-    menu "Pinout Configuration"
-
-        config BSP_GPIO_BOOT_KEY
-            int "BOOT Switch GPIO"
-            default 0
-
-        config BSP_GPIO_USER_LED
-            int "User Status LED GPIO"
-            default 3
-
-        config BSP_GPIO_BAT_ADC
-            int "Battery ADC GPIO"
-            default 4
-
-        config BSP_GPIO_BAT_CTRL
-            int "Battery Control GPIO"
-            default 17
-
-        config BSP_GPIO_BAT_KEY
-            int "Battery Key Switch GPIO"
-            default 18
-
-        config BSP_GPIO_RTC_INT
-            int "RTC Interrupt GPIO"
-            default 5
-
-        config BSP_GPIO_I2C_SCL
-            int "Shared I2C SCL GPIO"
-            default 48
-
-        config BSP_GPIO_I2C_SDA
-            int "Shared I2C SDA GPIO"
-            default 47
-
-        config BSP_GPIO_EPD_3V3_EN
-            int "Display 3V3 Power Enable GPIO"
-            default 6
-
-        config BSP_GPIO_EPD_DC
-            int "Display DC Control GPIO"
-            default 10
-
-        config BSP_GPIO_EPD_RST
-            int "Display Reset GPIO"
-            default 9
-
-        config BSP_GPIO_EPD_CS
-            int "Display SPI Chip Select GPIO"
-            default 11
-
-        config BSP_GPIO_EPD_SCLK
-            int "Display SPI Clock GPIO"
-            default 12
-
-        config BSP_GPIO_EPD_MOSI
-            int "Display SPI MOSI (SDI) GPIO"
-            default 13
-
-        config BSP_GPIO_EPD_BUSY
-            int "Display Busy Status GPIO"
-            default 8
-
-        config BSP_GPIO_TOUCH_RST
-            int "Touch Panel Reset GPIO"
-            default 7
-
-        config BSP_GPIO_TOUCH_INT
-            int "Touch Panel Interrupt GPIO"
-            default 21
-
-        config BSP_GPIO_SD_CLK
-            int "MicroSD Clock GPIO"
-            default 39
-
-        config BSP_GPIO_SD_MISO
-            int "MicroSD MISO GPIO"
-            default 40
-
-        config BSP_GPIO_SD_MOSI
-            int "MicroSD MOSI GPIO"
-            default 41
-
-        config BSP_GPIO_I2S_MCLK
-            int "Audio Codec MCLK GPIO"
-            default 14
-
-        config BSP_GPIO_I2S_SCLK
-            int "Audio Codec SCLK GPIO"
-            default 15
-
-        config BSP_GPIO_I2S_LRCK
-            int "Audio Codec LRCK GPIO"
-            default 38
-
-        config BSP_GPIO_I2S_ASOUT
-            int "Audio Codec ASOUT GPIO"
-            default 16
-
-        config BSP_GPIO_I2S_DSIN
-            int "Audio Codec DSIN GPIO"
-            default 45
-
-        config BSP_GPIO_PA_CTRL
-            int "Power Amplifier Control GPIO"
-            default 46
-
-        config BSP_GPIO_PA_EN
-            int "Power Amplifier Enable GPIO"
-            default 42
-
-    endmenu
+    config BSP_AUDIO_DEFAULT_VOLUME
+        int "Default Audio Volume Percentage (0-100)"
+        range 0 100
+        default 80
+        help
+            Default startup volume level for the ES8311 codec and NS4168 amplifier.
 
 endmenu

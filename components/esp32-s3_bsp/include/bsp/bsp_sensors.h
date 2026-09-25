@@ -42,12 +42,17 @@ typedef struct {
 /**
  * @brief Initialize Sensirion SHTC3 Environmental Sensor
  * 
- * Wakes the sensor from sleep, verifies the hardware Product ID (0x0847 or 0x0807),
+ * Wakes the sensor from sleep, verifies the hardware Product ID,
  * and puts it into ultra-low power standby.
  * 
  * @return esp_err_t ESP_OK on success, or ESP_ERR_NOT_FOUND if sensor is absent
  */
 esp_err_t bsp_shtc3_init(void);
+
+/**
+ * @brief Generic sensor subsystem initialization alias
+ */
+static inline esp_err_t bsp_sensors_init(void) { return bsp_shtc3_init(); }
 
 /**
  * @brief Read Temperature and Relative Humidity

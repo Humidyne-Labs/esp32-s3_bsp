@@ -3,11 +3,11 @@
  * @brief Power Control Latch, Status LED, and Battery Voltage ADC Monitor Implementation
  * 
  * Circuit Architecture:
- *  - Power Latch: GPIO 2 is driven HIGH to turn on the onboard LDO gate and hold power.
+ *  - Power Latch: GPIO 17 (BAT_CTRL) is driven HIGH to turn on the onboard LDO gate and hold power.
  *  - Battery Voltage Divider:
  *      VBAT ────[ R1: 100kΩ ]────┬────[ R2: 100kΩ ]──── GND
  *                                │
- *                           GPIO 5 (ADC1_CH4)
+ *                           GPIO 4 (ADC1_CH3)
  *      V_ADC = VBAT * (R2 / (R1 + R2)) = VBAT / 2
  *      VBAT  = V_ADC * 2.0
  * 
@@ -31,11 +31,14 @@
 
 static const char *TAG = "bsp_power";
 
-// ADC Subsystem Handles
-static adc_oneshot_unit_handle_t s_adc_handle = NULL;
+// ADC Subsystem Handles (ESP32-S3 GPIO 4 = ADC1_CHANNEL_3)
+#define BSP_ADC_BATTERY_CHANNEL ADC_CHANNEL_3
+
+static adc_oneshot_unit_handle_t s_adc_handle  = NULL;
 static adc_cali_handle_t         s_cali_handle = NULL;
-static bool                      s_calibrated = false;
+static bool                      s_calibrated  = false;
 static bool                      s_led_state   = false;
+static bool                      s_power_inited = false;
 
 /* =========================================================================
  * Internal Calibration Helper
@@ -84,12 +87,8 @@ static bool init_adc_calibration(adc_unit_t unit, adc_channel_t channel, adc_att
 /* =========================================================================
  * Public Power & Battery APIs
  * ========================================================================= */
-esp_err_t bsp_power_init(void)
+esp_err_t bsp_power_hold(void)
 {
-    ESP_LOGI(TAG, "Initializing Power Latch (GPIO %d) and Status LED (GPIO %d)",
-             BSP_PIN_POWER_HOLD, BSP_PIN_LED_STATUS);
-
-    // 1. Configure and latch Power Hold Pin HIGH
     gpio_config_t pwr_cfg = {
         .pin_bit_mask = (1ULL << BSP_PIN_POWER_HOLD),
         .mode = GPIO_MODE_OUTPUT,
@@ -97,8 +96,28 @@ esp_err_t bsp_power_init(void)
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
     };
-    ESP_ERROR_CHECK(gpio_config(&pwr_cfg));
-    gpio_set_level(BSP_PIN_POWER_HOLD, 1);
+    esp_err_t err = gpio_config(&pwr_cfg);
+    if (err == ESP_OK) {
+        gpio_set_level(BSP_PIN_POWER_HOLD, 1);
+    }
+    return err;
+}
+
+esp_err_t bsp_power_release(void)
+{
+    ESP_LOGI(TAG, "Releasing power hold latch (GPIO %d)", BSP_PIN_POWER_HOLD);
+    return gpio_set_level(BSP_PIN_POWER_HOLD, 0);
+}
+
+esp_err_t bsp_power_init(void)
+{
+    if (s_power_inited) return ESP_OK;
+
+    ESP_LOGI(TAG, "Initializing Power Latch (GPIO %d), LED (GPIO %d), and Battery ADC (GPIO %d / ADC1_CH3)",
+             BSP_PIN_POWER_HOLD, BSP_PIN_LED_STATUS, BSP_PIN_BATTERY_ADC);
+
+    // 1. Configure and latch Power Hold Pin HIGH
+    bsp_power_hold();
 
     // 2. Configure Status LED Pin
     gpio_config_t led_cfg = {
@@ -112,7 +131,7 @@ esp_err_t bsp_power_init(void)
     gpio_set_level(BSP_PIN_LED_STATUS, 0);
     s_led_state = false;
 
-    // 3. Configure ADC1 Channel 4 (GPIO 5) for Battery Sensing
+    // 3. Configure ADC1 Channel 3 (GPIO 4) for Battery Sensing
     adc_oneshot_unit_init_cfg_t init_config = {
         .unit_id = ADC_UNIT_1,
         .ulp_mode = ADC_ULP_MODE_DISABLE,
@@ -123,18 +142,19 @@ esp_err_t bsp_power_init(void)
         return err;
     }
 
-    adc_oneshot_chan_cfg_t config = {
+    adc_oneshot_chan_cfg_t chan_config = {
         .atten = ADC_ATTEN_DB_12,       // 0 - 3.1V sensing range
         .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
-    err = adc_oneshot_config_channel(s_adc_handle, ADC_CHANNEL_4, &config);
+    err = adc_oneshot_config_channel(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &chan_config);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure ADC channel 4: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to configure ADC channel: %s", esp_err_to_name(err));
         return err;
     }
 
     // 4. Initialize Factory Calibration Scheme
-    s_calibrated = init_adc_calibration(ADC_UNIT_1, ADC_CHANNEL_4, ADC_ATTEN_DB_12, &s_cali_handle);
+    s_calibrated = init_adc_calibration(ADC_UNIT_1, BSP_ADC_BATTERY_CHANNEL, ADC_ATTEN_DB_12, &s_cali_handle);
+    s_power_inited = true;
 
     return ESP_OK;
 }
@@ -153,8 +173,9 @@ void bsp_led_toggle(void)
 
 esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw)
 {
-    if (s_adc_handle == NULL) {
-        return ESP_ERR_INVALID_STATE;
+    if (!s_power_inited || s_adc_handle == NULL) {
+        esp_err_t err = bsp_power_init();
+        if (err != ESP_OK) return err;
     }
 
     int raw_val = 0;
@@ -163,7 +184,7 @@ esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw)
     int raw_sum = 0;
     for (int i = 0; i < samples; i++) {
         int r = 0;
-        adc_oneshot_read(s_adc_handle, ADC_CHANNEL_4, &r);
+        adc_oneshot_read(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &r);
         raw_sum += r;
     }
     raw_val = raw_sum / samples;
@@ -225,7 +246,7 @@ esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec)
         esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
     }
 
-    // Enable wakeup from BOOT button (GPIO 0) and POWER button (GPIO 3)
+    // Enable wakeup from BOOT button (GPIO 0)
     esp_sleep_enable_ext0_wakeup(BSP_PIN_BUTTON_BOOT, 0);
 
     ESP_LOGI(TAG, "Entering ESP32-S3 deep sleep now");

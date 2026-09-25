@@ -11,6 +11,7 @@
  */
 
 #include "bsp/bsp_button.h"
+#include "bsp/bsp_power.h"
 #include "bsp/pinout.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -142,11 +143,6 @@ static void button_timer_cb(void *arg)
     }
 }
 
-esp_err_t bsp_power_hold(void)
-{
-    return gpio_set_level((gpio_num_t)BSP_GPIO_BAT_CTRL, 1);
-}
-
 esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void *user_data)
 {
     s_shutdown_cb        = cb;
@@ -165,14 +161,13 @@ void bsp_power_off(void)
     }
 
     // 2. Wait until the user releases the physical power button so it doesn't immediately re-trigger
-    while (gpio_get_level((gpio_num_t)BSP_GPIO_BAT_KEY) == 0) {
+    while (gpio_get_level(BSP_PIN_BUTTON_POWER) == 0) {
         vTaskDelay(pdMS_TO_TICKS(50));
     }
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // 3. Drop BAT_CTRL power latch (cuts battery power rail)
-    ESP_LOGI(TAG, "De-asserting BSP_GPIO_BAT_CTRL power latch...");
-    gpio_set_level((gpio_num_t)BSP_GPIO_BAT_CTRL, 0);
+    // 3. Drop power latch
+    bsp_power_release();
 }
 
 esp_err_t bsp_button_init(const bsp_button_config_t *config)
@@ -194,13 +189,13 @@ esp_err_t bsp_button_init(const bsp_button_config_t *config)
     bsp_power_hold();
 
     memset(s_buttons, 0, sizeof(s_buttons));
-    s_buttons[BSP_BUTTON_BOOT].gpio  = (gpio_num_t)BSP_GPIO_BOOT_KEY;
-    s_buttons[BSP_BUTTON_POWER].gpio = (gpio_num_t)BSP_GPIO_BAT_KEY;
+    s_buttons[BSP_BUTTON_BOOT].gpio  = BSP_PIN_BUTTON_BOOT;
+    s_buttons[BSP_BUTTON_POWER].gpio = BSP_PIN_BUTTON_POWER;
 
     gpio_config_t btn_cfg = {
-        .pin_bit_mask = (1ULL << BSP_GPIO_BOOT_KEY) | (1ULL << BSP_GPIO_BAT_KEY),
+        .pin_bit_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_BUTTON_POWER),
         .mode         = GPIO_MODE_INPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_up_en   = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
     };
@@ -227,8 +222,8 @@ esp_err_t bsp_button_init(const bsp_button_config_t *config)
     }
 
     s_inited = true;
-    ESP_LOGI(TAG, "Buttons initialized (BOOT GPIO%d, POWER GPIO%d, BAT_CTRL GPIO%d)",
-             BSP_GPIO_BOOT_KEY, BSP_GPIO_BAT_KEY, BSP_GPIO_BAT_CTRL);
+    ESP_LOGI(TAG, "Buttons initialized (BOOT GPIO%d, POWER GPIO%d)",
+             BSP_PIN_BUTTON_BOOT, BSP_PIN_BUTTON_POWER);
     return ESP_OK;
 }
 

@@ -1,0 +1,18 @@
+menu "Unified BSP Demo Configuration"
+
+    config DEMO_DEBUG_BYPASS_PROV
+        bool "Bypass Provisioning & Force Live Telemetry Dashboard (Debug Mode)"
+        default n
+        help
+            When enabled (or when the BOOT button is held down at power-up),
+            the firmware skips BLE provisioning and claiming token flows,
+            and boots directly into the active telemetry dashboard with live sensor polling.
+
+    config DEMO_DEBUG_DISABLE_DEEP_SLEEP
+        bool "Disable Deep Sleep in Debug Mode (Continuous Bench Testing)"
+        default y
+        help
+            Keeps the ESP32-S3 awake continuously during debug/testing mode so you can
+            test touch interaction and live sensor polling without entering deep sleep.
+
+endmenu

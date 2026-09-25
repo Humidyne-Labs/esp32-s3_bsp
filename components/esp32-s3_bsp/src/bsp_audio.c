@@ -1,6 +1,6 @@
 /**
  * @file bsp_audio.c
- * @brief audio lib
+ * @brief ES8311 I2S Audio Codec & NS4168 Class-D Mono Amplifier Driver Implementation
  * 
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
@@ -19,6 +19,7 @@
 #include "esp_log.h"
 #include "esp_codec_dev.h"
 #include "esp_codec_dev_defaults.h"
+#include "bsp/pinout.h"
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_audio.h"
 
@@ -30,8 +31,16 @@ static bool                   s_audio_inited = false;
 
 void bsp_audio_power_enable(bool enable)
 {
-    /* GPIO 42 controls the audio power rail MOSFET (Active-LOW: 0 = Power ON) */
-    gpio_set_level((gpio_num_t)BSP_GPIO_PA_EN, enable ? 0 : 1);
+    /* GPIO 42 controls the audio power rail MOSFET (Active-LOW: 0 = Power ON, 1 = Power OFF) */
+    gpio_config_t pa_cfg = {
+        .pin_bit_mask = (1ULL << BSP_PIN_PA_EN),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&pa_cfg);
+    gpio_set_level(BSP_PIN_PA_EN, enable ? 0 : 1);
 }
 
 esp_err_t bsp_audio_init(void)
@@ -46,24 +55,22 @@ esp_err_t bsp_audio_init(void)
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     chan_cfg.auto_clear        = true;
 
-    /* Create TX playback channel (Set &s_rx_chan to NULL if microphone recording is not required,
-       which completely eliminates the slave warning and saves DMA memory) */
     esp_err_t ret = i2s_new_channel(&chan_cfg, &s_tx_chan, NULL);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create I2S TX channel: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    /* Configure Mono I2S Timing & Clocking */
+    /* 3. Configure Mono I2S Timing & Clocking */
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(16000),
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
         .gpio_cfg = {
-            .mclk = (gpio_num_t)BSP_GPIO_I2S_MCLK,
-            .bclk = (gpio_num_t)BSP_GPIO_I2S_SCLK,
-            .ws   = (gpio_num_t)BSP_GPIO_I2S_LRCK,
-            .dout = (gpio_num_t)BSP_GPIO_I2S_DSIN,
-            .din  = (gpio_num_t)BSP_GPIO_I2S_ASOUT,
+            .mclk = BSP_PIN_I2S_MCLK,
+            .bclk = BSP_PIN_I2S_SCLK,
+            .ws   = BSP_PIN_I2S_LRCK,
+            .dout = BSP_PIN_I2S_DSDIN,
+            .din  = BSP_PIN_I2S_ASDOUT,
             .invert_flags = {
                 .mclk_inv = false,
                 .bclk_inv = false,
@@ -111,7 +118,7 @@ esp_err_t bsp_audio_init(void)
         .codec_mode      = ESP_CODEC_DEV_WORK_MODE_DAC,
         .ctrl_if         = ctrl_if,
         .gpio_if         = gpio_if,
-        .pa_pin          = BSP_GPIO_PA_CTRL, // GPIO 46
+        .pa_pin          = BSP_PIN_PA_CTRL,
         .use_mclk        = true,
         .hw_gain.pa_gain = 6.0f,
     };
@@ -198,6 +205,14 @@ esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written)
 
     if (bytes_written != NULL) {
         *bytes_written = total_written;
+    }
+    return ESP_OK;
+}
+
+esp_err_t bsp_audio_stop(void)
+{
+    if (s_codec != NULL) {
+        return esp_codec_dev_set_out_mute(s_codec, true);
     }
     return ESP_OK;
 }

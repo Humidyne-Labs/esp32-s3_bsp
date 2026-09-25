@@ -1,6 +1,6 @@
 /**
  * @file bsp_sdcard.c
- * @brief sdcard lib
+ * @brief MicroSD Card SDMMC 1-Bit Mode FATFS Storage Driver Implementation
  * 
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
@@ -16,6 +16,7 @@
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
 #include "esp_log.h"
+#include "bsp/pinout.h"
 #include "bsp/bsp_sdcard.h"
 
 static const char *TAG = "bsp_sdcard";
@@ -35,14 +36,14 @@ esp_err_t bsp_sdcard_mount(void)
     };
 
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    host.max_freq_khz = SDMMC_FREQ_DEFAULT; // 20MHz default for initial handshake
+    host.max_freq_khz = SDMMC_FREQ_DEFAULT;
     host.flags = SDMMC_HOST_FLAG_1BIT;
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.width = 1;
-    slot_config.clk = (gpio_num_t)BSP_GPIO_SD_CLK;
-    slot_config.cmd = (gpio_num_t)BSP_GPIO_SD_MOSI;
-    slot_config.d0  = (gpio_num_t)BSP_GPIO_SD_MISO;
+    slot_config.clk = BSP_PIN_SD_CLK;
+    slot_config.cmd = BSP_PIN_SD_MOSI;
+    slot_config.d0  = BSP_PIN_SD_MISO;
     slot_config.cd  = SDMMC_SLOT_NO_CD; // No hardware Card Detect pin connected
     slot_config.wp  = SDMMC_SLOT_NO_WP;
 

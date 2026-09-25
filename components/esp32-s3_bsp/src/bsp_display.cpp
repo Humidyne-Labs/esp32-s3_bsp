@@ -1,6 +1,6 @@
 /**
  * @file bsp_display.cpp
- * @brief lvgl backend
+ * @brief SSD1681 1.54" 200x200 Monochrome e-Paper Display Driver Implementation
  * 
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
@@ -19,6 +19,7 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
+#include "bsp/pinout.h"
 #include "bsp/bsp_display.h"
 
 static const char *TAG = "bsp_display";
@@ -57,14 +58,14 @@ static const uint8_t WF_PARTIAL_1IN54[159] = {
     0x02, 0x17, 0x41, 0xB0, 0x32, 0x28
 };
 
-static spi_device_handle_t s_spi_handle = NULL;
-static uint8_t *s_frame_buffer          = NULL;
-static uint8_t *s_prev_frame_buffer     = NULL;
-static uint32_t s_partial_refresh_count = 0;
+static spi_device_handle_t s_spi_handle          = NULL;
+static uint8_t            *s_frame_buffer       = NULL;
+static uint8_t            *s_prev_frame_buffer  = NULL;
+static uint32_t            s_partial_refresh_count = 0;
 
-static inline void epd_set_cs (uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_CS,  level); }
-static inline void epd_set_dc (uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_DC,  level); }
-static inline void epd_set_rst(uint8_t level) { gpio_set_level((gpio_num_t)BSP_GPIO_EPD_RST, level); }
+static inline void epd_set_cs (uint8_t level) { gpio_set_level(BSP_PIN_EPD_CS,  level); }
+static inline void epd_set_dc (uint8_t level) { gpio_set_level(BSP_PIN_EPD_DC,  level); }
+static inline void epd_set_rst(uint8_t level) { gpio_set_level(BSP_PIN_EPD_RST, level); }
 
 esp_err_t bsp_display_wait_busy(uint32_t timeout_ms)
 {
@@ -72,7 +73,7 @@ esp_err_t bsp_display_wait_busy(uint32_t timeout_ms)
     TickType_t start_tick = xTaskGetTickCount();
     TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
 
-    while (gpio_get_level((gpio_num_t)BSP_GPIO_EPD_BUSY) == 1) {
+    while (gpio_get_level(BSP_PIN_EPD_BUSY) == 1) {
         if ((xTaskGetTickCount() - start_tick) > timeout_ticks) {
             ESP_LOGE(TAG, "Busy pin wait timeout (%lu ms)", (unsigned long)timeout_ms);
             return ESP_ERR_TIMEOUT;
@@ -143,7 +144,7 @@ static void epd_set_cursor(uint16_t x_start_byte, uint16_t y_start)
     epd_send_data((y_start >> 8) & 0xFF);
 }
 
-void epd_load_custom_lut(const uint8_t *lut_buffer)
+static void epd_load_custom_lut(const uint8_t *lut_buffer)
 {
     if (lut_buffer == NULL) return;
 
@@ -206,31 +207,40 @@ esp_err_t bsp_display_init(void)
         memset(s_prev_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
+    // 1. Configure EPD Power Rail (GPIO 6 Active High)
+    gpio_config_t pwr_conf = {};
+    pwr_conf.pin_bit_mask = (1ULL << BSP_PIN_EPD_3V3_EN);
+    pwr_conf.mode         = GPIO_MODE_OUTPUT;
+    pwr_conf.pull_up_en   = GPIO_PULLUP_DISABLE;
+    pwr_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    gpio_config(&pwr_conf);
+    gpio_set_level(BSP_PIN_EPD_3V3_EN, 1);
+
+    // 2. Configure Control Lines (RST, DC, CS)
     gpio_config_t io_conf = {};
-    io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_RST) | (1ULL << BSP_GPIO_EPD_DC)
-                                                      | (1ULL << BSP_GPIO_EPD_CS);
+    io_conf.pin_bit_mask = (1ULL << BSP_PIN_EPD_RST) | (1ULL << BSP_PIN_EPD_DC) | (1ULL << BSP_PIN_EPD_CS);
     io_conf.mode         = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en   = GPIO_PULLUP_ENABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     gpio_config(&io_conf);
 
-    io_conf.pin_bit_mask = (1ULL << BSP_GPIO_EPD_BUSY);
+    // 3. Configure Busy Line
+    io_conf.pin_bit_mask = (1ULL << BSP_PIN_EPD_BUSY);
     io_conf.mode         = GPIO_MODE_INPUT;
     io_conf.pull_up_en   = GPIO_PULLUP_DISABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf.intr_type    = GPIO_INTR_DISABLE;    
     gpio_config(&io_conf);
 
-    //gpio_set_level((gpio_num_t)BSP_GPIO_EPD_3V3_EN, 0); // Power on panel (Active LOW)
-
+    // 4. Initialize SPI Master Bus (GPIO 12 SCLK, GPIO 13 MOSI)
     if (s_spi_handle == NULL) {
         spi_bus_config_t buscfg = {};        
-        buscfg.mosi_io_num     = BSP_GPIO_EPD_MOSI;
+        buscfg.mosi_io_num     = BSP_PIN_EPD_MOSI;
         buscfg.miso_io_num     = -1;
-        buscfg.sclk_io_num     = BSP_GPIO_EPD_SCLK;
+        buscfg.sclk_io_num     = BSP_PIN_EPD_SCK;
         buscfg.quadwp_io_num   = -1;
         buscfg.quadhd_io_num   = -1;
-        buscfg.max_transfer_sz = BSP_DISPLAY_WIDTH * BSP_DISPLAY_HEIGHT;
+        buscfg.max_transfer_sz = BSP_DISPLAY_BUFFER_SIZE + 8;
 
         spi_device_interface_config_t devcfg = {};
         devcfg.mode           = 0;
@@ -350,6 +360,27 @@ void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t
     s_partial_refresh_count++;
 }
 
+esp_err_t bsp_display_write_frame(const uint8_t *buffer)
+{
+    if (buffer == NULL) return ESP_ERR_INVALID_ARG;
+    if (s_frame_buffer == NULL) {
+        esp_err_t ret = bsp_display_init();
+        if (ret != ESP_OK) return ret;
+    }
+    memcpy(s_frame_buffer, buffer, BSP_DISPLAY_BUFFER_SIZE);
+    return ESP_OK;
+}
+
+esp_err_t bsp_display_refresh(bool partial_mode)
+{
+    if (partial_mode) {
+        bsp_display_flush_partial();
+    } else {
+        bsp_display_flush();
+    }
+    return ESP_OK;
+}
+
 void bsp_display_deep_sleep(void)
 {
     bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
@@ -357,6 +388,12 @@ void bsp_display_deep_sleep(void)
     epd_send_data(0x01);
     epd_send_cmd(0x10);
     epd_send_data(0x01);
+}
+
+esp_err_t bsp_display_sleep(void)
+{
+    bsp_display_deep_sleep();
+    return ESP_OK;
 }
 
 void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color)

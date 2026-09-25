@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 #include "esp_err.h"
 
 #ifdef __cplusplus
@@ -89,6 +90,14 @@ esp_err_t app_mqtt_init(const char *broker_uri,
                         app_rpc_handler_cb_t rpc_cb);
 
 /**
+ * @brief Wait until MQTT client successfully establishes broker connection
+ * 
+ * @param timeout_ms Max time to wait in milliseconds
+ * @return esp_err_t ESP_OK if connected, ESP_ERR_TIMEOUT on timeout
+ */
+esp_err_t app_mqtt_wait_connected(uint32_t timeout_ms);
+
+/**
  * @brief Perform ThingsBoard Device Auto-Provisioning to acquire access token
  */
 esp_err_t app_mqtt_auto_provision(const char *broker_uri,
@@ -100,11 +109,25 @@ esp_err_t app_mqtt_auto_provision(const char *broker_uri,
                                   uint32_t timeout_ms);
 
 /**
- * @brief Publish sensor telemetry to ThingsBoard topic "v1/devices/me/telemetry"
+ * @brief Publish sensor telemetry to ThingsBoard topic "v1/devices/me/telemetry" (Asynchronous)
  * 
  * Matches ThingsBoard Rule Chain schema: {"temp": Kelvin, "rh": %, "battery": %, "rssi": dBm}
  */
 esp_err_t app_mqtt_publish_telemetry(float temp_k, float rh_pct, uint8_t battery_pct, int rssi_dbm);
+
+/**
+ * @brief Synchronously publish telemetry and wait for broker delivery ACK (QoS 1)
+ * 
+ * Critical for Deep Sleep: Guarantees packet left network buffers before radios are disabled!
+ * 
+ * @param temp_k Temperature in Kelvin
+ * @param rh_pct Humidity %
+ * @param battery_pct Battery %
+ * @param rssi_dbm Wi-Fi RSSI
+ * @param timeout_ms Max wait time for ACK
+ * @return esp_err_t ESP_OK on confirmed receipt
+ */
+esp_err_t app_mqtt_publish_telemetry_sync(float temp_k, float rh_pct, uint8_t battery_pct, int rssi_dbm, uint32_t timeout_ms);
 
 /**
  * @brief Publish device claiming secret key to ThingsBoard topic "v1/devices/me/claim"

@@ -1,6 +1,6 @@
 /**
  * @file bsp_common.c
- * @brief general
+ * @brief Master Board Support Package Initialization & System Control
  * 
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
@@ -14,37 +14,64 @@
 #include <string.h>
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_sleep.h"
+#include "driver/gpio.h"
+#include "bsp/pinout.h"
 #include "bsp/bsp.h"
 
 static const char *TAG = "bsp_common";
 
-static bool s_led_state = false;
+esp_err_t bsp_init_io(void)
+{
+    gpio_config_t pwr_cfg = {
+        .pin_bit_mask = (1ULL << BSP_PIN_POWER_HOLD)   | 
+                        (1ULL << BSP_PIN_PA_EN)        |
+                        (1ULL << BSP_PIN_LED_STATUS)   |
+                        (1ULL << BSP_PIN_EPD_3V3_EN),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    esp_err_t ret = gpio_config(&pwr_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure Base GPIOs: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Default power rail levels
+    gpio_set_level(BSP_PIN_POWER_HOLD, 1);  // Hold power LDO ON
+    gpio_set_level(BSP_PIN_PA_EN, 1);       // Power Amp OFF by default (Active LOW)
+    gpio_set_level(BSP_PIN_LED_STATUS, 0);  // LED OFF
+    gpio_set_level(BSP_PIN_EPD_3V3_EN, 1);  // EPD 3.3V ON
+
+    return ESP_OK;
+}
 
 esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
 {
-    ESP_LOGI(TAG, "Initializing ESP32-S3 Touch ePaper BSP...");
+    ESP_LOGI(TAG, "Initializing ESP32-S3 Touch ePaper BSP Subsystems...");
 
     bsp_config_t cfg = (config != NULL) ? *config : (bsp_config_t)BSP_CONFIG_DEFAULT();
 
     esp_err_t ret = bsp_init_io();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize select IO: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize base IO: %s", esp_err_to_name(ret));
         return ret;
     }
 
     if (cfg.init_power) {
         ret = bsp_power_init();
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize power management");
+            ESP_LOGE(TAG, "Failed to initialize power management: %s", esp_err_to_name(ret));
             return ret;
         }
-        bsp_power_hold();
     }
 
     if (cfg.init_buttons) {
         ret = bsp_button_init(NULL);
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize buttons");
+            ESP_LOGE(TAG, "Failed to initialize buttons: %s", esp_err_to_name(ret));
             return ret;
         }
     }
@@ -52,7 +79,7 @@ esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
     if (cfg.init_nvs) {
         ret = bsp_nvs_init();
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize NVS flash");
+            ESP_LOGE(TAG, "Failed to initialize NVS flash: %s", esp_err_to_name(ret));
             return ret;
         }
     }
@@ -60,7 +87,7 @@ esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
     if (cfg.init_i2c) {
         ret = bsp_i2c_init();
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize shared I2C bus");
+            ESP_LOGE(TAG, "Failed to initialize shared I2C bus: %s", esp_err_to_name(ret));
             return ret;
         }
     }
@@ -105,7 +132,7 @@ esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
     } else if (cfg.init_display) {
         ret = bsp_display_init();
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to init display");
+            ESP_LOGE(TAG, "Failed to init display: %s", esp_err_to_name(ret));
             return ret;
         }
     }
@@ -129,37 +156,12 @@ void bsp_system_shutdown(void)
 {
     ESP_LOGI(TAG, "Initiating system shutdown sequence...");
     bsp_led_set(false);
-    bsp_power_release();
+    bsp_power_off();
 }
 
-void bsp_system_enter_deep_sleep(uint32_t sleep_sec)
+void bsp_system_deep_sleep(uint32_t sleep_sec)
 {
-    uint64_t button_mask = (1ULL << BSP_GPIO_BOOT) | (1ULL << BSP_GPIO_BAT_KEY);
-    bsp_power_enter_deep_sleep(sleep_sec, true, button_mask);
-}
-
-
-esp_err_t bsp_init_io(void)
-{
-    gpio_config_t pwr_cfg = {
-        .pin_bit_mask = (1ULL << BSP_GPIO_BAT_CTRL)    | 
-                        (1ULL << BSP_GPIO_PA_EN)       |
-                        //(1ULL << BSP_GPIO_PA_CTRL)     |
-                        (1ULL << BSP_GPIO_USER_LED)    |
-                        (1ULL << BSP_GPIO_EPD_3V3_EN),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    esp_err_t ret = gpio_config(&pwr_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure Power GPIOs: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    bsp_led_set(false);
-    return ESP_OK;
+    bsp_power_enter_deep_sleep(sleep_sec);
 }
 
 esp_err_t bsp_get_device_id(char *buf, size_t max_len)
@@ -188,15 +190,4 @@ esp_err_t bsp_get_device_name(char *buf, size_t max_len)
 
     snprintf(buf, max_len, "HumidOS-%02X%02X", mac[4], mac[5]);
     return ESP_OK;
-}
-
-void bsp_led_set(bool enable)
-{
-    s_led_state = enable;
-    gpio_set_level((gpio_num_t)BSP_GPIO_USER_LED, enable ? 1 : 0);
-}
-
-void bsp_led_toggle(void)
-{
-    bsp_led_set(!s_led_state);
 }

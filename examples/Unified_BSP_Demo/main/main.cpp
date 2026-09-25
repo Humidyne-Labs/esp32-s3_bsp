@@ -16,7 +16,8 @@
  *  4. ULTRA-LOW POWER DEEP SLEEP:
  *     - Device spends most of its time in deep sleep.
  *     - Screen contents are preserved with zero power draw on the bi-stable e-Paper panel.
- *     - On wake: reads sensor, connects (<400ms), publishes telemetry, refreshes e-Paper, resumes sleep.
+ *     - On wake: reads sensor, connects (<400ms), publishes telemetry (synchronously confirmed),
+ *       refreshes e-Paper, resumes sleep.
  *     - On network connection failure: Displays error indicator and STAYS AWAKE (no sleep).
  *  5. POWER OFF:
  *     - Displays space_cat.bin only upon explicit user shutdown via POWER button.
@@ -55,6 +56,7 @@ static char s_claim_key[16]        = {0};
 static bool s_is_provisioning_mode = false;
 static bool s_network_failed       = false;
 static bool s_card_env_inverted    = false;
+static bool s_debug_mode           = false;
 
 // UI Widget Handles for Active Screen
 static lv_obj_t *s_lbl_clock        = NULL;
@@ -124,7 +126,7 @@ static void show_provisioning_screen(void)
     lv_obj_set_style_border_color(box, lv_color_black(), 0);
 
     lv_obj_t *t2 = lv_label_create(box);
-    char buf[40];
+    char buf[64];
     snprintf(buf, sizeof(buf), "%s%s", CONFIG_BLE_PROV_PREFIX, s_device_name);
     lv_label_set_text(t2, buf);
     lv_obj_center(t2);
@@ -193,7 +195,7 @@ static void show_claiming_screen(void)
  * ========================================================================= */
 static void create_active_telemetry_ui(void) 
 {
-    char buf[32];
+    char buf[64];
     bsp_lvgl_lock();
     
     lv_obj_t *scr = lv_screen_active();
@@ -304,8 +306,8 @@ static void update_active_telemetry_ui(float temp_k, float rh_pct,
             s_card_env_inverted = true;
         } else if (!is_alarm && s_card_env_inverted) {
             lv_obj_set_style_bg_color(s_card_env, lv_color_white(), 0);
-            if (s_lbl_temp)     lv_obj_set_style_text_color(s_lbl_temp, lv_color_black(), 0);
-            if (s_lbl_humidity) lv_obj_set_style_text_color(s_lbl_humidity, lv_color_black(), 0);
+            if (s_lbl_temp)     lv_obj_set_style_text_color(s_lbl_temp, lv_color_white(), 0);
+            if (s_lbl_humidity) lv_obj_set_style_text_color(s_lbl_humidity, lv_color_white(), 0);
             s_card_env_inverted = false;
         }
     }
@@ -411,27 +413,32 @@ static void network_telemetry_task(void *pvParameters)
     }
 
     if (wifi_err != ESP_OK) {
-        ESP_LOGW(TAG, "Wi-Fi connection failed. Launching BLE Provisioning Screen...");
-        s_network_failed = true;
-        s_is_provisioning_mode = true;
-        
-        // Show dedicated BLE Provisioning Screen
-        show_provisioning_screen();
-        
-        char prov_name[32];
-        snprintf(prov_name, sizeof(prov_name), "%s%s", CONFIG_BLE_PROV_PREFIX, s_device_name);
-        
-        app_ble_prov_start(prov_name, NULL, []() {
-            ESP_LOGI(TAG, "BLE Provisioning complete. Connecting to Wi-Fi...");
-            s_is_provisioning_mode = false;
-        });
+        if (s_debug_mode) {
+            ESP_LOGW(TAG, "Debug Mode: Wi-Fi offline, skipping BLE provisioning screen and dropping into dashboard");
+            s_network_failed = true;
+        } else {
+            ESP_LOGW(TAG, "Wi-Fi connection failed. Launching BLE Provisioning Screen...");
+            s_network_failed = true;
+            s_is_provisioning_mode = true;
+            
+            // Show dedicated BLE Provisioning Screen
+            show_provisioning_screen();
+            
+            char prov_name[64];
+            snprintf(prov_name, sizeof(prov_name), "%s%s", CONFIG_BLE_PROV_PREFIX, s_device_name);
+            
+            app_ble_prov_start(prov_name, NULL, []() {
+                ESP_LOGI(TAG, "BLE Provisioning complete. Connecting to Wi-Fi...");
+                s_is_provisioning_mode = false;
+            });
 
-        // Stay awake on network failure / provisioning mode
-        while (s_is_provisioning_mode) {
-            vTaskDelay(pdMS_TO_TICKS(500));
+            // Stay awake on network failure / provisioning mode
+            while (s_is_provisioning_mode) {
+                vTaskDelay(pdMS_TO_TICKS(500));
+            }
+
+            bsp_wifi_connect_from_nvs(5000);
         }
-
-        bsp_wifi_connect_from_nvs(5000);
     }
 
     s_network_failed = !bsp_wifi_is_connected();
@@ -452,16 +459,18 @@ static void network_telemetry_task(void *pvParameters)
                           bsp_nvs_set_u32("tb_claimed", 1);
                       },
                       NULL);
+        // Wait up to 4 seconds for MQTT connection handshake
+        app_mqtt_wait_connected(4000);
     }
 
     // 4. Claiming Flow vs Active Telemetry Screen
-    if (!s_rtc_is_claimed) {
+    if (!s_rtc_is_claimed && !s_debug_mode) {
         uint32_t nvs_claimed = 0;
         bsp_nvs_get_u32("tb_claimed", &nvs_claimed);
         s_rtc_is_claimed = (nvs_claimed == 1);
     }
 
-    if (!s_rtc_is_claimed) {
+    if (!s_rtc_is_claimed && !s_debug_mode) {
         ESP_LOGI(TAG, "Device unclaimed: Publishing claim token & showing Claiming Screen");
         if (app_mqtt_is_connected()) {
             app_mqtt_publish_claim_token(s_claim_key, CONFIG_CLAIM_DURATION_MS);
@@ -512,17 +521,28 @@ static void network_telemetry_task(void *pvParameters)
             bsp_wifi_get_rssi(&rssi);
             snprintf(net_status_str, sizeof(net_status_str), "Wi-Fi:%ddBm | MQTTS", rssi);
 
-            // Publish Telemetry to ThingsBoard
+            // Synchronously publish telemetry to ThingsBoard (Wait for broker ACK before sleeping)
             if (app_mqtt_is_connected()) {
-                app_mqtt_publish_telemetry(temp_k, rh_pct, battery_pct, rssi);
+                app_mqtt_publish_telemetry_sync(temp_k, rh_pct, battery_pct, rssi, 3000);
             }
         } else {
-            snprintf(net_status_str, sizeof(net_status_str), "! NO NETWORK / RETRY");
-            s_network_failed = true;
+            if (s_debug_mode) {
+                snprintf(net_status_str, sizeof(net_status_str), "[DEBUG MODE] Live Test");
+            } else {
+                snprintf(net_status_str, sizeof(net_status_str), "! NO NETWORK / RETRY");
+                s_network_failed = true;
+            }
         }
 
         // Update Active Telemetry Dashboard (Preserved on e-Paper display across sleep)
         update_active_telemetry_ui(temp_k, rh_pct, vbat_mv, battery_pct, time_str, net_status_str);
+
+        // Debug Bench Testing Guard: Keep awake continuously to evaluate screen, touch, sensors
+        if (s_debug_mode) {
+            ESP_LOGI(TAG, "[DEBUG MODE] Dashboard refreshed. Polling again in 3s (Deep sleep bypassed)...");
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            continue;
+        }
 
         // Network Failure Guard: Do NOT sleep if network failed so user can see status
         if (s_network_failed) {
@@ -543,9 +563,9 @@ static void network_telemetry_task(void *pvParameters)
         bsp_wifi_disconnect();
         vTaskDelay(pdMS_TO_TICKS(100));
 
-        // Configure Wakeup Sources (Timer + BOOT / POWER GPIOs)
+        // Configure Wakeup Sources (Timer + BOOT GPIO 0)
         esp_sleep_enable_timer_wakeup((uint64_t)sleep_sec * 1000000ULL);
-        esp_sleep_enable_ext0_wakeup(BSP_PIN_BUTTON_BOOT, 0); // Wake on BOOT button press
+        esp_sleep_enable_ext0_wakeup(BSP_PIN_BUTTON_BOOT, 0);
 
         esp_deep_sleep_start();
     }
@@ -563,6 +583,23 @@ extern "C" void app_main(void)
 
     // 2. Master Hardware Bringup (LVGL & EPD on Core 1)
     ESP_ERROR_CHECK(bsp_board_init());
+
+    // 3. Power-Up Debug Mode Check: BOOT key held down at power-up OR Kconfig bypass flag
+    #if defined(CONFIG_DEMO_DEBUG_BYPASS_PROV) && CONFIG_DEMO_DEBUG_BYPASS_PROV
+    bool debug_flag_set = true;
+    #else
+    bool debug_flag_set = false;
+    #endif
+
+    if (debug_flag_set || (bsp_button_is_pressed(BSP_BUTTON_BOOT)) || (gpio_get_level(BSP_PIN_BUTTON_BOOT) == 0)) {
+        s_debug_mode = true;
+        s_rtc_is_claimed = true;
+        ESP_LOGW(TAG, "****************************************************************");
+        ESP_LOGW(TAG, "* [DEBUG MODE ENGAGED]                                         *");
+        ESP_LOGW(TAG, "* BOOT key active at power-up -> Bypassing Provisioning/Claim  *");
+        ESP_LOGW(TAG, "* Running Live Telemetry Dashboard & Continuous Bench Polling  *");
+        ESP_LOGW(TAG, "****************************************************************");
+    }
 
     // 3. Fetch Unique Device Name & Generate Cryptographic Claiming Key
     bsp_get_device_name(s_device_name, sizeof(s_device_name));

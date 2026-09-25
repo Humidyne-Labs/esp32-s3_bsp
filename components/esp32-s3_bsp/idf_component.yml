@@ -13,10 +13,6 @@ tags:
   - touch
   - audio
 
-## Target hardware restrictions
-targets:
-  - esp32s3
-
 ## Required dependencies
 dependencies:
   idf:                        ">=5.1"

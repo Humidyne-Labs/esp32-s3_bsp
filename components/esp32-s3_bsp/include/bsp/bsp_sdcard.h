@@ -1,9 +1,9 @@
 /**
  * @file bsp_sdcard.h
- * @brief MicroSD Card SPI-Mode FATFS Storage Driver
+ * @brief MicroSD Card SDMMC 1-Bit Mode FATFS Storage Driver
  * 
  * Hardware Target:
- *  - Interface: SPI Mode (MOSI: GPIO 7, MISO: GPIO 8, SCK: GPIO 6, CS: GPIO 21)
+ *  - Interface: 1-bit SDMMC (CLK: GPIO 39, MISO/D0: GPIO 40, MOSI/CMD: GPIO 41)
  *  - File System: FATFS mounted at "/sdcard"
  * 
  * @attribution
@@ -18,21 +18,23 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
+#include "bsp/pinout.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * @brief Mount MicroSD Card over SPI FATFS Subsystem
- * 
- * @param mount_point Base path for file system (e.g. "/sdcard")
- * @return esp_err_t ESP_OK on success
- */
-esp_err_t bsp_sdcard_mount(const char *mount_point);
+#define BSP_SDCARD_MOUNT_POINT "/sdcard"
 
 /**
- * @brief Unmount MicroSD Card and Release SPI Resources
+ * @brief Mount MicroSD Card over 1-bit SDMMC FATFS Subsystem
+ * 
+ * @return esp_err_t ESP_OK on success, ESP_ERR_NOT_FOUND if card missing
+ */
+esp_err_t bsp_sdcard_mount(void);
+
+/**
+ * @brief Unmount MicroSD Card and Release SDMMC Resources
  * 
  * @return esp_err_t ESP_OK on success
  */
@@ -44,6 +46,13 @@ esp_err_t bsp_sdcard_unmount(void);
  * @return true if mounted, false otherwise
  */
 bool bsp_sdcard_is_mounted(void);
+
+/**
+ * @brief Retrieve total capacity of mounted MicroSD Card in Gigabytes
+ * 
+ * @return float Capacity in GB
+ */
+float bsp_sdcard_get_capacity_gb(void);
 
 #ifdef __cplusplus
 }
