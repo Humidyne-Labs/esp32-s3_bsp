@@ -1,11 +1,15 @@
 /**
  * @file bsp_touch.h
- * @brief touch controller lib
+ * @brief Hynitron CST816S Capacitive Single-Point Touch Controller Driver & LVGL Input Bridge
+ * 
+ * Hardware Target:
+ *  - Controller: Hynitron CST816S (I2C Address: 0x15)
+ *  - Resolution: 200 x 200 Pixels
+ *  - Interrupt: GPIO 19, Reset: GPIO 14
  * 
  * @attribution
- * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
- * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - Hynitron Microelectronics
+ * - BSP Implementation: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -16,34 +20,42 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
-#include "bsp/pinout.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define BSP_TOUCH_I2C_ADDR      (0x38)
+/**
+ * @brief Touch Coordinate and Gesture Data
+ */
+typedef struct {
+    uint16_t x;       /*!< X coordinate (0 - 199) */
+    uint16_t y;       /*!< Y coordinate (0 - 199) */
+    bool     pressed; /*!< True if finger is in active contact with panel */
+    uint8_t  gesture; /*!< Gesture ID (0x01=Slide Up, 0x02=Slide Down, 0x03=Slide Left, 0x04=Slide Right, 0x05=Click) */
+} bsp_touch_data_t;
 
 /**
- * @brief Initialize FT6336 touch controller over shared I2C bus
+ * @brief Initialize CST816S Capacitive Touch Hardware and Reset Controller
  * 
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_touch_init(void);
 
 /**
- * @brief Perform hardware reset of FT6336 touch panel
+ * @brief Read Current Touch Coordinate and State
+ * 
+ * @param[out] out_data Destination struct to receive touch data
+ * @return esp_err_t ESP_OK on success
  */
-void bsp_touch_reset(void);
+esp_err_t bsp_touch_read(bsp_touch_data_t *out_data);
 
 /**
- * @brief Read current touch point coordinates
+ * @brief Put CST816S Touch Controller into Ultra-Low Power Sleep Mode (< 5 µA)
  * 
- * @param x Pointer to store X coordinate (0-199)
- * @param y Pointer to store Y coordinate (0-199)
- * @return true if touch detected and coordinates valid, false otherwise
+ * @return esp_err_t ESP_OK on success
  */
-bool bsp_touch_read(uint16_t *x, uint16_t *y);
+esp_err_t bsp_touch_sleep(void);
 
 #ifdef __cplusplus
 }

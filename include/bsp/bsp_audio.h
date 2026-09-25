@@ -1,11 +1,15 @@
 /**
  * @file bsp_audio.h
- * @brief audio controller lib
+ * @brief MAX98357A I2S Class-D Mono Audio Amplifier Driver
+ * 
+ * Hardware Target:
+ *  - Amplifier: Maxim Integrated MAX98357A (I2S input, Class-D PWM speaker driver)
+ *  - Pinout: BCLK (GPIO 10), LRCK (GPIO 11), DOUT (GPIO 12)
+ *  - Sample Rates: 8 kHz to 48 kHz (16-bit Mono/Stereo PCM)
  * 
  * @attribution
- * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
- * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - Maxim Integrated / Analog Devices
+ * - BSP Implementation: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -16,43 +20,44 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
-#include "bsp/pinout.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef void (*bsp_audio_done_cb_t)(void *arg);
+
 /**
- * @brief Initialize ES8311 Codec I2C control, I2S audio interface, and PA control pins
+ * @brief Initialize I2S Master Channel for MAX98357A
  * 
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_audio_init(void);
 
 /**
- * @brief Enable or disable the audio power amplifier (active-low PA_EN on GPIO42)
+ * @brief Play Raw PCM Audio Buffer
  * 
- * @param enable true to enable amplifier output, false to mute/disable
- */
-void bsp_audio_power_enable(bool enable);
-
-/**
- * @brief Set ES8311 speaker output volume over the shared I2C bus
- * 
- * @param volume Volume percentage (0.0 to 100.0)
+ * @param pcm_data Pointer to 16-bit PCM audio samples
+ * @param data_size Size of data buffer in bytes
+ * @param callback Optional completion callback function (can be NULL)
  * @return esp_err_t ESP_OK on success
  */
-esp_err_t bsp_audio_set_volume(float volume);
+esp_err_t bsp_audio_play(const void *pcm_data, size_t data_size, bsp_audio_done_cb_t callback);
 
 /**
- * @brief Play PCM audio sample buffer over I2S
+ * @brief Set Software Audio Gain / Volume Scaling
  * 
- * @param data Pointer to raw PCM audio data
- * @param len Size of data in bytes
- * @param bytes_written Pointer to store actual bytes written
- * @return esp_err_t ESP_OK on success
+ * @param volume_percent Volume from 0.0 (mute) to 100.0 (maximum)
+ * @return esp_err_t ESP_OK
  */
-esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written);
+esp_err_t bsp_audio_set_volume(float volume_percent);
+
+/**
+ * @brief Stop Active Audio Playback Immediately
+ * 
+ * @return esp_err_t ESP_OK
+ */
+esp_err_t bsp_audio_stop(void);
 
 #ifdef __cplusplus
 }

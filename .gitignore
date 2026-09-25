@@ -2,5 +2,3 @@
 /examples/Unified_BSP_Demo/build
 /examples/Unified_BSP_Demo/managed_components
 *.lock
-/esp32-s3_bsp/
-esp32-s3_bsp.zip

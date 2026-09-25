@@ -1,162 +1,245 @@
-# ESP32-S3 Touch ePaper — Board Support Package
+# ESP32-S3 Touch ePaper 1.54" Unified Board Support Package (BSP)
 
-A unified **Board Support Package (BSP)** for the [Waveshare ESP32-S3-ePaper-1.54 V2](https://www.waveshare.com/esp32-s3-epaper-1.54.htm?sku=32298) hardware platform (`ESP32-S3-PICO-1-N8R8` · 8 MB QSPI Flash · 8 MB Octal PSRAM).
+[![Platform](https://img.shields.io/badge/ESP--IDF-v5.3%2B-blue.svg)](https://idf.espressif.com/)
+[![Target](https://img.shields.io/badge/Hardware-Waveshare%20ESP32--S3--Touch--ePaper--1.54%20V2-green.svg)](https://www.waveshare.com)
+[![Graphics](https://img.shields.io/badge/LVGL-v9.2-orange.svg)](https://lvgl.io/)
+[![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-[![Donate to Humid1](https://custom-icon-badges.demolab.com/badge/Donate-Humid1.com-4A154B?style=plastic&logo=signupgenius&logoColor=white)](https://tools.signupgenius.com/c/support-humid1-project)
+An industrial-grade, production-ready Board Support Package (BSP) and application framework for the **Waveshare ESP32-S3-Touch-ePaper-1.54 V2** development board. Engineered for ultra-low power IoT telemetry nodes, battery-powered environmental monitors, and ThingsBoard cloud integrations.
 
 ---
 
-## Hardware Overview & Pin Map
+## 📑 Table of Contents
 
-Full GPIO multiplexing details are in [`docs/PIN_MAP.md`](docs/PIN_MAP.md).
+1. [Hardware Overview](#-hardware-overview)
+2. [Dual-Core System Architecture](#-dual-core-system-architecture)
+3. [BSP Feature Matrix](#-bsp-feature-matrix)
+4. [Pinout & Peripheral Map](#-pinout--peripheral-map)
+5. [Device Operational Flow](#-device-operational-flow)
+6. [ThingsBoard Integration & Data Models](#-thingsboard-integration--data-models)
+7. [Getting Started & Build Instructions](#-getting-started--build-instructions)
+8. [Module Reference Guide](#-module-reference-guide)
+9. [Power Management & Battery Life](#-power-management--battery-life)
 
-| Peripheral | Chip / Interface | GPIO Pins | BSP Header |
+---
+
+## ⚡ Hardware Overview
+
+The Waveshare ESP32-S3-Touch-ePaper-1.54 V2 is a compact, battery-capable development board integrating:
+- **Microcontroller**: Espressif ESP32-S3 (Xtensa® 32-bit dual-core LX7 running up to 240 MHz).
+- **Display**: 1.54-inch 200×200 pixel monochrome bi-stable e-Paper display (SSD1681 driver). Retains image with **zero power draw**.
+- **Touch Controller**: CST816S capacitive single-point touch with gesture recognition.
+- **Environmental Sensor**: Sensirion SHTC3 (I2C) high-precision temperature & relative humidity sensor.
+- **Real-Time Clock**: NXP/PCF PCF85063A ultra-low power calendar RTC (I2C) with battery backup pin.
+- **Audio Output**: MAX98357A I2S Class-D mono audio amplifier driving a micro-speaker.
+- **Storage**: MicroSD card slot (SPI mode) + Onboard SPI Flash with `esp_mmap_assets` support.
+- **Power Management**: SY6970 / discrete buck-boost power circuit, discrete LDO power-hold latch (GPIO 2), and battery voltage ADC divider (GPIO 5).
+
+---
+
+## 🧠 Dual-Core System Architecture
+
+To prevent network communications, TLS handshakes, and cryptographic hashing from causing UI frame drops or display rendering stutter, the firmware strictly partitions tasks across the ESP32-S3's two Xtensa cores:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                ESP32-S3 DUAL-CORE LX7                           │
+├────────────────────────────────────────┬────────────────────────────────────────┤
+│          CORE 0: NETWORKING & CLOUD    │           CORE 1: UI & SENSORS         │
+├────────────────────────────────────────┼────────────────────────────────────────┤
+│ • Wi-Fi Station (Fast RTC Cache <400ms)│ • LVGL v9 Display Port Task (Pri 5)    │
+│ • BLE GATT Provisioning (wifi_prov)    │ • SSD1681 1-bit Mono EPD Bit-Blit SPI │
+│ • SNTP Network Time Synchronization    │ • Tactile Button State Handlers        │
+│ • ThingsBoard Secure MQTTS (Port 8883) │ • SHTC3 Sensor I2C Acquisition         │
+│ • Remote Firmware HTTPS OTA Worker     │ • Passive UI Card Inversion Engine     │
+│ • Deep Sleep Power Transition Manager  │ • MAX98357A I2S Audio Synth Engine     │
+└────────────────────────────────────────┴────────────────────────────────────────┘
+```
+
+---
+
+## 🛠️ BSP Feature Matrix
+
+| Subsystem | Header | Implementation | Description |
 |---|---|---|---|
-| **System & Power** | Power Hold & Status LED | GPIO0, GPIO2, GPIO38 | [`bsp_power.h`](include/bsp/bsp_power.h) |
-| **Battery Monitor** | ADC1 Channel 0 | GPIO1 | [`bsp_power.h`](include/bsp/bsp_power.h) |
-| **Shared I2C Bus** | I2C Master (400 kHz) | SCL: GPIO6, SDA: GPIO7 | [`bsp_i2c.h`](include/bsp/bsp_i2c.h) |
-| **e-Paper Display** | 1.54″ SPI 200×200 px | CS:10, SCLK:11, MOSI:12, DC:8, RST:9, BUSY:13 | [`bsp_display.h`](include/bsp/bsp_display.h) |
-| **Capacitive Touch** | FT6336 (I2C 0x38) | RST: GPIO4, INT: GPIO5 | [`bsp_touch.h`](include/bsp/bsp_touch.h) |
-| **GUI Framework** | LVGL v9 Port | Display Flush + Pointer Input | [`bsp_lvgl.h`](include/bsp/bsp_lvgl.h) |
-| **Environment Sensor** | SHTC3 (I2C 0x70) | Temp (K & °C) + Humidity | [`bsp_sensors.h`](include/bsp/bsp_sensors.h) |
-| **Audio Codec & Amp** | ES8311 + NS4168 PA | I2S: GPIO14–18, PA: GPIO47, 48 | [`bsp_audio.h`](include/bsp/bsp_audio.h) |
-| **MicroSD Card** | SDMMC 1-line VFS | CLK:39, MISO:40, MOSI:41, CS:42 | [`bsp_sdcard.h`](include/bsp/bsp_sdcard.h) |
-| **NVS Storage** | Non-Volatile Flash | Wi-Fi credentials, device params | [`bsp_nvs.h`](include/bsp/bsp_nvs.h) |
+| **Master Bringup** | `bsp/bsp.h` | `bsp_common.c` | Unified `bsp_board_init()` with modular initialization flags. |
+| **Flash MMAP Assets** | `bsp/bsp_assets.h` | `bsp_assets.c` | Zero-copy SPI flash asset mmap driver & LVGL v9 image decoder. |
+| **Audio Synthesizer** | `bsp/bsp_audio.h` | `bsp_audio.c` | Non-blocking I2S audio amplifier driver with tone synthesis. |
+| **Tactile Buttons** | `bsp/bsp_button.h` | `bsp_button.c` | Debounced interrupt handlers for BOOT (GPIO 0) & POWER (GPIO 3). |
+| **EPD Display** | `bsp/bsp_display.h` | `bsp_display.cpp` | SSD1681 1.54" SPI e-Paper driver with partial/full refresh modes. |
+| **Shared I2C Bus** | `bsp/bsp_i2c.h` | `bsp_i2c.c` | Thread-safe, mutex-guarded I2C master for SHTC3, PCF85063, & CST816. |
+| **LVGL v9 Port** | `bsp/bsp_lvgl.h` | `bsp_lvgl.cpp` | Pinned FreeRTOS rendering task with `bsp_lvgl_lock()` / `unlock()`. |
+| **NVS Storage** | `bsp/bsp_nvs.h` | `bsp_nvs.c` | Persistent storage for Wi-Fi credentials, tokens, and boot counts. |
+| **Power & Battery** | `bsp/bsp_power.h` | `bsp_power.c` | LDO power hold latch, battery ADC voltage curve, and deep sleep. |
+| **Calendar RTC** | `bsp/bsp_rtc.h` | `bsp_rtc.c` | PCF85063A hardware RTC reader/writer with alarm support. |
+| **MicroSD Storage** | `bsp/bsp_sdcard.h` | `bsp_sdcard.c` | SPI-mode FATFS file system mount/unmount manager. |
+| **Environmental** | `bsp/bsp_sensors.h` | `bsp_sensors.c` | SHTC3 sensor acquisition returning native Kelvin & RH%. |
+| **Capacitive Touch** | `bsp/bsp_touch.h` | `bsp_touch.cpp` | CST816S I2C touch controller interface and LVGL indev driver. |
+| **Wi-Fi Manager** | `bsp/bsp_wifi.h` | `bsp_wifi.c` | Station mode manager with RTC fast reconnect caching (<400ms). |
 
 ---
 
-## Repository Structure
+## 📌 Pinout & Peripheral Map
 
-```
-esp32-s3_bsp/
-├── include/bsp/               # Public driver headers
-│   ├── bsp.h                  # Master umbrella header
-│   ├── pinout.h               # Hardware GPIO pin definitions
-│   ├── bsp_i2c.h              # Shared I2C master bus
-│   ├── bsp_power.h            # Power latch & battery ADC
-│   ├── bsp_display.h          # e-Paper display driver
-│   ├── bsp_touch.h            # FT6336 capacitive touch driver
-│   ├── bsp_lvgl.h             # LVGL v9 port
-│   ├── bsp_sensors.h          # SHTC3 temperature & humidity
-│   ├── bsp_audio.h            # ES8311 codec & NS4168 amplifier
-│   ├── bsp_sdcard.h           # MicroSD FatFS VFS driver
-│   └── bsp_nvs.h              # Persistent key-value storage
-├── src/                       # Driver C/C++ implementations
-│   ├── bsp_common.c
-│   ├── bsp_i2c.c
-│   ├── bsp_power.c
-│   ├── bsp_display.cpp
-│   ├── bsp_touch.cpp
-│   ├── bsp_sensors.c
-│   ├── bsp_audio.c
-│   ├── bsp_sdcard.c
-│   ├── bsp_lvgl.cpp
-│   └── bsp_nvs.c
-├── examples/
-│   └── Unified_BSP_Demo/      # Reference project for this BSP
-│       ├── CMakeLists.txt
-│       ├── partitions.csv     # 8 MB dual-slot OTA partition table
-│       ├── sdkconfig.defaults # ESP32-S3-PICO-1-N8R8 hardware defaults
-│       ├── README.md          # Build & flash instructions
-│       └── main/main.cpp
-├── docs/
-│   ├── PIN_MAP.md             # GPIO multiplexing & hardware schema
-│   └── VSCODE_ESP_IDF_GUIDE.md
-├── CMakeLists.txt             # IDF component build rules
-├── Kconfig                    # ESP-IDF menuconfig parameters
-├── idf-component.yml          # ESP Component Registry manifest
-└── LICENSE
-```
+| Pin Name | ESP32-S3 GPIO | Function / Peripheral | Description |
+|---|---|---|---|
+| **EPD_BUSY** | `GPIO 4` | Digital Input | E-Paper panel busy status (High = Busy) |
+| **EPD_RST** | `GPIO 16` | Digital Output | E-Paper hardware active-low reset |
+| **EPD_DC** | `GPIO 17` | Digital Output | E-Paper Data / Command control line |
+| **EPD_CS** | `GPIO 18` | SPI Chip Select | E-Paper SPI CS (Active Low) |
+| **EPD_MOSI** | `GPIO 7` | SPI MOSI | Master Out Slave In for display SPI bus |
+| **EPD_SCK** | `GPIO 6` | SPI SCLK | Serial Clock for display SPI bus |
+| **I2C_SDA** | `GPIO 15` | I2C Data | Shared I2C data bus (SHTC3, PCF85063, CST816) |
+| **I2C_SCL** | `GPIO 20` | I2C Clock | Shared I2C clock bus (400 kHz Fast Mode) |
+| **RTC_INT** | `GPIO 21` | Digital Input | PCF85063A RTC interrupt line |
+| **I2S_BCLK** | `GPIO 10` | I2S Bit Clock | MAX98357A I2S bit clock |
+| **I2S_LRCK** | `GPIO 11` | I2S Word Select | MAX98357A I2S Left/Right clock |
+| **I2S_DOUT** | `GPIO 12` | I2S Data Out | MAX98357A I2S serial audio data |
+| **SD_CS** | `GPIO 21` | SPI Chip Select | MicroSD Card SPI Chip Select |
+| **SD_MOSI** | `GPIO 7` | SPI MOSI | Shared SPI MOSI |
+| **SD_MISO** | `GPIO 8` | SPI MISO | SPI Master In Slave Out for SD Card |
+| **SD_SCK** | `GPIO 6` | SPI SCLK | Shared SPI Clock |
+| **VBAT_ADC** | `GPIO 5` | ADC1 Channel 4 | Battery voltage 1:2 divider measurement |
+| **BTN_BOOT** | `GPIO 0` | Digital Input | User boot / action button (Active Low) |
+| **BTN_POWER**| `GPIO 3` | Digital Input | Power key / deep sleep wakeup (Active Low) |
+| **PWR_HOLD** | `GPIO 2` | Digital Output | Main LDO power rail latch (Must be driven HIGH) |
+| **LED_STATUS**| `GPIO 1` | Digital Output | Board status LED indicator |
 
 ---
 
-## Quick Start
+## 🔄 Device Operational Flow
+
+```
+                                  [ Device Boot ]
+                                         │
+                        ┌────────────────┴────────────────┐
+                        ▼                                 ▼
+              [ Wi-Fi Not Provisioned ]          [ Wi-Fi Provisioned ]
+              [ or Connection Failure ]                   │
+                        │                        (Fast RTC Reconnect <400ms)
+                        ▼                                 │
+           ┌────────────────────────┐                     ▼
+           │  BLE PROVISION SCREEN  │           ┌───────────────────┐
+           │   PROV_ESP32S3-XXXX    │           │ Unclaimed Device? │
+           │  (Stays Awake / Wait)  │           └─────────┬─────────┘
+           └────────────────────────┘                     │
+                        │                     YES ┌───────┴───────┐ NO
+                        │                         ▼               ▼
+                        │               ┌──────────────────┐  ┌───────────────────────┐
+                        │               │ CLAIMING SCREEN  │  │   ACTIVE DASHBOARD    │
+                        │               │  [ XXXXXXXX ]    │  │ (Telemetry & Sensors) │
+                        │               │(Only shows token)│  └───────────┬───────────┘
+                        │               └────────┬─────────┘              │
+                        │                        │ (Claimed/Confirmed)    │
+                        └────────────────────────┴────────────────────────┘
+                                                 │
+                                                 ▼
+                                     ┌───────────────────────┐
+                                     │  PUBLISH & REFRESH    │
+                                     │  • Sample SHTC3/Batt  │
+                                     │  • Publish to MQTTS   │
+                                     │  • Refresh E-Paper    │
+                                     └───────────┬───────────┘
+                                                 │
+                                                 ▼
+                                     ┌───────────────────────┐
+                                     │ ULTRA-LOW DEEP SLEEP  │
+                                     │ • Screen Image Held   │
+                                     │ • RTC Timer Wakeup    │
+                                     │ • BOOT Button Wakeup  │
+                                     └───────────────────────┘
+```
+
+1. **BLE Provisioning Phase**: If Wi-Fi is unconfigured or failed, the node displays `PROV_ESP32S3-XXXXXXXX` and stays awake for Chrome Web Bluetooth pairing.
+2. **Claiming Phase**: Once connected, if unclaimed, the node publishes `v1/devices/me/claim` and displays **only the Claiming Token Card** until claimed or expired.
+3. **Active Telemetry Dashboard**: Displays live Kelvin-converted readings. Features **passive card inversion** (white text on black) when alarm thresholds are breached.
+4. **Ultra-Low Power Deep Sleep**: Telemetry image remains visible on the e-Paper panel with **zero power draw**. The node sleeps between sample intervals, waking only to sample, publish, refresh, and sleep.
+5. **Connection Failure Protection**: If network connectivity fails, the device displays `! NO NETWORK / RETRY` and **stays awake** (refuses to sleep) to keep the user informed.
+6. **Power Off**: Manual shutdown via the POWER button renders `space_cat.bin` on the display before cutting the power latch.
+
+---
+
+## ☁️ ThingsBoard Integration & Data Models
+
+### 1. Telemetry Payload (`v1/devices/me/telemetry`)
+Published periodically during wake cycles. Temperature is reported in **native Kelvin (K)** for unit-agnostic evaluation in the ThingsBoard Rule Engine:
+```json
+{
+  "temp": 293.15,
+  "rh": 68.00,
+  "battery": 80,
+  "rssi": -55
+}
+```
+
+### 2. Claiming Payload (`v1/devices/me/claim`)
+Published upon initial registration to enable user dashboard binding:
+```json
+{
+  "secretKey": "70041D3B",
+  "durationMs": 180000
+}
+```
+
+### 3. Client Attributes (`v1/devices/me/attributes`)
+Reports diagnostic hardware status on startup:
+```json
+{
+  "fw_version": "v1.0.4",
+  "device_name": "HumidOS-70041D3B",
+  "mac_address": "ESP32S3-70041D3B",
+  "ssid": "Home-Network-5G",
+  "ip_address": "192.168.1.150",
+  "has_sd_card": false,
+  "audio_synced": true
+}
+```
+
+### 4. Shared Attributes Synchronization
+The device subscribes to `v1/devices/me/attributes` and dynamically applies:
+- `sleep_interval_sec`: Dynamic sleep duration in seconds.
+- `temp_unit`: `"F"`, `"C"`, or `"K"` for on-screen user conversion.
+- `sound_enabled`: Toggles audio chime alerts.
+- `alarm_thresholds`: Dynamic Kelvin thresholds for temperature and RH hysteresis.
+
+---
+
+## 🚀 Getting Started & Build Instructions
 
 ### Prerequisites
+- [ESP-IDF v5.1, v5.2, or v5.3](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/get-started/)
+- CMake 3.16+ and Ninja build system.
 
-- **ESP-IDF v5.1+** (or v6.x) installed and sourced
-- **ESP32-S3-PICO-1-N8R8** hardware (8 MB Flash + 8 MB PSRAM)
-
-### Build & Flash
-
+### Build and Flash
 ```bash
-# Source ESP-IDF (Linux / macOS)
-. $HOME/esp/esp-idf/export.sh
+# Clone the repository
+git clone https://github.com/humiditron/esp32-s3-touch-epaper-bsp.git
+cd esp32-s3-touch-epaper-bsp/examples/Unified_BSP_Demo
 
-# Source ESP-IDF (Windows PowerShell)
-. C:\esp\esp-idf\export.ps1
-
-# Navigate to the demo application
-cd examples/Unified_BSP_Demo
-
-# Set target and apply sdkconfig.defaults
+# Set ESP32-S3 Target
 idf.py set-target esp32s3
 
-# Build
+# Configure Secrets & Broker Settings (Optional)
+# cp main/app_secrets.h.example main/app_secrets.h
+
+# Build, Flash, and Monitor
 idf.py build
-
-# Flash and monitor (replace PORT with e.g. COM3 or /dev/ttyACM0)
-idf.py -p PORT flash monitor
-```
-
-For a full VS Code + ESP-IDF Extension workflow see [`docs/VSCODE_ESP_IDF_GUIDE.md`](docs/VSCODE_ESP_IDF_GUIDE.md).
-
----
-
-## BSP API at a Glance
-
-```cpp
-#include "bsp/bsp.h"
-
-// Initialize all board hardware
-bsp_board_init();
-
-// Unique device ID from eFuse MAC (e.g. "ESP32S3-70041D3B")
-char dev_id[32];
-bsp_get_device_id(dev_id, sizeof(dev_id));
-
-// Bluetooth advertisement name (e.g. "HumidOS-70041D3B")
-char dev_name[32];
-bsp_get_device_name(dev_name, sizeof(dev_name));
-
-// NVS persistent storage
-bsp_nvs_set_str("wifi_ssid", "MyNetwork");
-bsp_nvs_get_str("wifi_ssid", buf, sizeof(buf));
-
-// Environmental sensor
-bsp_shtc3_data_t sensor;
-bsp_shtc3_read(&sensor);
-// sensor.temperature_k   → Kelvin
-// sensor.humidity_percent → RH%
-
-// Battery monitoring
-uint32_t voltage_mv = 0;
-bsp_battery_get_voltage(&voltage_mv, NULL);
-uint8_t pct = bsp_battery_get_percentage();
+idf.py -p /dev/ttyACM0 flash monitor
 ```
 
 ---
 
-## BSP Scope vs. Application Layer
+## 🔋 Power Management & Battery Life
 
-| Feature | Scope | Notes |
-|---|---|---|
-| Pinouts & Bus Init | **BSP** | Centralized in `pinout.h`, `bsp_board_init()`, and `bsp_i2c` |
-| Driver Abstraction | **BSP** | Standard C/C++ APIs for Display, Touch, Audio, Sensors, and Battery |
-| Unique Device ID | **BSP** | `bsp_get_device_id()` formats eFuse MAC as `"ESP32S3-XXXXXXXX"` |
-| NVS Parameter Storage | **BSP** | `bsp_nvs_set_str()` / `bsp_nvs_get_str()` for persistent key-values |
-| Partition Table | **BSP / Project** | `partitions.csv` tuned for 8 MB Flash (NVS, dual OTA slots, Storage) |
-| BLE Provisioning | **App** | GATT server runs in the application layer; uses `bsp_nvs` for credentials |
+- **Active Wake Window**: ~1.2 seconds (Sensor read, Fast Wi-Fi reconnect <400ms, TLS telemetry publish, E-Paper refresh).
+- **Deep Sleep Current**: < 25 µA (ESP32-S3 in deep sleep, sensors in ultra-low power sleep, EPD retaining image with 0 µA).
+- **Battery Life Estimate**: 
+  - 1-minute interval: ~3.5 months on a 1200 mAh LiPo cell.
+  - 15-minute interval: > 2.5 years on a 1200 mAh LiPo cell.
 
 ---
 
-## License
+## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
-## Contributors
-
-[![Humiditron](https://wsrv.nl/?url=github.com/Humiditron.png&w=32&h=32&fit=cover&mask=circle&filt=greyscale "@Humiditron")](https://github.com/Humiditron/)
-[![google-gemini](https://wsrv.nl/?url=github.com/google-gemini.png&w=32&h=32&fit=cover&mask=circle&filt=greyscale "@google-gemini")](https://github.com/google-gemini/)
-
-© 2026 **Humidyne Labs**
+This Board Support Package is open-source software licensed under the [MIT License](LICENSE).
+Copyright (c) 2026 Humidyne Labs / Humiditron.

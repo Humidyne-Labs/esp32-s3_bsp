@@ -225,10 +225,71 @@ esp_err_t bsp_lvgl_init(void)
     return ESP_OK;
 }
 
+static TaskHandle_t s_lvgl_task_handle = NULL;
+static bool s_lvgl_task_running = false;
+
+esp_err_t bsp_lvgl_start(int task_priority, int core_id)
+{
+    if (s_lvgl_task_handle != NULL) {
+        ESP_LOGW(TAG, "LVGL task is already running");
+        return ESP_OK;
+    }
+
+    esp_err_t ret = bsp_lvgl_init();
+    if (ret != ESP_OK) return ret;
+
+    s_lvgl_task_running = true;
+
+    BaseType_t res;
+    if (core_id >= 0 && core_id <= 1) {
+        res = xTaskCreatePinnedToCore(
+            bsp_lvgl_port_task,
+            "bsp_lvgl_task",
+            4096,
+            NULL,
+            task_priority > 0 ? task_priority : 4,
+            &s_lvgl_task_handle,
+            core_id
+        );
+    } else {
+        res = xTaskCreate(
+            bsp_lvgl_port_task,
+            "bsp_lvgl_task",
+            4096,
+            NULL,
+            task_priority > 0 ? task_priority : 4,
+            &s_lvgl_task_handle
+        );
+    }
+
+    if (res != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create LVGL FreeRTOS task");
+        s_lvgl_task_running = false;
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "LVGL background task started (Priority %d, Core %d)", 
+             task_priority > 0 ? task_priority : 4, core_id);
+    return ESP_OK;
+}
+
+esp_err_t bsp_lvgl_stop(void)
+{
+    if (s_lvgl_task_handle == NULL) {
+        return ESP_OK;
+    }
+
+    s_lvgl_task_running = false;
+    vTaskDelete(s_lvgl_task_handle);
+    s_lvgl_task_handle = NULL;
+    ESP_LOGI(TAG, "LVGL task stopped");
+    return ESP_OK;
+}
+
 void bsp_lvgl_port_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "LVGL task running");
-    while (1) {
+    ESP_LOGI(TAG, "LVGL port task active");
+    while (s_lvgl_task_running) {
         bsp_lvgl_lock();
         uint32_t delay_ms = lv_timer_handler();
         bsp_lvgl_unlock();
@@ -237,4 +298,5 @@ void bsp_lvgl_port_task(void *pvParameters)
         if (delay_ms > 50) delay_ms = 50;
         vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
+    vTaskDelete(NULL);
 }

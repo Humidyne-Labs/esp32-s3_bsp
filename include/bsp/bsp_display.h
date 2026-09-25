@@ -1,11 +1,17 @@
 /**
  * @file bsp_display.h
- * @brief lvgl port backend
+ * @brief SSD1681 1.54" 200x200 Monochrome e-Paper Display Driver
+ * 
+ * Hardware Target:
+ *  - Controller: Solomon Systech SSD1681
+ *  - Resolution: 200 x 200 Pixels (1-bit monochrome: 1=White, 0=Black)
+ *  - Interface: 4-wire SPI (MOSI, SCK, CS, DC, RST, BUSY)
+ *  - Power Characteristic: Bi-stable (retains image with 0 µA power draw)
  * 
  * @attribution
- * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
- * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - Solomon Systech Limited (SSD1681 Datasheet)
+ * - Waveshare Electronics
+ * - BSP Unification: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -16,77 +22,59 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
-#include "bsp/pinout.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define BSP_DISPLAY_WIDTH       (200)
-#define BSP_DISPLAY_HEIGHT      (200)
-#define BSP_DISPLAY_BUFFER_SIZE (BSP_DISPLAY_WIDTH * BSP_DISPLAY_HEIGHT / 8)
-
-typedef enum {
-    BSP_DISPLAY_COLOR_WHITE = 0xFF,
-    BSP_DISPLAY_COLOR_BLACK = 0x00,
-} bsp_display_color_t;
-
 /**
- * @brief Initialize the e-Paper SPI display bus and GPIO pins
+ * @brief Initialize SSD1681 SPI Hardware Interface and Panel Controller
+ * 
+ * Configures SPI Master bus (GPIO 6, 7, 18), sets DC/RST/BUSY pins, and performs panel init.
  * 
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_display_init(void);
 
 /**
- * @brief Initialize display for partial refresh mode
+ * @brief Clear Entire e-Paper Panel to Pure White
  * 
  * @return esp_err_t ESP_OK on success
  */
-esp_err_t bsp_display_init_partial(void);
+esp_err_t bsp_display_clear(void);
 
 /**
- * @brief Clear internal frame buffer to white
- */
-void bsp_display_clear(void);
-
-/**
- * @brief Send frame buffer to e-Paper display (full refresh)
- */
-void bsp_display_flush(void);
-
-/**
- * @brief Send frame buffer to e-Paper display (partial refresh)
- */
-void bsp_display_flush_partial(void);
-
-/**
- * @brief Flush a specific region to the e-Paper display (partial refresh)
+ * @brief Transmit 1-bit Monochrome Framebuffer to SSD1681 Controller
  * 
- * @param x_start Starting X byte-aligned coordinate
- * @param y_start Starting Y coordinate
- * @param x_end Ending X byte-aligned coordinate
- * @param y_end Ending Y coordinate
+ * @param buffer Pointer to 5000-byte 1-bit packed bitmap buffer (200x200 / 8 bytes)
+ * @return esp_err_t ESP_OK on success
  */
-void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end);
-
-void bsp_display_deep_sleep(void);
+esp_err_t bsp_display_write_frame(const uint8_t *buffer);
 
 /**
- * @brief Set pixel color in frame buffer
+ * @brief Trigger Physical e-Paper Waveform Refresh Cycle
  * 
- * @param x X coordinate (0-199)
- * @param y Y coordinate (0-199)
- * @param color BSP_DISPLAY_COLOR_WHITE or BSP_DISPLAY_COLOR_BLACK
+ * @param partial_mode true for fast partial refresh (~0.3s), false for full LUT refresh (~1.5s)
+ * @return esp_err_t ESP_OK on success
  */
-void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color);
+esp_err_t bsp_display_refresh(bool partial_mode);
 
 /**
- * @brief Direct access to frame buffer
+ * @brief Put SSD1681 Controller into Deep Sleep Mode (< 1 µA)
  * 
- * @return uint8_t* Pointer to 5000-byte frame buffer
+ * Preserves the displayed image on the physical panel indefinitely without power.
+ * 
+ * @return esp_err_t ESP_OK on success
  */
-uint8_t *bsp_display_get_buffer(void);
+esp_err_t bsp_display_sleep(void);
+
+/**
+ * @brief Wait until E-Paper BUSY line goes inactive (Low)
+ * 
+ * @param timeout_ms Maximum time to wait in milliseconds
+ * @return esp_err_t ESP_OK when panel is ready, or ESP_ERR_TIMEOUT
+ */
+esp_err_t bsp_display_wait_idle(uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

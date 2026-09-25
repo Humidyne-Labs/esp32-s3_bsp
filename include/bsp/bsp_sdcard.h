@@ -1,11 +1,13 @@
 /**
  * @file bsp_sdcard.h
- * @brief sdcard lib
+ * @brief MicroSD Card SPI-Mode FATFS Storage Driver
+ * 
+ * Hardware Target:
+ *  - Interface: SPI Mode (MOSI: GPIO 7, MISO: GPIO 8, SCK: GPIO 6, CS: GPIO 21)
+ *  - File System: FATFS mounted at "/sdcard"
  * 
  * @attribution
- * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
- * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - BSP Implementation: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -16,38 +18,28 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
-#include "sdmmc_cmd.h"
-#include "bsp/pinout.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define BSP_SDCARD_MOUNT_POINT  "/sdcard"
-
 /**
- * @brief Initialize and mount MicroSD card filesystem over SDMMC 1-line interface
+ * @brief Mount MicroSD Card over SPI FATFS Subsystem
  * 
+ * @param mount_point Base path for file system (e.g. "/sdcard")
  * @return esp_err_t ESP_OK on success
  */
-esp_err_t bsp_sdcard_mount(void);
+esp_err_t bsp_sdcard_mount(const char *mount_point);
 
 /**
- * @brief Unmount MicroSD card
+ * @brief Unmount MicroSD Card and Release SPI Resources
  * 
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_sdcard_unmount(void);
 
 /**
- * @brief Get MicroSD card capacity in Gigabytes
- * 
- * @return float Capacity in GB, or 0.0 if not mounted
- */
-float bsp_sdcard_get_capacity_gb(void);
-
-/**
- * @brief Check if MicroSD card is mounted and healthy
+ * @brief Check if MicroSD Card is Currently Mounted
  * 
  * @return true if mounted, false otherwise
  */

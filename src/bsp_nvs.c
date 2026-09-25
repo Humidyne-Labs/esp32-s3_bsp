@@ -1,11 +1,10 @@
 /**
  * @file bsp_nvs.c
- * @brief nvs lib
+ * @brief Non-Volatile Storage (NVS) Flash Helper & Persistent Configuration Store Implementation
  * 
  * @attribution
- * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
- * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - Espressif Systems
+ * - BSP Implementation: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -17,111 +16,131 @@
 #include "nvs.h"
 #include "bsp/bsp_nvs.h"
 
-static const char *TAG           = "bsp_nvs";
-static const char *NVS_NAMESPACE = "board_config";
-static bool s_nvs_inited         = false;
+static const char *TAG = "bsp_nvs";
+#define BSP_NVS_NAMESPACE "humid_bsp"
+
+static bool s_nvs_initialized = false;
 
 esp_err_t bsp_nvs_init(void)
 {
-    if (s_nvs_inited) return ESP_OK;
+    if (s_nvs_initialized) return ESP_OK;
 
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_LOGW(TAG, "Erasing and reinitializing NVS partition...");
+    ESP_LOGI(TAG, "Initializing NVS Flash Subsystem");
+
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_LOGW(TAG, "NVS partition truncated or version mismatch; erasing and re-initializing...");
         ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
+        err = nvs_flash_init();
     }
 
-    if (ret == ESP_OK) {
-        s_nvs_inited = true;
-        ESP_LOGI(TAG, "NVS flash partition initialized successfully");
+    if (err == ESP_OK) {
+        s_nvs_initialized = true;
     } else {
-        ESP_LOGE(TAG, "Failed to initialize NVS flash: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize NVS: %s", esp_err_to_name(err));
     }
-    return ret;
+
+    return err;
 }
 
 esp_err_t bsp_nvs_set_str(const char *key, const char *value)
 {
     if (key == NULL || value == NULL) return ESP_ERR_INVALID_ARG;
-    esp_err_t ret = bsp_nvs_init();
-    if (ret != ESP_OK) return ret;
+    if (!s_nvs_initialized) bsp_nvs_init();
 
     nvs_handle_t handle;
-    ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
-    if (ret != ESP_OK) return ret;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return err;
 
-    ret = nvs_set_str(handle, key, value);
-    if (ret == ESP_OK) {
-        ret = nvs_commit(handle);
+    err = nvs_set_str(handle, key, value);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
     }
+
     nvs_close(handle);
-    return ret;
+    return err;
 }
 
-esp_err_t bsp_nvs_get_str(const char *key, char *buf, size_t max_len)
+esp_err_t bsp_nvs_get_str(const char *key, char *out_val, size_t max_len)
 {
-    if (key == NULL || buf == NULL || max_len == 0) return ESP_ERR_INVALID_ARG;
-    esp_err_t ret = bsp_nvs_init();
-    if (ret != ESP_OK) return ret;
+    if (key == NULL || out_val == NULL || max_len == 0) return ESP_ERR_INVALID_ARG;
+    if (!s_nvs_initialized) bsp_nvs_init();
 
     nvs_handle_t handle;
-    ret = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
-    if (ret != ESP_OK) return ret;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (err != ESP_OK) return err;
 
     size_t required_size = max_len;
-    ret = nvs_get_str(handle, key, buf, &required_size);
+    err = nvs_get_str(handle, key, out_val, &required_size);
+
     nvs_close(handle);
-    return ret;
+    return err;
 }
 
 esp_err_t bsp_nvs_set_u32(const char *key, uint32_t value)
 {
     if (key == NULL) return ESP_ERR_INVALID_ARG;
-    esp_err_t ret = bsp_nvs_init();
-    if (ret != ESP_OK) return ret;
+    if (!s_nvs_initialized) bsp_nvs_init();
 
     nvs_handle_t handle;
-    ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
-    if (ret != ESP_OK) return ret;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return err;
 
-    ret = nvs_set_u32(handle, key, value);
-    if (ret == ESP_OK) {
-        ret = nvs_commit(handle);
+    err = nvs_set_u32(handle, key, value);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
     }
+
     nvs_close(handle);
-    return ret;
+    return err;
 }
 
-esp_err_t bsp_nvs_get_u32(const char *key, uint32_t *value)
+esp_err_t bsp_nvs_get_u32(const char *key, uint32_t *out_val)
 {
-    if (key == NULL || value == NULL) return ESP_ERR_INVALID_ARG;
-    esp_err_t ret = bsp_nvs_init();
-    if (ret != ESP_OK) return ret;
+    if (key == NULL || out_val == NULL) return ESP_ERR_INVALID_ARG;
+    if (!s_nvs_initialized) bsp_nvs_init();
 
     nvs_handle_t handle;
-    ret = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
-    if (ret != ESP_OK) return ret;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (err != ESP_OK) return err;
 
-    ret = nvs_get_u32(handle, key, value);
+    err = nvs_get_u32(handle, key, out_val);
+
     nvs_close(handle);
-    return ret;
+    return err;
 }
 
-esp_err_t bsp_nvs_erase_key(const char *key)
+esp_err_t bsp_nvs_clear_wifi_credentials(void)
 {
-    if (key == NULL) return ESP_ERR_INVALID_ARG;
-    esp_err_t ret = bsp_nvs_init();
-    if (ret != ESP_OK) return ret;
+    if (!s_nvs_initialized) bsp_nvs_init();
 
     nvs_handle_t handle;
-    ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
-    if (ret != ESP_OK) return ret;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return err;
 
-    ret = nvs_erase_key(handle, key);
-    if (ret == ESP_OK) {
-        ret = nvs_commit(handle);
-    }
+    nvs_erase_key(handle, "wifi_ssid");
+    nvs_erase_key(handle, "wifi_pass");
+    nvs_commit(handle);
     nvs_close(handle);
-    return ret;
+
+    ESP_LOGI(TAG, "Cleared stored Wi-Fi credentials from NVS");
+    return ESP_OK;
+}
+
+esp_err_t bsp_nvs_wipe_all(void)
+{
+    if (!s_nvs_initialized) bsp_nvs_init();
+
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return err;
+
+    err = nvs_erase_all(handle);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+    }
+
+    nvs_close(handle);
+    ESP_LOGW(TAG, "Completely erased all keys from NVS namespace '%s'", BSP_NVS_NAMESPACE);
+    return err;
 }

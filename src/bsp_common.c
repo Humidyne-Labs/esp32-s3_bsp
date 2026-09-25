@@ -20,42 +20,94 @@ static const char *TAG = "bsp_common";
 
 static bool s_led_state = false;
 
-esp_err_t bsp_board_init(void)
+esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
 {
     ESP_LOGI(TAG, "Initializing ESP32-S3 Touch ePaper BSP...");
 
+    bsp_config_t cfg = (config != NULL) ? *config : (bsp_config_t)BSP_CONFIG_DEFAULT();
+
     esp_err_t ret = bsp_init_io();
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize select IO");
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize select IO: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    /* Initialize Buttons Flash */
-    ret = bsp_button_init(NULL);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize buttons");
-        return ret;
+    if (cfg.init_power) {
+        ret = bsp_power_init();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize power management");
+            return ret;
+        }
+        bsp_power_hold();
     }
 
-    /* Initialize NVS Flash */
-    ret = bsp_nvs_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize NVS flash");
-        return ret;
+    if (cfg.init_buttons) {
+        ret = bsp_button_init(NULL);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize buttons");
+            return ret;
+        }
     }
 
-    /* Power Management & ADC */
-    ret = bsp_power_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize power management");
-        return ret;
+    if (cfg.init_nvs) {
+        ret = bsp_nvs_init();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize NVS flash");
+            return ret;
+        }
     }
 
-    /* Shared I2C Master Bus */
-    ret = bsp_i2c_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize shared I2C bus");
-        return ret;
+    if (cfg.init_i2c) {
+        ret = bsp_i2c_init();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize shared I2C bus");
+            return ret;
+        }
+    }
+
+    if (cfg.init_rtc) {
+        ret = bsp_rtc_init();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "RTC initialization returned: %s", esp_err_to_name(ret));
+        }
+    }
+
+    if (cfg.init_sensors) {
+        ret = bsp_sensors_init();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "Sensors initialization returned: %s", esp_err_to_name(ret));
+        }
+    }
+
+    if (cfg.init_audio) {
+        ret = bsp_audio_init();
+        if (ret == ESP_OK) {
+            bsp_audio_set_volume(cfg.audio_volume);
+        } else {
+            ESP_LOGW(TAG, "Audio codec init returned: %s", esp_err_to_name(ret));
+        }
+    }
+
+    if (cfg.init_sdcard) {
+        ret = bsp_sdcard_mount();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "MicroSD mount returned: %s", esp_err_to_name(ret));
+        }
+    }
+
+    if (cfg.init_display && cfg.start_lvgl) {
+        /* Pin LVGL UI & e-Paper render task to Core 1, leaving Core 0 for Wi-Fi/BLE/MQTT networking */
+        ret = bsp_lvgl_start(5, 1);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to start LVGL display port");
+            return ret;
+        }
+    } else if (cfg.init_display) {
+        ret = bsp_display_init();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to init display");
+            return ret;
+        }
     }
 
     char device_id[32] = {0};
@@ -66,6 +118,26 @@ esp_err_t bsp_board_init(void)
     ESP_LOGI(TAG, "ESP32-S3 Touch ePaper Board initialized successfully");
     return ESP_OK;
 }
+
+esp_err_t bsp_board_init(void)
+{
+    bsp_config_t default_cfg = BSP_CONFIG_DEFAULT();
+    return bsp_board_init_with_config(&default_cfg);
+}
+
+void bsp_system_shutdown(void)
+{
+    ESP_LOGI(TAG, "Initiating system shutdown sequence...");
+    bsp_led_set(false);
+    bsp_power_release();
+}
+
+void bsp_system_enter_deep_sleep(uint32_t sleep_sec)
+{
+    uint64_t button_mask = (1ULL << BSP_GPIO_BOOT) | (1ULL << BSP_GPIO_BAT_KEY);
+    bsp_power_enter_deep_sleep(sleep_sec, true, button_mask);
+}
+
 
 esp_err_t bsp_init_io(void)
 {

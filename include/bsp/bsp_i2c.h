@@ -1,11 +1,17 @@
 /**
  * @file bsp_i2c.h
- * @brief i2c controller lib
+ * @brief Thread-Safe Shared I2C Master Bus Driver with Mutex Guarding
+ * 
+ * Hardware Target:
+ *  - SDA: GPIO 15, SCL: GPIO 20
+ *  - Clock Speed: 400 kHz (I2C Fast Mode)
+ *  - Connected Slaves: SHTC3 (0x70), PCF85063A (0x51), CST816S (0x15)
+ * 
+ * Concurrency Model:
+ *  - Uses FreeRTOS mutex guarding to allow safe concurrent access across multiple tasks.
  * 
  * @attribution
- * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
- * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - BSP Implementation: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -13,80 +19,62 @@
 #ifndef BSP_I2C_H
 #define BSP_I2C_H
 
+#include <stdint.h>
+#include <stdbool.h>
 #include "esp_err.h"
-#include "driver/i2c_master.h"
-#include "bsp/pinout.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief Initialize shared I2C master bus for board peripherals
- * 
- * Configures the board-selected SCL/SDA GPIOs with internal pull-ups and a
- * glitch filter. The current board configuration uses SDA GPIO47 and SCL GPIO48.
+ * @brief Initialize Shared I2C Master Bus and Create Mutex Guard
  * 
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_i2c_init(void);
 
 /**
- * @brief Deinitialize shared I2C master bus
+ * @brief Write Raw Bytes to an I2C Slave Device (Thread-Safe)
  * 
+ * @param addr 7-bit slave device address
+ * @param data Data buffer to transmit
+ * @param len Number of bytes to transmit
  * @return esp_err_t ESP_OK on success
  */
-esp_err_t bsp_i2c_deinit(void);
+esp_err_t bsp_i2c_write(uint8_t addr, const uint8_t *data, size_t len);
 
 /**
- * @brief Get the initialized I2C master bus handle
+ * @brief Read Raw Bytes from an I2C Slave Device (Thread-Safe)
  * 
- * @return i2c_master_bus_handle_t Handle or NULL if not initialized
- */
-i2c_master_bus_handle_t bsp_i2c_get_handle(void);
-
-/**
- * @brief Add a device to the shared I2C master bus
- * 
- * @param dev_cfg Device configuration
- * @param dev_handle Pointer to output device handle
- * @return esp_err_t ESP_OK on success
- */
-esp_err_t bsp_i2c_add_device(const i2c_device_config_t *dev_cfg, i2c_master_dev_handle_t *dev_handle);
-
-/**
- * @brief Write data bytes to a specific register on an I2C device
- * 
- * @param dev_handle Device handle
- * @param reg Register address, or -1 if writing without register offset
- * @param buf Data buffer
- * @param len Number of bytes to write
- * @return esp_err_t ESP_OK on success
- */
-esp_err_t bsp_i2c_write_reg(i2c_master_dev_handle_t dev_handle, int reg, const uint8_t *buf, size_t len);
-
-/**
- * @brief Read data bytes from a specific register on an I2C device
- * 
- * @param dev_handle Device handle
- * @param reg Register address, or -1 if reading without register offset
- * @param buf Buffer to store read data
+ * @param addr 7-bit slave device address
+ * @param[out] data Buffer to receive incoming bytes
  * @param len Number of bytes to read
  * @return esp_err_t ESP_OK on success
  */
-esp_err_t bsp_i2c_read_reg(i2c_master_dev_handle_t dev_handle, int reg, uint8_t *buf, size_t len);
+esp_err_t bsp_i2c_read(uint8_t addr, uint8_t *data, size_t len);
 
 /**
- * @brief Transmit then receive data on an I2C device
+ * @brief Write Bytes to a Specific 8-bit Register on an I2C Slave (Thread-Safe)
  * 
- * @param dev_handle Device handle
- * @param write_buf Buffer to write
- * @param write_len Length of write buffer
- * @param read_buf Buffer to receive read data
- * @param read_len Length of read buffer
+ * @param addr 7-bit slave device address
+ * @param reg 8-bit register address
+ * @param data Data buffer to write
+ * @param len Number of data bytes
  * @return esp_err_t ESP_OK on success
  */
-esp_err_t bsp_i2c_write_read(i2c_master_dev_handle_t dev_handle, const uint8_t *write_buf, size_t write_len, uint8_t *read_buf, size_t read_len);
+esp_err_t bsp_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len);
+
+/**
+ * @brief Read Bytes from a Specific 8-bit Register on an I2C Slave (Thread-Safe)
+ * 
+ * @param addr 7-bit slave device address
+ * @param reg 8-bit register address
+ * @param[out] data Buffer to receive data bytes
+ * @param len Number of bytes to read
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len);
 
 #ifdef __cplusplus
 }
