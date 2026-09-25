@@ -31,5 +31,3 @@ files:
     - ".git*"
     - "build/"
     - "docs/"
-    - "*.png"
-    - "examples/"
