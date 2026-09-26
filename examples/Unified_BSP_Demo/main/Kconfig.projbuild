@@ -15,4 +15,24 @@ menu "Unified BSP Demo Configuration"
             Keeps the ESP32-S3 awake continuously during debug/testing mode so you can
             test touch interaction and live sensor polling without entering deep sleep.
 
+    choice DEMO_SLEEP_MODE
+        prompt "Telemetry Sleep Architecture"
+        default DEMO_SLEEP_MODE_LIGHT
+        help
+            Select the default sleep architecture for the telemetry node.
+            Can also be overridden dynamically via ThingsBoard shared attribute "sleep_mode".
+
+        config DEMO_SLEEP_MODE_LIGHT
+            bool "Light Sleep (Zero re-init, resumes execution on same line)"
+            help
+                Retains CPU state, FreeRTOS tasks, and all RAM in memory.
+                Wakes instantly at the exact line of code without resetting or reinitializing.
+
+        config DEMO_SLEEP_MODE_DEEP
+            bool "Deep Sleep (Ultra-low power with Fast-Wake path)"
+            help
+                Powers down the CPU and digital core (~10uA). Wakes via fast-boot
+                path skipping audio, SD, and unneeded peripheral initialization.
+    endchoice
+
 endmenu

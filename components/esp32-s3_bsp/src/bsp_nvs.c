@@ -111,6 +111,57 @@ esp_err_t bsp_nvs_get_u32(const char *key, uint32_t *out_val)
     return err;
 }
 
+esp_err_t bsp_nvs_set_blob(const char *key, const void *data, size_t length)
+{
+    if (key == NULL || data == NULL || length == 0) return ESP_ERR_INVALID_ARG;
+    if (!s_nvs_initialized) bsp_nvs_init();
+
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return err;
+
+    err = nvs_set_blob(handle, key, data, length);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+    }
+
+    nvs_close(handle);
+    return err;
+}
+
+esp_err_t bsp_nvs_get_blob(const char *key, void *out_data, size_t *length)
+{
+    if (key == NULL || out_data == NULL || length == NULL || *length == 0) return ESP_ERR_INVALID_ARG;
+    if (!s_nvs_initialized) bsp_nvs_init();
+
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (err != ESP_OK) return err;
+
+    err = nvs_get_blob(handle, key, out_data, length);
+
+    nvs_close(handle);
+    return err;
+}
+
+esp_err_t bsp_nvs_erase_key(const char *key)
+{
+    if (key == NULL) return ESP_ERR_INVALID_ARG;
+    if (!s_nvs_initialized) bsp_nvs_init();
+
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(BSP_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) return err;
+
+    err = nvs_erase_key(handle, key);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+    }
+
+    nvs_close(handle);
+    return err;
+}
+
 esp_err_t bsp_nvs_clear_wifi_credentials(void)
 {
     if (!s_nvs_initialized) bsp_nvs_init();

@@ -73,6 +73,34 @@ esp_err_t bsp_nvs_set_u32(const char *key, uint32_t value);
 esp_err_t bsp_nvs_get_u32(const char *key, uint32_t *out_val);
 
 /**
+ * @brief Store a Binary Blob in NVS
+ * 
+ * @param key Key name
+ * @param data Pointer to binary data
+ * @param length Length of data in bytes
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_nvs_set_blob(const char *key, const void *data, size_t length);
+
+/**
+ * @brief Retrieve a Binary Blob from NVS
+ * 
+ * @param key Key name
+ * @param[out] out_data Destination buffer
+ * @param[in,out] length Pointer to buffer size, updated with actual blob size
+ * @return esp_err_t ESP_OK on success, or ESP_ERR_NVS_NOT_FOUND
+ */
+esp_err_t bsp_nvs_get_blob(const char *key, void *out_data, size_t *length);
+
+/**
+ * @brief Erase a specific key from NVS
+ * 
+ * @param key Key name to erase
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_nvs_erase_key(const char *key);
+
+/**
  * @brief Clear Stored Wi-Fi SSID and Password from NVS
  * 
  * @return esp_err_t ESP_OK on success

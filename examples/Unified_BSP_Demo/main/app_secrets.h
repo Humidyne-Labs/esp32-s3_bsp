@@ -41,6 +41,9 @@ extern "C" {
 /* BLE Provisioning Service Prefix */
 #define CONFIG_BLE_PROV_PREFIX              "PROV_"
 
+/* POSIX Timezone Configuration (US Eastern: EST5EDT with Daylight Saving Time) */
+#define CONFIG_APP_TIMEZONE                 "EST5EDT,M3.2.0,M11.1.0"
+
 #ifdef __cplusplus
 }
 #endif

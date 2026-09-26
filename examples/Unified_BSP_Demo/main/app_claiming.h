@@ -40,6 +40,15 @@ esp_err_t app_claiming_generate_key(char *out_key, size_t max_len, size_t key_le
  */
 esp_err_t app_claiming_get_active_key(char *out_key, size_t max_len);
 
+/**
+ * @brief Invalidate the current key and generate a fresh claiming key
+ * 
+ * @param out_key Destination buffer (at least 9 bytes)
+ * @param max_len Size of destination buffer
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t app_claiming_generate_new_key(char *out_key, size_t max_len);
+
 #ifdef __cplusplus
 }
 #endif

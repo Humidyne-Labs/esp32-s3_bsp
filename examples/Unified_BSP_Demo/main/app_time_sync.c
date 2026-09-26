@@ -14,12 +14,24 @@
 #include "esp_log.h"
 #include "esp_sntp.h"
 #include "bsp/bsp.h"
+#include "app_secrets.h"
 #include "app_time_sync.h"
 
 static const char *TAG = "app_time_sync";
 
 static app_time_sync_cb_t s_sync_cb   = NULL;
 static bool               s_is_synced = false;
+
+esp_err_t app_time_sync_set_timezone(const char *tz_posix)
+{
+    if (!tz_posix || strlen(tz_posix) == 0) {
+        tz_posix = CONFIG_APP_TIMEZONE;
+    }
+    ESP_LOGI(TAG, "Setting POSIX Timezone: %s", tz_posix);
+    setenv("TZ", tz_posix, 1);
+    tzset();
+    return ESP_OK;
+}
 
 static void time_sync_notification_cb(struct timeval *tv)
 {
@@ -30,7 +42,7 @@ static void time_sync_notification_cb(struct timeval *tv)
     time(&now);
     localtime_r(&now, &timeinfo);
 
-    /* Convert system time to PCF85063A RTC format */
+    /* Convert local system time to PCF85063A RTC format */
     bsp_rtc_datetime_t rtc_dt = {
         .year    = (uint16_t)(timeinfo.tm_year + 1900),
         .month   = (uint8_t)(timeinfo.tm_mon + 1),
@@ -43,7 +55,7 @@ static void time_sync_notification_cb(struct timeval *tv)
 
     esp_err_t ret = bsp_rtc_set_datetime(&rtc_dt);
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "Committed new SNTP time to PCF85063A RTC: %04d-%02d-%02d %02d:%02d:%02d",
+        ESP_LOGI(TAG, "Committed new SNTP local time to PCF85063A RTC: %04d-%02d-%02d %02d:%02d:%02d",
                  rtc_dt.year, rtc_dt.month, rtc_dt.day,
                  rtc_dt.hour, rtc_dt.minute, rtc_dt.second);
         s_is_synced = true;
@@ -59,6 +71,9 @@ static void time_sync_notification_cb(struct timeval *tv)
 esp_err_t app_time_sync_init(app_time_sync_cb_t cb)
 {
     s_sync_cb = cb;
+
+    // Apply configured POSIX timezone
+    app_time_sync_set_timezone(CONFIG_APP_TIMEZONE);
 
     ESP_LOGI(TAG, "Initializing SNTP client...");
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);

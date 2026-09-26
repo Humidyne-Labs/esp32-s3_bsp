@@ -27,7 +27,8 @@ static const char *TAG = "bsp_button";
 #define TIMER_INTERVAL_MS 10
 
 typedef enum {
-    STATE_IDLE = 0,
+    STATE_BOOT_WAIT_RELEASE = 0,
+    STATE_IDLE,
     STATE_DEBOUNCE_PRESS,
     STATE_PRESSED,
     STATE_DEBOUNCE_RELEASE,
@@ -80,6 +81,12 @@ static void button_timer_cb(void *arg)
         bool         is_down = (gpio_get_level(s_buttons[btn].gpio) == 0);
 
         switch (s_buttons[btn].state) {
+            case STATE_BOOT_WAIT_RELEASE:
+                if (!is_down) {
+                    s_buttons[btn].state = STATE_IDLE;
+                }
+                break;
+
             case STATE_IDLE:
                 if (is_down) {
                     s_buttons[btn].state = STATE_DEBOUNCE_PRESS;
@@ -153,22 +160,62 @@ esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void *user_data)
 
 void bsp_power_off(void)
 {
-    ESP_LOGI(TAG, "Executing shutdown sequence...");
+    static bool s_shutting_down = false;
+    if (s_shutting_down) return;
+    s_shutting_down = true;
 
-    // 1. Run user shutdown callback if registered
+    ESP_LOGI(TAG, "Executing complete shutdown sequence...");
+
+    // 1. Stop button debounce timer immediately so no further button events fire
+    if (s_timer_handle) {
+        esp_timer_stop(s_timer_handle);
+    }
+
+    // 2. Run user shutdown callback if registered (e.g. terminate tasks & render Space Cat)
     if (s_shutdown_cb) {
         ESP_LOGI(TAG, "Calling user shutdown callback...");
         s_shutdown_cb(s_shutdown_user_data);
     }
 
-    // 2. Wait until the user releases the physical power button so it doesn't immediately re-trigger
-    while (gpio_get_level(BSP_PIN_BUTTON_POWER) == 0) {
+    // 3. Stop LVGL rendering background task
+    bsp_lvgl_stop();
+
+    // 4. Put display to deep sleep and cut display power rail
+    bsp_display_deep_sleep();
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 1);
+    
+    // 5. Mute and power off audio amp
+    bsp_audio_stop();
+    bsp_audio_power_enable(false);
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_CTRL, 0);
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 1);
+
+    // 6. Turn off status LED
+    bsp_led_set(false);
+
+    // 7. Disconnect Wi-Fi
+    bsp_wifi_disconnect();
+
+    // 8. Wait until the user physically releases the power button so it doesn't immediately re-trigger
+    while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_POWER) == 0) {
         vTaskDelay(pdMS_TO_TICKS(50));
     }
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // 3. Drop power latch
-    bsp_power_release();
+    // 9. Drop power latch (GPIO 17 = 0) and release hardware hold
+    ESP_LOGI(TAG, "De-asserting BAT_CTRL power latch (GPIO %d)...", BSP_PIN_POWER_HOLD);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_POWER_HOLD);
+    gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 0);
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // 10. If still powered (e.g. USB cable attached), enter deep sleep with wake on POWER or BOOT
+    //ESP_LOGI(TAG, "External power (USB) detected. Entering deep sleep with wakeup on POWER (GPIO %d) & BOOT (GPIO %d)...",
+    //         BSP_PIN_BUTTON_POWER, BSP_PIN_BUTTON_BOOT);
+    //esp_sleep_enable_ext1_wakeup_io((1ULL << BSP_PIN_BUTTON_POWER) | (1ULL << BSP_PIN_BUTTON_BOOT), ESP_EXT1_WAKEUP_ANY_LOW);
+    //vTaskDelay(pdMS_TO_TICKS(50));
+    //esp_deep_sleep_start();
+
+    esp_restart(); // Restart, don't sleep if powered by VBUS.
 }
 
 esp_err_t bsp_button_init(const bsp_button_config_t *config)
@@ -192,6 +239,18 @@ esp_err_t bsp_button_init(const bsp_button_config_t *config)
     memset(s_buttons, 0, sizeof(s_buttons));
     s_buttons[BSP_BUTTON_BOOT].gpio  = BSP_PIN_BUTTON_BOOT;
     s_buttons[BSP_BUTTON_POWER].gpio = BSP_PIN_BUTTON_POWER;
+
+    for (int i = 0; i < BSP_BUTTON_COUNT; i++) {
+        bsp_button_t btn = (bsp_button_t)i;
+        bool is_down = (gpio_get_level(s_buttons[btn].gpio) == 0);
+        if (is_down) {
+            // Button is actively held down during boot (e.g. power-on button press)
+            // Wait until it is released before accepting user clicks
+            s_buttons[btn].state = STATE_BOOT_WAIT_RELEASE;
+        } else {
+            s_buttons[btn].state = STATE_IDLE;
+        }
+    }
 
     const esp_timer_create_args_t timer_args = {
         .callback = &button_timer_cb,

@@ -17,6 +17,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "driver/i2c_master.h"
+#include "driver/gpio.h"
+#include "esp_rom_sys.h"
+#include "bsp/bsp.h"
 #include "bsp/bsp_i2c.h"
 #include "bsp/pinout.h"
 
@@ -81,6 +84,13 @@ esp_err_t bsp_i2c_init(void)
         return ESP_OK;
     }
 
+    // 1. Ensure all board power rails are energized and stable before I2C bus access
+    bsp_init_io();
+    gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1); // Main LDO power latch ON
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0); // EPD, Sensor & I2C Pullup 3.3V ON (Active LOW)
+    gpio_set_level((gpio_num_t)BSP_PIN_TOUCH_RST, 1);  // Touch controller out of reset
+    vTaskDelay(pdMS_TO_TICKS(15));                      // Allow 3.3V rail & sensor power-on-reset to settle
+
     if (s_i2c_mutex == NULL) {
         s_i2c_mutex = xSemaphoreCreateRecursiveMutex();
         if (s_i2c_mutex == NULL) {
@@ -89,15 +99,44 @@ esp_err_t bsp_i2c_init(void)
         }
     }
 
+    // Hardware I2C Bus Recovery: Drive 9 SCL clock pulses to free any slave stuck pulling SDA low
+    gpio_config_t bus_rec_cfg = {
+        .pin_bit_mask = (1ULL << BSP_PIN_I2C_SCL) | (1ULL << BSP_PIN_I2C_SDA),
+        .mode         = GPIO_MODE_INPUT_OUTPUT_OD,
+        .pull_up_en   = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&bus_rec_cfg);
+    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SDA, 1);
+    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 1);
+    esp_rom_delay_us(10);
+
+    for (int i = 0; i < 9; i++) {
+        gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 0);
+        esp_rom_delay_us(10);
+        gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 1);
+        esp_rom_delay_us(10);
+    }
+    // Generate I2C STOP condition
+    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SDA, 0);
+    esp_rom_delay_us(10);
+    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 1);
+    esp_rom_delay_us(10);
+    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SDA, 1);
+    esp_rom_delay_us(10);
+
+    // Release GPIO pins from standard GPIO driver before handing to I2C controller
+    gpio_reset_pin((gpio_num_t)BSP_PIN_I2C_SDA);
+    gpio_reset_pin((gpio_num_t)BSP_PIN_I2C_SCL);
+
     i2c_master_bus_config_t bus_config = {
-        .i2c_port          = I2C_NUM_0,
-        .sda_io_num        = (gpio_num_t)BSP_PIN_I2C_SDA,
-        .scl_io_num        = (gpio_num_t)BSP_PIN_I2C_SCL,
-        .clk_source        = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-        .flags = {
-            .enable_internal_pullup = true,
-        },
+        .i2c_port                    = I2C_NUM_0,
+        .sda_io_num                  = (gpio_num_t)BSP_PIN_I2C_SDA,
+        .scl_io_num                  = (gpio_num_t)BSP_PIN_I2C_SCL,
+        .clk_source                  = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt           = 7,
+        .flags.enable_internal_pullup = true,
     };
 
     esp_err_t ret = i2c_new_master_bus(&bus_config, &s_i2c_bus_handle);

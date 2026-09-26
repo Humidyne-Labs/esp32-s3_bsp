@@ -2,26 +2,27 @@
     "configurations": [
         {
             "name": "ESP32-S3",
-            "compilerPath": "C:/Espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc.exe",
+            "compilerPath": "C:/Users/Matt/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc.exe",
             "compileCommands": "${workspaceFolder}/examples/Unified_BSP_Demo/build/compile_commands.json",
             "cStandard": "gnu17",
             "cppStandard": "gnu++23",
-            "intelliSenseMode": "gcc-x64",
+            "intelliSenseMode": "linux-gcc-x64",
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/components/esp32-s3_bsp/include",
                 "${workspaceFolder}/examples/Unified_BSP_Demo/main",
                 "${workspaceFolder}/examples/Unified_BSP_Demo/build/config",
+                "${workspaceFolder}/examples/Unified_BSP_Demo/managed_components/**",
                 "C:/esp/v6.1/esp-idf/components/**",
-                "C:/Espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/xtensa-esp-elf/include",
-                "C:/Espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/lib/gcc/xtensa-esp-elf/15.2.0/include",
-                "C:/Espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/lib/gcc/xtensa-esp-elf/15.2.0/include-fixed"
+                "C:/Users/Matt/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/xtensa-esp-elf/include",
+                "C:/Users/Matt/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/lib/gcc/xtensa-esp-elf/15.2.0/include",
+                "C:/Users/Matt/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/lib/gcc/xtensa-esp-elf/15.2.0/include-fixed"
             ],
             "browse": {
                 "path": [
                     "${workspaceFolder}",
                     "C:/esp/v6.1/esp-idf/components",
-                    "C:/Espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/xtensa-esp-elf/include"
+                    "C:/Users/Matt/.espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/xtensa-esp-elf/include"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             }

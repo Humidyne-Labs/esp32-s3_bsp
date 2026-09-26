@@ -73,14 +73,21 @@ esp_err_t app_ble_prov_start(const char *service_name, const char *pop, app_ble_
 
     s_prov_done_cb = done_cb;
 
-    /* Initialize provisioning manager with BLE scheme */
+    /* 1. Ensure TCP/IP stack, default event loop, and Wi-Fi subsystem are initialized */
+    esp_err_t ret = bsp_wifi_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize Wi-Fi base for provisioning: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    /* 2. Initialize provisioning manager with BLE scheme */
     network_prov_mgr_config_t config = {
         .scheme = network_prov_scheme_ble,
         .scheme_event_handler = NETWORK_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
         .app_event_handler = NETWORK_PROV_EVENT_HANDLER_NONE,
     };
 
-    esp_err_t ret = network_prov_mgr_init(config);
+    ret = network_prov_mgr_init(config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize network_prov_mgr: %s", esp_err_to_name(ret));
         return ret;
@@ -89,17 +96,19 @@ esp_err_t app_ble_prov_start(const char *service_name, const char *pop, app_ble_
     ret = esp_event_handler_register(NETWORK_PROV_EVENT, ESP_EVENT_ANY_ID, &prov_event_handler, NULL);
     if (ret != ESP_OK) return ret;
 
-#if defined(CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_1) && defined(CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_0)
-    network_prov_security_t security = NETWORK_PROV_SECURITY_0;
-    if (pop != NULL && strlen(pop) > 0) {
-        security = NETWORK_PROV_SECURITY_1;
+#if defined(CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_1)
+    network_prov_security_t security = (pop != NULL && strlen(pop) > 0) ? NETWORK_PROV_SECURITY_1 : NETWORK_PROV_SECURITY_0;
+    if (security == NETWORK_PROV_SECURITY_1) {
+        ESP_LOGI(TAG, "BLE Provisioning Security: SECURITY_1 (Curve25519 + AES-CTR-128 Enabled, PoP PIN: '%s')", pop);
+    } else {
+        ESP_LOGW(TAG, "BLE Provisioning Security: SECURITY_0 (Open / Unencrypted)");
     }
-#elif defined(CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_0)
-    network_prov_security_t security = NETWORK_PROV_SECURITY_0;
-#elif defined(CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_1)
-    network_prov_security_t security = NETWORK_PROV_SECURITY_1;
-#else
+#elif defined(CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_2)
     network_prov_security_t security = NETWORK_PROV_SECURITY_2;
+    ESP_LOGI(TAG, "BLE Provisioning Security: SECURITY_2 (SRP6a + AES-GCM Enabled)");
+#else
+    network_prov_security_t security = NETWORK_PROV_SECURITY_0;
+    ESP_LOGW(TAG, "BLE Provisioning Security: SECURITY_0 (Open / Unencrypted)");
 #endif
     const char *service_key = NULL;
 

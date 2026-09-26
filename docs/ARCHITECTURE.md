@@ -154,7 +154,37 @@ sequenceDiagram
 
 ---
 
-## 5. Zero-Copy LVGL v9 Graphics Pipeline
+---
+
+## 5. Complete System Shutdown Flow & USB Power Handling
+
+When the user initiates a shutdown (via long-pressing the **POWER** button / GPIO 18):
+
+1. **Task & Thread Termination**:
+   - The button debounce timer (`bsp_btn_tmr`) is immediately stopped to prevent re-entrant events.
+   - Active Core 0 application tasks (`net_telemetry` and `thread_mon`) are safely deleted (`vTaskDelete`) before power or display lines change.
+2. **Displaying Power-Off Indicator**:
+   - The shutdown callback renders `space_cat.bin` to the active screen via LVGL.
+   - `bsp_display_wait_busy(10000)` waits for the SSD1681 e-Paper hardware refresh cycle to finish completely.
+3. **Display & Peripheral Gating**:
+   - `bsp_lvgl_stop()` terminates the LVGL background rendering task.
+   - The SSD1681 display controller is placed into deep sleep mode (`bsp_display_deep_sleep()`).
+   - The EPD 3.3V power rail is isolated (`EPD3V3_EN` GPIO 6 = 1).
+   - Audio power amp is disabled and muted (`PA_EN` = 1, `PA_CTRL` = 0).
+   - Wi-Fi and BLE radios are disconnected.
+4. **Physical Button Release Guard**:
+   - The system polls until the user physically releases the POWER button (`gpio_get_level(18) == 1`). This prevents immediate false re-triggering upon shutdown.
+5. **Battery Power Cutoff**:
+   - `BAT_CTRL` (GPIO 17) is de-asserted (driven `0`) and hardware hold is released.
+   - **On Battery**: The onboard PMIC/LDO immediately cuts power, completely powering off the device.
+6. **USB Connected Behavior (Deep Sleep Fallback)**:
+   - **On USB**: Because USB VBUS continues powering the board, the ESP32 automatically transitions to `esp_deep_sleep_start()` with `ESP_EXT1_WAKEUP_ANY_LOW` armed on `GPIO 18` (POWER) and `GPIO 0` (BOOT).
+   - The CPU enters ultra-low power sleep while Space Cat remains displayed on the bistable e-Paper panel.
+   - Pressing the **POWER** or **BOOT** button instantly wakes up the system and restarts execution.
+
+---
+
+## 6. Zero-Copy LVGL v9 Graphics Pipeline
 
 1. **Monochrome Memory Footprint**:
    - Color format is configured strictly to `LV_COLOR_FORMAT_I1` (1-bit packed, 1 byte per 8 pixels).

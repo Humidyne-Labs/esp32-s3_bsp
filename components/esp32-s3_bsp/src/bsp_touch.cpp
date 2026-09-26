@@ -22,21 +22,26 @@
 #include "bsp/bsp.h"
 
 static const char *TAG = "bsp_touch";
-
+#if CONFIG_BSP_ENABLE_TOUCH
 static bool s_touch_inited = false;
+#endif
 
 void bsp_touch_reset(void)
 {
     gpio_set_level(BSP_PIN_TOUCH_RST, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(100));
     gpio_set_level(BSP_PIN_TOUCH_RST, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(100));
     gpio_set_level(BSP_PIN_TOUCH_RST, 1);
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 esp_err_t bsp_touch_init(void)
 {
+#if !CONFIG_BSP_ENABLE_TOUCH
+    ESP_LOGI(TAG, "Touch subsystem disabled in configuration (Non-touch hardware)");
+    return ESP_OK;
+#else
     if (s_touch_inited) return ESP_OK;
 
     // 1. Ensure master IO configuration is applied
@@ -56,6 +61,7 @@ esp_err_t bsp_touch_init(void)
 
     s_touch_inited = true;
     return ESP_OK;
+#endif
 }
 
 bool bsp_touch_read(uint16_t *x, uint16_t *y)

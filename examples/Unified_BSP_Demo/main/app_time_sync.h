@@ -35,6 +35,14 @@ typedef void (*app_time_sync_cb_t)(void);
 esp_err_t app_time_sync_init(app_time_sync_cb_t cb);
 
 /**
+ * @brief Configure local POSIX timezone (e.g. "EST5EDT,M3.2.0,M11.1.0")
+ * 
+ * @param tz_posix POSIX timezone string
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t app_time_sync_set_timezone(const char *tz_posix);
+
+/**
  * @brief Check if time has been successfully synchronized since boot
  * 
  * @return true if synchronized, false otherwise

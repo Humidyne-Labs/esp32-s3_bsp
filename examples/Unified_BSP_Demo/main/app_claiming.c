@@ -57,3 +57,9 @@ esp_err_t app_claiming_get_active_key(char *out_key, size_t max_len)
     out_key[max_len - 1] = '\0';
     return ESP_OK;
 }
+
+esp_err_t app_claiming_generate_new_key(char *out_key, size_t max_len)
+{
+    s_cached_claim_key[0] = '\0';
+    return app_claiming_get_active_key(out_key, max_len);
+}

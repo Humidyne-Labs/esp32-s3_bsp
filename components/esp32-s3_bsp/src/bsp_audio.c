@@ -110,7 +110,7 @@ esp_err_t bsp_audio_init(void)
         .codec_mode      = ESP_CODEC_DEV_WORK_MODE_DAC,
         .ctrl_if         = ctrl_if,
         .gpio_if         = gpio_if,
-        .pa_pin          = BSP_PIN_PA_CTRL,
+        .pa_pin          = BSP_PIN_PA_CTRL, //configured by es8311_codec_new as output
         .use_mclk        = true,
         .hw_gain.pa_gain = 6.0f,
     };
@@ -134,7 +134,7 @@ esp_err_t bsp_audio_init(void)
     /* 6. Configure Mono Sample Attributes */
     esp_codec_dev_sample_info_t sample_info = {
         .sample_rate     = 16000,
-        .channel         = 1,              // Mono Channel
+        .channel         = 1,      // Mono Channel
         .bits_per_sample = 16,     // 16-bit PCM
     };
     ret = esp_codec_dev_open(s_codec, &sample_info);

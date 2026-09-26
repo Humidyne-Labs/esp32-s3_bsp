@@ -27,7 +27,9 @@
 static const char *TAG = "bsp_lvgl";
 
 static lv_display_t      *s_lv_display       = NULL;
+#if CONFIG_BSP_ENABLE_TOUCH
 static lv_indev_t        *s_lv_touch_indev   = NULL;
+#endif
 static SemaphoreHandle_t s_lvgl_mutex        = NULL;
 static TaskHandle_t      s_lvgl_task_handle  = NULL;
 static bool              s_lvgl_task_running = false;
@@ -131,6 +133,7 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
     lv_display_flush_ready(disp);
 }
 
+#if CONFIG_BSP_ENABLE_TOUCH
 static void lvgl_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     uint16_t touch_x = 0;
@@ -145,6 +148,7 @@ static void lvgl_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
         data->state = LV_INDEV_STATE_RELEASED;
     }
 }
+#endif
 
 esp_err_t bsp_lvgl_init(void)
 {
@@ -160,7 +164,9 @@ esp_err_t bsp_lvgl_init(void)
     esp_err_t ret = bsp_display_init();
     if (ret != ESP_OK) return ret;
 
+#if CONFIG_BSP_ENABLE_TOUCH
     bsp_touch_init();
+#endif
 
     lv_init();
     lv_tick_set_cb(lvgl_tick_get_cb);
@@ -185,11 +191,13 @@ esp_err_t bsp_lvgl_init(void)
     lv_display_set_buffers(s_lv_display, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(s_lv_display, lvgl_display_flush_cb);
 
+#if CONFIG_BSP_ENABLE_TOUCH
     s_lv_touch_indev = lv_indev_create();
     if (s_lv_touch_indev != NULL) {
         lv_indev_set_type(s_lv_touch_indev, LV_INDEV_TYPE_POINTER);
         lv_indev_set_read_cb(s_lv_touch_indev, lvgl_touch_read_cb);
     }
+#endif
 
     ESP_LOGI(TAG, "LVGL v9 port initialized in 1-bit monochrome mode");
     return ESP_OK;
@@ -212,7 +220,7 @@ esp_err_t bsp_lvgl_start(int task_priority, int core_id)
         res = xTaskCreatePinnedToCore(
             bsp_lvgl_port_task,
             "bsp_lvgl_task",
-            4096,
+            8192,
             NULL,
             task_priority > 0 ? task_priority : 5,
             &s_lvgl_task_handle,
@@ -222,7 +230,7 @@ esp_err_t bsp_lvgl_start(int task_priority, int core_id)
         res = xTaskCreate(
             bsp_lvgl_port_task,
             "bsp_lvgl_task",
-            4096,
+            8192,
             NULL,
             task_priority > 0 ? task_priority : 5,
             &s_lvgl_task_handle

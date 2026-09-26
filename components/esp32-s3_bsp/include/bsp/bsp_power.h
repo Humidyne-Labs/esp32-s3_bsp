@@ -100,6 +100,17 @@ bool bsp_battery_is_low(uint8_t threshold_pct);
  */
 esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec);
 
+/**
+ * @brief Enter Light Sleep Mode
+ * 
+ * Pauses CPU, powers down radios, and retains all RAM/tasks.
+ * Resumes execution at the next line of code without board re-initialization.
+ * 
+ * @param duration_sec Sleep duration in seconds (0 for indefinite wakeup by button)
+ * @return esp_err_t ESP_OK upon wakeup
+ */
+esp_err_t bsp_power_enter_light_sleep(uint32_t duration_sec);
+
 #ifdef __cplusplus
 }
 #endif

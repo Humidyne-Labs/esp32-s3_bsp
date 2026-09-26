@@ -21,6 +21,7 @@
 #include "esp_crt_bundle.h"
 #include "cJSON.h"
 #include "bsp/bsp.h"
+#include "esp_attr.h"
 #include "app_mqtt.h"
 #include "app_secrets.h"
 
@@ -39,7 +40,7 @@ static EventGroupHandle_t s_mqtt_sync_evg = NULL;
 
 static int s_pending_msg_id = -1;
 
-static app_shared_config_t s_shared_config = {
+static RTC_DATA_ATTR app_shared_config_t s_shared_config = {
     .email_alerts_enabled = true,
     .auto_update_enabled  = true,
     .device_theme         = "LIGHT",
@@ -49,14 +50,14 @@ static app_shared_config_t s_shared_config = {
     .sound_enabled        = false,
     .temp_unit            = "F",
     .alarm_thresholds     = {
-        .rh_low_critical      = 62.0f,
-        .rh_low_warning       = 65.0f,
-        .rh_high_warning      = 73.0f,
-        .rh_high_critical     = 76.0f,
-        .temp_low_critical    = 287.59f, // 58 °F
-        .temp_low_warning     = 290.93f, // 64 °F
-        .temp_high_warning    = 295.37f, // 72 °F
-        .temp_high_critical   = 297.04f, // 75 °F
+        .rh_low_critical      = 10.0f,
+        .rh_low_warning       = 20.0f,
+        .rh_high_warning      = 80.0f,
+        .rh_high_critical     = 90.0f,
+        .temp_low_critical    = 273.15f, // 32 °F (0 °C)
+        .temp_low_warning     = 278.15f, // 41 °F (5 °C)
+        .temp_high_warning    = 313.15f, // 104 °F (40 °C)
+        .temp_high_critical   = 323.15f, // 122 °F (50 °C)
         .battery_low_critical = 15,
         .battery_low_warning  = 25,
         .rh_hist              = 1.5f,
@@ -141,61 +142,119 @@ static void parse_shared_attributes_json(cJSON *root)
 {
     if (!root) return;
 
+    // Check if wrapped in "shared" object
+    cJSON *shared = cJSON_GetObjectItem(root, "shared");
+    cJSON *src = shared ? shared : root;
+
     cJSON *item = NULL;
 
-    if ((item = cJSON_GetObjectItem(root, "email_alerts_enabled")) != NULL) {
+    // 1. Email Alerts
+    if ((item = cJSON_GetObjectItem(src, "email_alerts_enabled")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "emailAlertsEnabled")) != NULL) {
         s_shared_config.email_alerts_enabled = cJSON_IsTrue(item);
     }
-    if ((item = cJSON_GetObjectItem(root, "auto_update_enabled")) != NULL) {
+
+    // 2. Auto Update
+    if ((item = cJSON_GetObjectItem(src, "auto_update_enabled")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "autoUpdateEnabled")) != NULL) {
         s_shared_config.auto_update_enabled = cJSON_IsTrue(item);
     }
-    if ((item = cJSON_GetObjectItem(root, "device_theme")) != NULL && cJSON_IsString(item)) {
-        strncpy(s_shared_config.device_theme, item->valuestring, sizeof(s_shared_config.device_theme) - 1);
+
+    // 3. Device Theme
+    if ((item = cJSON_GetObjectItem(src, "device_theme")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "deviceTheme")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "theme")) != NULL) {
+        if (cJSON_IsString(item)) {
+            strncpy(s_shared_config.device_theme, item->valuestring, sizeof(s_shared_config.device_theme) - 1);
+        }
     }
-    if ((item = cJSON_GetObjectItem(root, "manual_ota_trigger")) != NULL) {
-        s_shared_config.manual_ota_trigger = cJSON_IsTrue(item);
+
+    // 4. Sleep Interval
+    if ((item = cJSON_GetObjectItem(src, "sleep_interval_sec")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "sleepIntervalSec")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "sleep_interval")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "sleepInterval")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "sleepSec")) != NULL) {
+        if (cJSON_IsNumber(item) && item->valueint > 0) {
+            s_shared_config.sleep_interval_sec = item->valueint;
+            s_shared_config.sleep_interval_min = item->valueint / 60;
+        }
+    } else if ((item = cJSON_GetObjectItem(src, "sleep_interval_min")) != NULL ||
+               (item = cJSON_GetObjectItem(src, "sleepIntervalMin")) != NULL ||
+               (item = cJSON_GetObjectItem(src, "sleepMin")) != NULL) {
+        if (cJSON_IsNumber(item) && item->valueint > 0) {
+            s_shared_config.sleep_interval_min = item->valueint;
+            s_shared_config.sleep_interval_sec = item->valueint * 60;
+        }
     }
-    if ((item = cJSON_GetObjectItem(root, "sleep_interval_sec")) != NULL && cJSON_IsNumber(item)) {
-        s_shared_config.sleep_interval_sec = item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(root, "sleep_interval_min")) != NULL && cJSON_IsNumber(item)) {
-        s_shared_config.sleep_interval_min = item->valueint;
-    }
-    if ((item = cJSON_GetObjectItem(root, "sound_enabled")) != NULL) {
+
+    // 5. Sound Enabled
+    if ((item = cJSON_GetObjectItem(src, "sound_enabled")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "soundEnabled")) != NULL) {
         s_shared_config.sound_enabled = cJSON_IsTrue(item);
     }
-    if ((item = cJSON_GetObjectItem(root, "temp_unit")) != NULL && cJSON_IsString(item)) {
-        strncpy(s_shared_config.temp_unit, item->valuestring, sizeof(s_shared_config.temp_unit) - 1);
+
+    // 6. Temperature Unit
+    if ((item = cJSON_GetObjectItem(src, "temp_unit")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "tempUnit")) != NULL ||
+        (item = cJSON_GetObjectItem(src, "unit")) != NULL) {
+        if (cJSON_IsString(item)) {
+            strncpy(s_shared_config.temp_unit, item->valuestring, sizeof(s_shared_config.temp_unit) - 1);
+        }
     }
 
-    // Alarm Thresholds Nested Object
-    cJSON *alarms = cJSON_GetObjectItem(root, "alarm_thresholds");
-    if (alarms && cJSON_IsObject(alarms)) {
-        cJSON *v = NULL;
-        if ((v = cJSON_GetObjectItem(alarms, "rhLowCritical")) != NULL)  s_shared_config.alarm_thresholds.rh_low_critical = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "rhLowWarning")) != NULL)   s_shared_config.alarm_thresholds.rh_low_warning = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "rhHighWarning")) != NULL)  s_shared_config.alarm_thresholds.rh_high_warning = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "rhHighCritical")) != NULL) s_shared_config.alarm_thresholds.rh_high_critical = (float)v->valuedouble;
-        
-        if ((v = cJSON_GetObjectItem(alarms, "tempLowCritical")) != NULL)  s_shared_config.alarm_thresholds.temp_low_critical = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "tempLowWarning")) != NULL)   s_shared_config.alarm_thresholds.temp_low_warning = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "tempHighWarning")) != NULL)  s_shared_config.alarm_thresholds.temp_high_warning = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "tempHighCritical")) != NULL) s_shared_config.alarm_thresholds.temp_high_critical = (float)v->valuedouble;
+    // 7. Alarm Thresholds (Nested in "alarm_thresholds" / "alarmThresholds" or flat at root)
+    cJSON *alarms = cJSON_GetObjectItem(src, "alarm_thresholds");
+    if (!alarms) alarms = cJSON_GetObjectItem(src, "alarmThresholds");
+    cJSON *asrc = alarms ? alarms : src;
 
-        if ((v = cJSON_GetObjectItem(alarms, "batteryLowCritical")) != NULL) s_shared_config.alarm_thresholds.battery_low_critical = v->valueint;
-        if ((v = cJSON_GetObjectItem(alarms, "batteryLowWarning")) != NULL)  s_shared_config.alarm_thresholds.battery_low_warning = v->valueint;
-        if ((v = cJSON_GetObjectItem(alarms, "rhHist")) != NULL)             s_shared_config.alarm_thresholds.rh_hist = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "tempHist")) != NULL)           s_shared_config.alarm_thresholds.temp_hist = (float)v->valuedouble;
-        if ((v = cJSON_GetObjectItem(alarms, "battHist")) != NULL)           s_shared_config.alarm_thresholds.batt_hist = v->valueint;
+    if ((item = cJSON_GetObjectItem(asrc, "rhLowCritical")) != NULL || (item = cJSON_GetObjectItem(asrc, "rh_low_critical")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.rh_low_critical = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(asrc, "rhLowWarning")) != NULL || (item = cJSON_GetObjectItem(asrc, "rh_low_warning")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.rh_low_warning = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(asrc, "rhHighWarning")) != NULL || (item = cJSON_GetObjectItem(asrc, "rh_high_warning")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.rh_high_warning = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(asrc, "rhHighCritical")) != NULL || (item = cJSON_GetObjectItem(asrc, "rh_high_critical")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.rh_high_critical = (float)item->valuedouble;
     }
 
-    ESP_LOGI(TAG, "Parsed Shared Attributes: Sleep=%ds, Unit=%s, Theme=%s",
+    if ((item = cJSON_GetObjectItem(asrc, "tempLowCritical")) != NULL || (item = cJSON_GetObjectItem(asrc, "temp_low_critical")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.temp_low_critical = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(asrc, "tempLowWarning")) != NULL || (item = cJSON_GetObjectItem(asrc, "temp_low_warning")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.temp_low_warning = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(asrc, "tempHighWarning")) != NULL || (item = cJSON_GetObjectItem(asrc, "temp_high_warning")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.temp_high_warning = (float)item->valuedouble;
+    }
+    if ((item = cJSON_GetObjectItem(asrc, "tempHighCritical")) != NULL || (item = cJSON_GetObjectItem(asrc, "temp_high_critical")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.temp_high_critical = (float)item->valuedouble;
+    }
+
+    if ((item = cJSON_GetObjectItem(asrc, "batteryLowCritical")) != NULL || (item = cJSON_GetObjectItem(asrc, "battery_low_critical")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.battery_low_critical = item->valueint;
+    }
+    if ((item = cJSON_GetObjectItem(asrc, "batteryLowWarning")) != NULL || (item = cJSON_GetObjectItem(asrc, "battery_low_warning")) != NULL) {
+        if (cJSON_IsNumber(item)) s_shared_config.alarm_thresholds.battery_low_warning = item->valueint;
+    }
+
+    ESP_LOGI(TAG, "Parsed Shared Attributes: Sleep=%ds, Unit=%s, Theme=%s, TempLimits=[%.1f, %.1f]K, RHLimits=[%.1f, %.1f]%%",
              s_shared_config.sleep_interval_sec,
              s_shared_config.temp_unit,
-             s_shared_config.device_theme);
+             s_shared_config.device_theme,
+             s_shared_config.alarm_thresholds.temp_low_critical,
+             s_shared_config.alarm_thresholds.temp_high_critical,
+             s_shared_config.alarm_thresholds.rh_low_critical,
+             s_shared_config.alarm_thresholds.rh_high_critical);
+
+    // Save entire shared config blob to NVS for persistent storage across deep sleep and power cycles
+    bsp_nvs_set_blob("tb_shared_cfg", &s_shared_config, sizeof(s_shared_config));
 
     // OTA Trigger Check
-    cJSON *fw_url = cJSON_GetObjectItem(root, "fw_url");
+    cJSON *fw_url = cJSON_GetObjectItem(src, "fw_url");
     if (fw_url && cJSON_IsString(fw_url) && strlen(fw_url->valuestring) > 0) {
         char *url_copy = strdup(fw_url->valuestring);
         xTaskCreate(ota_task, "tb_ota_task", 8192, url_copy, 5, NULL);
@@ -353,7 +412,7 @@ static void prov_mqtt_event_handler(void *args, esp_event_base_t base, int32_t e
                     ESP_LOGI(TAG, "[Auto-Prov] SUCCESS! Received credentials token: %s", s_prov_token);
                     xEventGroupSetBits(s_prov_evg, PROV_SUCCESS_BIT);
                 } else {
-                    ESP_LOGE(TAG, "[Auto-Prov] Response error: %s", event->data);
+                    ESP_LOGE(TAG, "[Auto-Prov] Response error: %.*s", (int)event->data_len, event->data);
                     xEventGroupSetBits(s_prov_evg, PROV_FAIL_BIT);
                 }
                 cJSON_Delete(root);
@@ -389,7 +448,7 @@ esp_err_t app_mqtt_auto_provision(const char *broker_uri,
             },
             .verification = {
                 .crt_bundle_attach = esp_crt_bundle_attach,
-                .skip_cert_common_name_check = true,
+                .skip_cert_common_name_check = false,
             },
         },
         .credentials = {
@@ -438,6 +497,10 @@ esp_err_t app_mqtt_init(const char *broker_uri,
         s_mqtt_sync_evg = xEventGroupCreate();
     }
 
+    // Restore shared configuration from NVS if available
+    size_t blob_sz = sizeof(s_shared_config);
+    bsp_nvs_get_blob("tb_shared_cfg", &s_shared_config, &blob_sz);
+
     char final_token[128] = {0};
 
     // 1. Resolve Access Token
@@ -468,7 +531,7 @@ esp_err_t app_mqtt_init(const char *broker_uri,
             .verification = {
                 .certificate                 = ca_cert_pem,
                 .crt_bundle_attach           = (ca_cert_pem == NULL) ? esp_crt_bundle_attach : NULL,
-                .skip_cert_common_name_check = true,
+                .skip_cert_common_name_check = false,
             },
         },
         .credentials = {
@@ -651,6 +714,9 @@ esp_err_t app_mqtt_disconnect(void)
     if (s_mqtt_client == NULL) return ESP_OK;
 
     s_is_connected = false;
+    esp_mqtt_client_disconnect(s_mqtt_client);
     esp_mqtt_client_stop(s_mqtt_client);
-    return esp_mqtt_client_destroy(s_mqtt_client);
+    esp_err_t ret = esp_mqtt_client_destroy(s_mqtt_client);
+    s_mqtt_client = NULL;
+    return ret;
 }

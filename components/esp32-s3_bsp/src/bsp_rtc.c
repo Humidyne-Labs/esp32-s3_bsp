@@ -134,6 +134,12 @@ esp_err_t bsp_rtc_init(void)
     // 4. Configure Control_1 (12.5pF Cap, STOP=0, 24h mode) & Control_2 (CLKOUT disabled)
     const uint8_t init_ctrl[2] = { CTRL1_CAP_SEL_12_5PF, CTRL2_COF_OFF };
     ret = bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, init_ctrl, sizeof(init_ctrl));
+
+    // 5. Clear countdown timer, alarm, and interrupt flags so RTC_INT (GPIO 5) releases to HIGH
+    bsp_rtc_clear_countdown_timer();
+    bsp_rtc_clear_alarm();
+    bsp_rtc_get_and_clear_interrupts(NULL, NULL);
+
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "PCF85063A RTC initialized (12.5pF crystal, 24h mode, INT pin GPIO %d)", BSP_PIN_RTC_INT);
     }
@@ -273,10 +279,16 @@ esp_err_t bsp_rtc_set_countdown_timer(uint8_t seconds)
     uint8_t mode = 0x00;
     bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_TIMER_MOD, &mode, 1);
 
-    // 2. Set timer countdown value
+    // 2. Clear any pending TF and AF flags so INT pin is de-asserted (HIGH)
+    uint8_t ctrl2 = 0;
+    bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_2, &ctrl2, 1);
+    ctrl2 = (ctrl2 & ~(CTRL2_TF | CTRL2_AF)) | CTRL2_COF_OFF;
+    bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_2, &ctrl2, 1);
+
+    // 3. Set timer countdown value
     bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_TIMER_VAL, &seconds, 1);
 
-    // 3. Configure 1Hz source, enable timer (TE=1), enable INT (TIE=1), level mode (TI_TP=0)
+    // 4. Configure 1Hz source, enable timer (TE=1), enable INT (TIE=1), level mode (TI_TP=0)
     mode = TIMER_MODE_TCF_1HZ | TIMER_MODE_TE | TIMER_MODE_TIE;
     return bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_TIMER_MOD, &mode, 1);
 }
@@ -284,7 +296,12 @@ esp_err_t bsp_rtc_set_countdown_timer(uint8_t seconds)
 esp_err_t bsp_rtc_clear_countdown_timer(void)
 {
     uint8_t mode = 0x00;
-    return bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_TIMER_MOD, &mode, 1);
+    bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_TIMER_MOD, &mode, 1);
+
+    uint8_t ctrl2 = 0;
+    bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_2, &ctrl2, 1);
+    ctrl2 = (ctrl2 & ~(CTRL2_TF | CTRL2_AF)) | CTRL2_COF_OFF;
+    return bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_2, &ctrl2, 1);
 }
 
 esp_err_t bsp_rtc_get_and_clear_interrupts(bool *alarm_flag, bool *timer_flag)
@@ -299,6 +316,46 @@ esp_err_t bsp_rtc_get_and_clear_interrupts(bool *alarm_flag, bool *timer_flag)
     // Clear AF and TF flags by writing 0 while preserving AIE and COF
     uint8_t clear_ctrl2 = (ctrl2 & ~(CTRL2_AF | CTRL2_TF)) | CTRL2_COF_OFF;
     return bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_2, &clear_ctrl2, 1);
+}
+
+esp_err_t bsp_rtc_disable_clkout(void)
+{
+    uint8_t ctrl2 = 0;
+    esp_err_t ret = bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_2, &ctrl2, 1);
+    if (ret != ESP_OK) return ret;
+
+    // Set bits 2:0 to 111b (0x07 = COF_OFF) to disable CLKOUT
+    ctrl2 |= CTRL2_COF_OFF;
+    return bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_2, &ctrl2, 1);
+}
+
+esp_err_t bsp_rtc_stop_oscillator(void)
+{
+    uint8_t ctrl1 = 0;
+    esp_err_t ret = bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, &ctrl1, 1);
+    if (ret != ESP_OK) return ret;
+
+    ctrl1 |= CTRL1_STOP; // STOP = 1 halts the 32kHz crystal oscillator and divider chain
+    ret = bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, &ctrl1, 1);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "PCF85063A 32kHz crystal oscillator halted (STOP=1)");
+    }
+    return ret;
+}
+
+esp_err_t bsp_rtc_start_oscillator(void)
+{
+    uint8_t ctrl1 = 0;
+    esp_err_t ret = bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, &ctrl1, 1);
+    if (ret != ESP_OK) return ret;
+
+    ctrl1 &= ~CTRL1_STOP; // STOP = 0 resumes quartz crystal oscillator
+    ctrl1 |= CTRL1_CAP_SEL_12_5PF;
+    ret = bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, &ctrl1, 1);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "PCF85063A 32kHz crystal oscillator running (STOP=0)");
+    }
+    return ret;
 }
 
 esp_err_t bsp_rtc_enable_wakeup(bool deep_sleep)

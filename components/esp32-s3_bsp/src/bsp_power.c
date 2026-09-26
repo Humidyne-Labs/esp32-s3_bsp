@@ -33,6 +33,7 @@
 #include "bsp/bsp_audio.h"
 #include "bsp/bsp_wifi.h"
 #include "bsp/bsp_rtc.h"
+#include "bsp/bsp_sensors.h"
 #include "bsp/bsp_power.h"
 #include "bsp/bsp.h"
 #include "sdkconfig.h"
@@ -228,40 +229,28 @@ esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec)
     // 1. Turn off Status LED (Active LOW: 1 = OFF)
     bsp_led_set(false);
 
-    // 2. Gate Audio Power Amp (GPIO 42 = HIGH / 1 -> Cut NS4168 PA power)
-    bsp_audio_power_enable(false);
-    gpio_hold_en(BSP_PIN_PA_EN);
+    // 2. Disconnect Wi-Fi and Bluetooth Radios
+    bsp_wifi_disconnect();
 
     // 3. Put SSD1681 e-Paper into ultra-low power deep sleep mode (<1 uA)
     bsp_display_deep_sleep();
-    // Cut EPD 3.3V Power Rail (Active LOW: GPIO 6 = 1 -> Rail OFF)
-    gpio_set_level(BSP_PIN_EPD_3V3_EN, 1);
-    gpio_hold_en(BSP_PIN_EPD_3V3_EN);
 
-    // 4. Put Touch Controller in reset / low-power sleep
-    gpio_set_level(BSP_PIN_TOUCH_RST, 0);
-    gpio_hold_en(BSP_PIN_TOUCH_RST);
+    // 4. Configure RTC hardware timers and clock output while 3.3V I2C bus is still active
+    bsp_rtc_disable_clkout();
 
-    // 5. Disconnect Wi-Fi and Bluetooth Radios
-    bsp_wifi_disconnect();
+    uint64_t ext1_pin_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_BUTTON_POWER);
 
-    // 6. Hold Battery LDO Power Latch (GPIO 17 = HIGH) across deep sleep
-    gpio_set_level(BSP_PIN_POWER_HOLD, 1);
-    gpio_hold_en(BSP_PIN_POWER_HOLD);
-    gpio_deep_sleep_hold_en();
-
-    // 7. Configure Wakeup Sources based on Kconfig selection:
 #if defined(CONFIG_BSP_RTC_WAKEUP_EXTERNAL_PCF85063)
+    // --- Mode A: External PCF85063A Quartz Crystal Timer ---
     if (duration_sec > 0) {
         if (duration_sec <= 255) {
             ESP_LOGI(TAG, "Arming PCF85063A external RTC countdown timer for %lu seconds", (unsigned long)duration_sec);
             bsp_rtc_set_countdown_timer((uint8_t)duration_sec);
         } else {
-            // For longer durations exceeding 255s countdown timer, read current time and arm RTC alarm
+            // For durations exceeding 255s, read current time and arm RTC alarm
             bsp_rtc_datetime_t now;
             if (bsp_rtc_get_datetime(&now) == ESP_OK) {
-                // Calculate future alarm
-                uint32_t total_sec = (uint32_t)now.hour * 3600 + (uint32_t)now.minute * 60 + now.second + duration_sec;
+                uint32_t total_sec  = (uint32_t)now.hour * 3600 + (uint32_t)now.minute * 60 + now.second + duration_sec;
                 uint32_t target_sec = total_sec % 60;
                 uint32_t target_min = (total_sec / 60) % 60;
                 uint32_t target_hr  = (total_sec / 3600) % 24;
@@ -277,27 +266,99 @@ esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec)
                          (int)target_hr, (int)target_min, (int)target_sec, (unsigned long)duration_sec);
                 bsp_rtc_set_alarm(&alarm);
             } else {
-                // Fallback to internal timer if RTC read failed
                 ESP_LOGW(TAG, "RTC read failed; falling back to internal timer wakeup");
                 esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
             }
         }
     }
+    // Include PCF85063A RTC INT (GPIO 5) in EXT1 wakeup
+    gpio_pullup_en((gpio_num_t)BSP_PIN_RTC_INT);
+    gpio_pulldown_dis((gpio_num_t)BSP_PIN_RTC_INT);
+    ext1_pin_mask |= (1ULL << BSP_PIN_RTC_INT);
+
 #else
+    // --- Mode B: ESP32-S3 Internal RTC Sleep Timer ---
+    // Clear external RTC countdown timer and alarm to prevent spurious GPIO 5 interrupts
+    bsp_rtc_clear_countdown_timer();
+    bsp_rtc_clear_alarm();
+
     if (duration_sec > 0) {
         ESP_LOGI(TAG, "Arming ESP32-S3 internal RTC timer wakeup for %lu seconds", (unsigned long)duration_sec);
         esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
     }
 #endif
 
-    // Wakeup on GPIO 0 (Tactile BOOT Key) or GPIO 5 (External RTC Interrupt)
-    uint64_t ext1_pin_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_RTC_INT);
-    gpio_pullup_en((gpio_num_t)BSP_PIN_RTC_INT);
-    gpio_pullup_en((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+    // 5. Gate Audio Power Amp (GPIO 42 = HIGH / 1 -> Cut NS4168 PA power)
+    bsp_audio_stop();
+    bsp_audio_power_enable(false);
+    gpio_set_level(BSP_PIN_PA_CTRL, 0);
+    gpio_set_level(BSP_PIN_PA_EN, 1);
+    gpio_hold_en((gpio_num_t)BSP_PIN_PA_EN);
+
+    // 6. Put SHTC3 Environmental Sensor into ultra-low power standby (<0.6 uA)
+    bsp_shtc3_sleep();
+
+    // 7. Maintain EPD & Sensor 3.3V Power Rail across sleep (Active LOW: GPIO 6 = 0 -> Rail ON)
+    // SSD1681 (<1 nA) and SHTC3 (<0.6 uA) are in software deep sleep.
+    // Maintaining 3.3V preserves I2C pullup stability, eliminates sensor power-on delays,
+    // and avoids display controller reset glitches upon waking.
+    gpio_set_level(BSP_PIN_EPD_3V3_EN, 0);
+    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_3V3_EN);
+
+    // 8. Keep Touch Controller out of reset (Active HIGH: GPIO 7 = 1)
+    // Prevents FT6336 from pulling SDA/SCL lines LOW during sleep and on wake
+    gpio_set_level(BSP_PIN_TOUCH_RST, 1);
+    gpio_hold_en((gpio_num_t)BSP_PIN_TOUCH_RST);
+
+    // 9. Hold Battery LDO Power Latch (GPIO 17 = HIGH) across deep sleep
+    gpio_set_level(BSP_PIN_POWER_HOLD, 1);
+    gpio_hold_en((gpio_num_t)BSP_PIN_POWER_HOLD);
+    gpio_deep_sleep_hold_en();
+
+    // 10. Wakeup on Active LOW buttons (and RTC INT if external timer selected)
     esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
 
     ESP_LOGI(TAG, "Power rails isolated. Starting ESP32-S3 deep sleep now");
     vTaskDelay(pdMS_TO_TICKS(50));
     esp_deep_sleep_start();
     return ESP_OK;
+}
+
+esp_err_t bsp_power_enter_light_sleep(uint32_t duration_sec)
+{
+    ESP_LOGI(TAG, "Entering Light Sleep for %lu seconds (RAM & FreeRTOS tasks retained)...", (unsigned long)duration_sec);
+
+    // 1. Turn off Status LED
+    bsp_led_set(false);
+
+    // 2. Disconnect Wi-Fi to allow RF MAC / PHY power down during sleep
+    bsp_wifi_disconnect();
+
+    // 3. Put SSD1681 e-Paper into ultra-low power standby (<1 uA)
+    bsp_display_deep_sleep();
+
+    // 4. Put SHTC3 Environmental Sensor into standby sleep (<0.6 uA)
+    bsp_shtc3_sleep();
+
+    // 5. Configure wakeups (Timer & Buttons)
+    uint64_t ext1_pin_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_BUTTON_POWER);
+    esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
+
+    if (duration_sec > 0) {
+        esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
+    }
+
+    // 6. Enter Light Sleep (Execution pauses here; CPU and DRAM enter retention)
+    vTaskDelay(pdMS_TO_TICKS(20));
+    esp_err_t err = esp_light_sleep_start();
+
+    // =========================================================================
+    // LIGHT SLEEP WAKEUP RESUME (No reset, continues execution immediately)
+    // =========================================================================
+    ESP_LOGI(TAG, "Resumed execution from Light Sleep (No board re-init needed)");
+
+    // Wake SHTC3 sensor from standby
+    bsp_shtc3_wakeup();
+
+    return err;
 }

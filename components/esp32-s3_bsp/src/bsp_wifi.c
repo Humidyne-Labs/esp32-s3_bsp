@@ -132,6 +132,11 @@ esp_err_t bsp_wifi_connect(const char *ssid, const char *password, uint32_t time
 {
     if (ssid == NULL || strlen(ssid) == 0) return ESP_ERR_INVALID_ARG;
 
+    if (s_is_connected) {
+        ESP_LOGI(TAG, "Wi-Fi is already connected");
+        return ESP_OK;
+    }
+
     if (!s_is_initialized) {
         esp_err_t err = bsp_wifi_init();
         if (err != ESP_OK) return err;
@@ -186,6 +191,11 @@ esp_err_t bsp_wifi_connect(const char *ssid, const char *password, uint32_t time
 
 esp_err_t bsp_wifi_connect_from_nvs(uint32_t timeout_ms)
 {
+    if (!s_is_initialized) {
+        esp_err_t err = bsp_wifi_init();
+        if (err != ESP_OK) return err;
+    }
+
     char ssid[33] = {0};
     char pass[65] = {0};
 

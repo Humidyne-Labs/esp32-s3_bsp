@@ -122,6 +122,33 @@ esp_err_t bsp_rtc_clear_countdown_timer(void);
 esp_err_t bsp_rtc_get_and_clear_interrupts(bool *alarm_flag, bool *timer_flag);
 
 /**
+ * @brief Disable CLKOUT square wave output on PCF85063A (COF = 0x07).
+ * 
+ * Ensures external CLKOUT output pin is high-impedance to eliminate noise and save power.
+ * 
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_rtc_disable_clkout(void);
+
+/**
+ * @brief Stop the PCF85063A 32.768 kHz quartz crystal oscillator.
+ * 
+ * Sets STOP=1 in Control_1 register to halt the oscillator and divider chain.
+ * 
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_rtc_stop_oscillator(void);
+
+/**
+ * @brief Start/Resume the PCF85063A 32.768 kHz quartz crystal oscillator.
+ * 
+ * Sets STOP=0 in Control_1 register to resume active quartz timekeeping.
+ * 
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_rtc_start_oscillator(void);
+
+/**
  * @brief Configure ESP32-S3 sleep wakeup source from the RTC INT line (GPIO 5).
  * @param deep_sleep true for Deep Sleep (EXT1), false for Light Sleep (GPIO wakeup).
  */
@@ -132,3 +159,4 @@ esp_err_t bsp_rtc_enable_wakeup(bool deep_sleep);
 #endif
 
 #endif /* BSP_RTC_H */
+

@@ -84,12 +84,17 @@ esp_err_t bsp_display_wait_busy(uint32_t timeout_ms)
     return ESP_OK;
 }
 
+#include "esp_memory_utils.h"
+
+static uint8_t *s_dma_bounce_buf = NULL;
+
 static void epd_send_byte(uint8_t data)
 {
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
+    t.flags     = SPI_TRANS_USE_TXDATA;
     t.length    = 8;
-    t.tx_buffer = &data;
+    t.tx_data[0]= data;
     spi_device_polling_transmit(s_spi_handle, &t);
 }
 
@@ -114,11 +119,37 @@ static void epd_write_bytes(const uint8_t *data, size_t len)
     if (len == 0 || data == NULL) return;
     epd_set_dc(1);
     epd_set_cs(0);
-    spi_transaction_t t;
-    memset(&t, 0, sizeof(t));
-    t.length    = 8 * len;
-    t.tx_buffer = data;
-    spi_device_polling_transmit(s_spi_handle, &t);
+
+    if (esp_ptr_dma_capable(data)) {
+        spi_transaction_t t;
+        memset(&t, 0, sizeof(t));
+        t.length    = 8 * len;
+        t.tx_buffer = data;
+        spi_device_polling_transmit(s_spi_handle, &t);
+    } else {
+        if (s_dma_bounce_buf == NULL) {
+            s_dma_bounce_buf = (uint8_t *)heap_caps_malloc(256, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+        }
+        size_t remaining = len;
+        const uint8_t *ptr = data;
+        while (remaining > 0) {
+            size_t chunk = (remaining > 256) ? 256 : remaining;
+            if (s_dma_bounce_buf) {
+                memcpy(s_dma_bounce_buf, ptr, chunk);
+                spi_transaction_t t;
+                memset(&t, 0, sizeof(t));
+                t.length    = 8 * chunk;
+                t.tx_buffer = s_dma_bounce_buf;
+                spi_device_polling_transmit(s_spi_handle, &t);
+            } else {
+                for (size_t i = 0; i < chunk; i++) {
+                    epd_send_byte(ptr[i]);
+                }
+            }
+            ptr += chunk;
+            remaining -= chunk;
+        }
+    }
     epd_set_cs(1);
 }
 

@@ -56,6 +56,12 @@ typedef struct {
     bool  start_lvgl;    /*!< Spawn LVGL v9 FreeRTOS render task pinned to Core 1 (Default: true) */
 } bsp_config_t;
 
+#if CONFIG_BSP_ENABLE_TOUCH
+#define BSP_DEFAULT_INIT_TOUCH true
+#else
+#define BSP_DEFAULT_INIT_TOUCH false
+#endif
+
 /**
  * @brief Default Hardware Initialization Configuration Macro
  */
@@ -68,7 +74,7 @@ typedef struct {
     .init_audio   = true,      \
     .audio_volume = 80.0f,     \
     .init_sdcard  = false,     \
-    .init_touch   = true,      \
+    .init_touch   = BSP_DEFAULT_INIT_TOUCH, \
     .init_display = true,      \
     .init_nvs     = true,      \
     .start_lvgl   = true       \
