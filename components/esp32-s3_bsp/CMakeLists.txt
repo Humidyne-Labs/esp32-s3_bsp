@@ -32,4 +32,8 @@ idf_component_register(
         esp_wifi
         esp_netif
         esp_event
+        lvgl
+        esp_mmap_assets
+        esp_lv_fs
+        esp_codec_dev
 )

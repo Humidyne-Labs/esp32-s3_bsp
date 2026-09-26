@@ -2,7 +2,8 @@
 
 **Repository:** `Humidyne-Labs/esp32-s3_bsp`  
 **Target Hardware:** Waveshare ESP32-S3-Touch-ePaper-1.54 V2  
-**Framework:** ESP-IDF v5.1+ (C / C++20)  
+**Framework:** ESP-IDF v5.1+ / v6.1 (C / C++20)  
+**Architecture Specification:** [System Architecture & Multi-Threaded Runtime](file:///c:/Users/Matt/Documents/GitHub/esp32-s3_bsp/docs/ARCHITECTURE.md)  
 **Status:** In Progress / Solidified Proposal  
 
 ---

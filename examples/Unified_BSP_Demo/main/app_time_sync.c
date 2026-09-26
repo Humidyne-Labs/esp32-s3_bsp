@@ -17,8 +17,9 @@
 #include "app_time_sync.h"
 
 static const char *TAG = "app_time_sync";
-static app_time_sync_cb_t s_sync_cb = NULL;
-static bool s_is_synced = false;
+
+static app_time_sync_cb_t s_sync_cb   = NULL;
+static bool               s_is_synced = false;
 
 static void time_sync_notification_cb(struct timeval *tv)
 {

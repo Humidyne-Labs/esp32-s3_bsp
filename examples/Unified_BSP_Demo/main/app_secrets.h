@@ -35,7 +35,7 @@ extern "C" {
 #define CONFIG_THINGSBOARD_CA_CERT          NULL
 
 /* Device Claiming Configuration */
-#define CONFIG_CLAIM_KEY_LENGTH             8      /* 6 to 8 characters (A-Z, 0-9) */
+#define CONFIG_CLAIM_KEY_LENGTH             6      /* 6 to 8 characters (A-Z, 0-9) */
 #define CONFIG_CLAIM_DURATION_MS            180000 /* 3 minutes (180,000 ms) */
 
 /* BLE Provisioning Service Prefix */

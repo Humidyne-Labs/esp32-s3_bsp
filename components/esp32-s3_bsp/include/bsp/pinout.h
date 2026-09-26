@@ -44,7 +44,7 @@ extern "C" {
 #define BSP_GPIO_BAT_ADC            BSP_PIN_BATTERY_ADC
 
 /**
- * @brief Onboard User / Status Indicator LED (Active High).
+ * @brief Onboard User / Status Indicator LED (Open-Drain, Active Low: 0=ON, 1=OFF).
  */
 #define BSP_PIN_LED_STATUS          GPIO_NUM_3
 #define BSP_GPIO_USER_LED           BSP_PIN_LED_STATUS
@@ -53,13 +53,13 @@ extern "C" {
  * 2. Tactile User Input Buttons
  * ========================================================================= */
 /**
- * @brief Hardware Boot / User Action Button (Active Low, internal pull-up).
+ * @brief Hardware Boot / User Action Button (Active Low, requires internal pull-up).
  */
 #define BSP_PIN_BUTTON_BOOT         GPIO_NUM_0
 #define BSP_GPIO_BOOT_KEY           BSP_PIN_BUTTON_BOOT
 
 /**
- * @brief Hardware Power / Battery Key (Active Low, internal pull-up).
+ * @brief Hardware Power / Battery Key (Active Low, requires internal pull-up).
  */
 #define BSP_PIN_BUTTON_POWER        GPIO_NUM_18
 #define BSP_GPIO_BAT_KEY            BSP_PIN_BUTTON_POWER
@@ -67,16 +67,16 @@ extern "C" {
 /* =========================================================================
  * 3. Shared I2C Master Bus (Sensors, RTC, Capacitive Touch)
  * ========================================================================= */
-#define BSP_PIN_I2C_SDA             GPIO_NUM_47  /*!< Shared I2C Serial Data line (RTC_SDA) */
-#define BSP_PIN_I2C_SCL             GPIO_NUM_48  /*!< Shared I2C Serial Clock line (RTC_SCL, 400 kHz) */
-#define BSP_PIN_RTC_INT             GPIO_NUM_5   /*!< PCF85063A Real-Time Clock interrupt */
+#define BSP_PIN_I2C_SDA             GPIO_NUM_47  /*!< Shared I2C Serial Data line (RTC_SDA, external 4.7k pull-up) */
+#define BSP_PIN_I2C_SCL             GPIO_NUM_48  /*!< Shared I2C Serial Clock line (RTC_SCL, external 4.7k pull-up) */
+#define BSP_PIN_RTC_INT             GPIO_NUM_5   /*!< PCF85063A RTC INT (Open-Drain, No external pull-up, requires internal pull-up) */
 #define BSP_GPIO_I2C_SDA            BSP_PIN_I2C_SDA
 #define BSP_GPIO_I2C_SCL            BSP_PIN_I2C_SCL
 #define BSP_GPIO_RTC_INT            BSP_PIN_RTC_INT
 
 /* Capacitive Touch (FT6336) */
 #define BSP_PIN_TOUCH_RST           GPIO_NUM_7   /*!< FT6336 Touch reset (Active Low) */
-#define BSP_PIN_TOUCH_INT           GPIO_NUM_21  /*!< FT6336 Touch interrupt */
+#define BSP_PIN_TOUCH_INT           GPIO_NUM_21  /*!< FT6336 Touch interrupt (Active Low, internal pull-up) */
 #define BSP_GPIO_TOUCH_RST          BSP_PIN_TOUCH_RST
 #define BSP_GPIO_TOUCH_INT          BSP_PIN_TOUCH_INT
 
@@ -90,7 +90,7 @@ extern "C" {
 /* =========================================================================
  * 4. 1.54" SPI e-Paper Display (SSD1681 200x200 Mono)
  * ========================================================================= */
-#define BSP_PIN_EPD_3V3_EN          GPIO_NUM_6   /*!< EPD 3.3V Power Enable (Active High) */
+#define BSP_PIN_EPD_3V3_EN          GPIO_NUM_6   /*!< EPD 3.3V Power Enable (Active Low: 0=ON, 1=OFF) */
 #define BSP_PIN_EPD_BUSY            GPIO_NUM_8   /*!< Display Busy Line (High = Busy) */
 #define BSP_PIN_EPD_RST             GPIO_NUM_9   /*!< Display Hardware Reset (Active Low) */
 #define BSP_PIN_EPD_DC              GPIO_NUM_10  /*!< Display Data / Command control line */

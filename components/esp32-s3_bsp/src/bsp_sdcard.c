@@ -20,6 +20,7 @@
 #include "bsp/bsp_sdcard.h"
 
 static const char *TAG = "bsp_sdcard";
+
 static sdmmc_card_t *s_sd_card = NULL;
 
 esp_err_t bsp_sdcard_mount(void)
@@ -31,32 +32,32 @@ esp_err_t bsp_sdcard_mount(void)
 
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
-        .max_files = 5,
-        .allocation_unit_size = 16 * 1024,
+        .max_files              = 5,
+        .allocation_unit_size   = 16 * 1024,
     };
 
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
     host.max_freq_khz = SDMMC_FREQ_DEFAULT;
-    host.flags = SDMMC_HOST_FLAG_1BIT;
+    host.flags        = SDMMC_HOST_FLAG_1BIT;
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.width = 1;
-    slot_config.clk = BSP_PIN_SD_CLK;
-    slot_config.cmd = BSP_PIN_SD_MOSI;
-    slot_config.d0  = BSP_PIN_SD_MISO;
-    slot_config.cd  = SDMMC_SLOT_NO_CD; // No hardware Card Detect pin connected
-    slot_config.wp  = SDMMC_SLOT_NO_WP;
+    slot_config.clk   = BSP_PIN_SD_CLK;
+    slot_config.cmd   = BSP_PIN_SD_MOSI;
+    slot_config.d0    = BSP_PIN_SD_MISO;
+    slot_config.cd    = SDMMC_SLOT_NO_CD; // No hardware Card Detect pin connected
+    slot_config.wp    = SDMMC_SLOT_NO_WP;
 
     // Temporarily reduce logging from sdmmc stack so missing cards don't dump error traces
     esp_log_level_t prev_sdmmc_log = esp_log_level_get("sdmmc_common");
     esp_log_level_t prev_vfs_log   = esp_log_level_get("vfs_fat_sdmmc");
-    esp_log_level_set("sdmmc_common", ESP_LOG_WARN);
+    esp_log_level_set("sdmmc_common",  ESP_LOG_WARN);
     esp_log_level_set("vfs_fat_sdmmc", ESP_LOG_WARN);
 
     esp_err_t ret = esp_vfs_fat_sdmmc_mount(BSP_SDCARD_MOUNT_POINT, &host, &slot_config, &mount_config, &s_sd_card);
 
     // Restore logging levels
-    esp_log_level_set("sdmmc_common", prev_sdmmc_log);
+    esp_log_level_set("sdmmc_common",  prev_sdmmc_log);
     esp_log_level_set("vfs_fat_sdmmc", prev_vfs_log);
 
     if (ret == ESP_ERR_TIMEOUT || ret == ESP_ERR_INVALID_RESPONSE) {

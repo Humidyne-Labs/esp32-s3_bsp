@@ -20,6 +20,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
@@ -27,17 +29,23 @@
 #include "esp_sleep.h"
 #include "driver/gpio.h"
 #include "bsp/pinout.h"
+#include "bsp/bsp_display.h"
+#include "bsp/bsp_audio.h"
+#include "bsp/bsp_wifi.h"
+#include "bsp/bsp_rtc.h"
 #include "bsp/bsp_power.h"
+#include "bsp/bsp.h"
+#include "sdkconfig.h"
 
 static const char *TAG = "bsp_power";
 
 // ADC Subsystem Handles (ESP32-S3 GPIO 4 = ADC1_CHANNEL_3)
 #define BSP_ADC_BATTERY_CHANNEL ADC_CHANNEL_3
 
-static adc_oneshot_unit_handle_t s_adc_handle  = NULL;
-static adc_cali_handle_t         s_cali_handle = NULL;
-static bool                      s_calibrated  = false;
-static bool                      s_led_state   = false;
+static adc_oneshot_unit_handle_t s_adc_handle   = NULL;
+static adc_cali_handle_t         s_cali_handle  = NULL;
+static bool                      s_calibrated   = false;
+static bool                      s_led_state    = false;
 static bool                      s_power_inited = false;
 
 /* =========================================================================
@@ -45,7 +53,7 @@ static bool                      s_power_inited = false;
  * ========================================================================= */
 static bool init_adc_calibration(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
-    esp_err_t ret = ESP_FAIL;
+    esp_err_t ret   = ESP_FAIL;
     bool calibrated = false;
 
 #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
@@ -89,18 +97,7 @@ static bool init_adc_calibration(adc_unit_t unit, adc_channel_t channel, adc_att
  * ========================================================================= */
 esp_err_t bsp_power_hold(void)
 {
-    gpio_config_t pwr_cfg = {
-        .pin_bit_mask = (1ULL << BSP_PIN_POWER_HOLD),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    esp_err_t err = gpio_config(&pwr_cfg);
-    if (err == ESP_OK) {
-        gpio_set_level(BSP_PIN_POWER_HOLD, 1);
-    }
-    return err;
+    return gpio_set_level(BSP_PIN_POWER_HOLD, 1);
 }
 
 esp_err_t bsp_power_release(void)
@@ -113,27 +110,14 @@ esp_err_t bsp_power_init(void)
 {
     if (s_power_inited) return ESP_OK;
 
-    ESP_LOGI(TAG, "Initializing Power Latch (GPIO %d), LED (GPIO %d), and Battery ADC (GPIO %d / ADC1_CH3)",
-             BSP_PIN_POWER_HOLD, BSP_PIN_LED_STATUS, BSP_PIN_BATTERY_ADC);
+    ESP_LOGI(TAG, "Initializing Battery ADC Monitor (GPIO %d / ADC1_CH3)", BSP_PIN_BATTERY_ADC);
 
-    // 1. Configure and latch Power Hold Pin HIGH
-    bsp_power_hold();
+    // 1. Ensure master IO configuration is applied
+    bsp_init_io();
 
-    // 2. Configure Status LED Pin
-    gpio_config_t led_cfg = {
-        .pin_bit_mask = (1ULL << BSP_PIN_LED_STATUS),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    ESP_ERROR_CHECK(gpio_config(&led_cfg));
-    gpio_set_level(BSP_PIN_LED_STATUS, 0);
-    s_led_state = false;
-
-    // 3. Configure ADC1 Channel 3 (GPIO 4) for Battery Sensing
+    // 2. Configure ADC1 Channel 3 (GPIO 4) for Battery Sensing
     adc_oneshot_unit_init_cfg_t init_config = {
-        .unit_id = ADC_UNIT_1,
+        .unit_id  = ADC_UNIT_1,
         .ulp_mode = ADC_ULP_MODE_DISABLE,
     };
     esp_err_t err = adc_oneshot_new_unit(&init_config, &s_adc_handle);
@@ -143,7 +127,7 @@ esp_err_t bsp_power_init(void)
     }
 
     adc_oneshot_chan_cfg_t chan_config = {
-        .atten = ADC_ATTEN_DB_12,       // 0 - 3.1V sensing range
+        .atten    = ADC_ATTEN_DB_12,       // 0 - 3.1V sensing range
         .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
     err = adc_oneshot_config_channel(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &chan_config);
@@ -153,7 +137,7 @@ esp_err_t bsp_power_init(void)
     }
 
     // 4. Initialize Factory Calibration Scheme
-    s_calibrated = init_adc_calibration(ADC_UNIT_1, BSP_ADC_BATTERY_CHANNEL, ADC_ATTEN_DB_12, &s_cali_handle);
+    s_calibrated   = init_adc_calibration(ADC_UNIT_1, BSP_ADC_BATTERY_CHANNEL, ADC_ATTEN_DB_12, &s_cali_handle);
     s_power_inited = true;
 
     return ESP_OK;
@@ -162,13 +146,15 @@ esp_err_t bsp_power_init(void)
 void bsp_led_set(bool state)
 {
     s_led_state = state;
-    gpio_set_level(BSP_PIN_LED_STATUS, state ? 1 : 0);
+    // Open-Drain Active LOW: 0 = LED ON, 1 = LED OFF
+    gpio_set_level(BSP_PIN_LED_STATUS, state ? 0 : 1);
 }
 
 void bsp_led_toggle(void)
 {
     s_led_state = !s_led_state;
-    gpio_set_level(BSP_PIN_LED_STATUS, s_led_state ? 1 : 0);
+    // Open-Drain Active LOW: 0 = LED ON, 1 = LED OFF
+    gpio_set_level(BSP_PIN_LED_STATUS, s_led_state ? 0 : 1);
 }
 
 esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw)
@@ -237,19 +223,81 @@ bool bsp_battery_is_low(uint8_t threshold_pct)
 
 esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec)
 {
-    ESP_LOGI(TAG, "Preparing deep sleep power gating (%lu seconds)...", (unsigned long)duration_sec);
+    ESP_LOGI(TAG, "Preparing deep sleep power isolation (%lu seconds)...", (unsigned long)duration_sec);
 
-    // Turn off status LED
+    // 1. Turn off Status LED (Active LOW: 1 = OFF)
     bsp_led_set(false);
 
+    // 2. Gate Audio Power Amp (GPIO 42 = HIGH / 1 -> Cut NS4168 PA power)
+    bsp_audio_power_enable(false);
+    gpio_hold_en(BSP_PIN_PA_EN);
+
+    // 3. Put SSD1681 e-Paper into ultra-low power deep sleep mode (<1 uA)
+    bsp_display_deep_sleep();
+    // Cut EPD 3.3V Power Rail (Active LOW: GPIO 6 = 1 -> Rail OFF)
+    gpio_set_level(BSP_PIN_EPD_3V3_EN, 1);
+    gpio_hold_en(BSP_PIN_EPD_3V3_EN);
+
+    // 4. Put Touch Controller in reset / low-power sleep
+    gpio_set_level(BSP_PIN_TOUCH_RST, 0);
+    gpio_hold_en(BSP_PIN_TOUCH_RST);
+
+    // 5. Disconnect Wi-Fi and Bluetooth Radios
+    bsp_wifi_disconnect();
+
+    // 6. Hold Battery LDO Power Latch (GPIO 17 = HIGH) across deep sleep
+    gpio_set_level(BSP_PIN_POWER_HOLD, 1);
+    gpio_hold_en(BSP_PIN_POWER_HOLD);
+    gpio_deep_sleep_hold_en();
+
+    // 7. Configure Wakeup Sources based on Kconfig selection:
+#if defined(CONFIG_BSP_RTC_WAKEUP_EXTERNAL_PCF85063)
     if (duration_sec > 0) {
+        if (duration_sec <= 255) {
+            ESP_LOGI(TAG, "Arming PCF85063A external RTC countdown timer for %lu seconds", (unsigned long)duration_sec);
+            bsp_rtc_set_countdown_timer((uint8_t)duration_sec);
+        } else {
+            // For longer durations exceeding 255s countdown timer, read current time and arm RTC alarm
+            bsp_rtc_datetime_t now;
+            if (bsp_rtc_get_datetime(&now) == ESP_OK) {
+                // Calculate future alarm
+                uint32_t total_sec = (uint32_t)now.hour * 3600 + (uint32_t)now.minute * 60 + now.second + duration_sec;
+                uint32_t target_sec = total_sec % 60;
+                uint32_t target_min = (total_sec / 60) % 60;
+                uint32_t target_hr  = (total_sec / 3600) % 24;
+
+                bsp_rtc_alarm_t alarm = {
+                    .second  = (int8_t)target_sec,
+                    .minute  = (int8_t)target_min,
+                    .hour    = (int8_t)target_hr,
+                    .day     = -1,
+                    .weekday = -1,
+                };
+                ESP_LOGI(TAG, "Arming PCF85063A alarm for %02d:%02d:%02d (%lu seconds sleep)",
+                         (int)target_hr, (int)target_min, (int)target_sec, (unsigned long)duration_sec);
+                bsp_rtc_set_alarm(&alarm);
+            } else {
+                // Fallback to internal timer if RTC read failed
+                ESP_LOGW(TAG, "RTC read failed; falling back to internal timer wakeup");
+                esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
+            }
+        }
+    }
+#else
+    if (duration_sec > 0) {
+        ESP_LOGI(TAG, "Arming ESP32-S3 internal RTC timer wakeup for %lu seconds", (unsigned long)duration_sec);
         esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
     }
+#endif
 
-    // Enable wakeup from BOOT button (GPIO 0)
-    esp_sleep_enable_ext0_wakeup(BSP_PIN_BUTTON_BOOT, 0);
+    // Wakeup on GPIO 0 (Tactile BOOT Key) or GPIO 5 (External RTC Interrupt)
+    uint64_t ext1_pin_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_RTC_INT);
+    gpio_pullup_en((gpio_num_t)BSP_PIN_RTC_INT);
+    gpio_pullup_en((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+    esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
 
-    ESP_LOGI(TAG, "Entering ESP32-S3 deep sleep now");
+    ESP_LOGI(TAG, "Power rails isolated. Starting ESP32-S3 deep sleep now");
+    vTaskDelay(pdMS_TO_TICKS(50));
     esp_deep_sleep_start();
     return ESP_OK;
 }

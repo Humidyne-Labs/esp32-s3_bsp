@@ -23,7 +23,7 @@
 
 static const char *TAG = "app_ble_prov";
 
-static bool s_prov_running = false;
+static bool s_prov_running                   = false;
 static app_ble_prov_done_cb_t s_prov_done_cb = NULL;
 
 static void prov_event_handler(void *user_data, esp_event_base_t event_base,

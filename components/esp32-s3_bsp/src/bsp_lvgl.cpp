@@ -24,15 +24,17 @@
 #include "bsp/bsp_lvgl.h"
 #include "sdkconfig.h"
 
-static const char *TAG                          = "bsp_lvgl";
-static lv_display_t *s_lv_display               = NULL;
-static lv_indev_t   *s_lv_touch_indev           = NULL;
-static SemaphoreHandle_t s_lvgl_mutex           = NULL;
-static TaskHandle_t s_lvgl_task_handle          = NULL;
-static bool s_lvgl_task_running                 = false;
+static const char *TAG = "bsp_lvgl";
 
-static uint32_t s_flush_counter = 0;
-static bool s_first_boot_flush  = true;
+static lv_display_t      *s_lv_display       = NULL;
+static lv_indev_t        *s_lv_touch_indev   = NULL;
+static SemaphoreHandle_t s_lvgl_mutex        = NULL;
+static TaskHandle_t      s_lvgl_task_handle  = NULL;
+static bool              s_lvgl_task_running = false;
+
+static uint32_t s_flush_counter     = 0;
+static bool     s_first_boot_flush  = true;
+
 #define PARTIAL_REFRESH_LIMIT 20
 #define LVGL_I1_PALETTE_SIZE  8
 
@@ -136,7 +138,7 @@ static void lvgl_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 
     bool touched = bsp_touch_read(&touch_x, &touch_y);
     if (touched) {
-        data->state = LV_INDEV_STATE_PRESSED;
+        data->state   = LV_INDEV_STATE_PRESSED;
         data->point.x = touch_x;
         data->point.y = touch_y;
     } else {

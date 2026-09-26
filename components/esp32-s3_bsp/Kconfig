@@ -25,4 +25,25 @@ menu "ESP32-S3 Touch ePaper Board Support Package"
         help
             Default startup volume level for the ES8311 codec and NS4168 amplifier.
 
+    choice BSP_RTC_WAKEUP_SOURCE
+        prompt "Deep Sleep Wakeup Timer Source"
+        default BSP_RTC_WAKEUP_EXTERNAL_PCF85063
+        help
+            Select the timer source used for timed deep-sleep wakeups.
+            External PCF85063A uses an ultra-low power 32.768kHz crystal (~0.22uA) and wakes up via GPIO 5 interrupt.
+            Internal RTC Timer uses the ESP32-S3 internal RTC timer (~7-8uA).
+
+        config BSP_RTC_WAKEUP_EXTERNAL_PCF85063
+            bool "External PCF85063A RTC Countdown Timer (0.22uA, Recommended for Battery Life)"
+            help
+                Uses the external PCF85063A RTC periodic countdown timer on GPIO 5 (RTC_INT)
+                to trigger wakeups. Best for preserving battery life on 400mAh cells.
+
+        config BSP_RTC_WAKEUP_INTERNAL_TIMER
+            bool "ESP32-S3 Internal RTC Timer (esp_sleep_enable_timer_wakeup)"
+            help
+                Uses the ESP32-S3 internal sleep timer. Useful if external RTC is unpopulated
+                or for sub-second sleep precision.
+    endchoice
+
 endmenu

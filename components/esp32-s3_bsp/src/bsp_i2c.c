@@ -28,7 +28,7 @@ static const int               I2C_TIMEOUT_MS   = 100;
 
 #define MAX_CACHED_DEVICES 8
 typedef struct {
-    uint8_t                  addr;
+    uint8_t                 addr;
     i2c_master_dev_handle_t handle;
 } cached_i2c_dev_t;
 
@@ -67,7 +67,7 @@ static esp_err_t get_or_create_dev_handle(uint8_t addr, i2c_master_dev_handle_t 
         return ret;
     }
 
-    s_dev_cache[s_dev_cache_count].addr = addr;
+    s_dev_cache[s_dev_cache_count].addr   = addr;
     s_dev_cache[s_dev_cache_count].handle = new_handle;
     s_dev_cache_count++;
 

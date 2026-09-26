@@ -13,6 +13,7 @@
 #include "bsp/bsp_button.h"
 #include "bsp/bsp_power.h"
 #include "bsp/pinout.h"
+#include "bsp/bsp.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -54,8 +55,8 @@ static esp_timer_handle_t  s_timer_handle = NULL;
 static bool                s_inited       = false;
 
 // Shutdown hook storage
-static bsp_power_off_cb_t s_shutdown_cb = NULL;
-static void *s_shutdown_user_data       = NULL;
+static bsp_power_off_cb_t s_shutdown_cb         = NULL;
+static void               *s_shutdown_user_data = NULL;
 
 static void fire_event(bsp_button_t btn, bsp_button_event_t event)
 {
@@ -75,8 +76,8 @@ static void button_timer_cb(void *arg)
     uint32_t now = (uint32_t)(esp_timer_get_time() / 1000ULL);
 
     for (int i = 0; i < BSP_BUTTON_COUNT; i++) {
-        bsp_button_t btn = (bsp_button_t)i;
-        bool is_down = (gpio_get_level(s_buttons[btn].gpio) == 0);
+        bsp_button_t btn     = (bsp_button_t)i;
+        bool         is_down = (gpio_get_level(s_buttons[btn].gpio) == 0);
 
         switch (s_buttons[btn].state) {
             case STATE_IDLE:
@@ -185,31 +186,18 @@ esp_err_t bsp_button_init(const bsp_button_config_t *config)
         s_cfg.auto_power_off_on_hold = true;
     }
 
-    // Lock power latch immediately
-    bsp_power_hold();
+    // 1. Ensure master IO configuration is applied (Buttons on GPIO 0 & 18 with pullups)
+    bsp_init_io();
 
     memset(s_buttons, 0, sizeof(s_buttons));
     s_buttons[BSP_BUTTON_BOOT].gpio  = BSP_PIN_BUTTON_BOOT;
     s_buttons[BSP_BUTTON_POWER].gpio = BSP_PIN_BUTTON_POWER;
 
-    gpio_config_t btn_cfg = {
-        .pin_bit_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_BUTTON_POWER),
-        .mode         = GPIO_MODE_INPUT,
-        .pull_up_en   = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    esp_err_t ret = gpio_config(&btn_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure button GPIOs: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
     const esp_timer_create_args_t timer_args = {
         .callback = &button_timer_cb,
         .name     = "bsp_btn_tmr"
     };
-    ret = esp_timer_create(&timer_args, &s_timer_handle);
+    esp_err_t ret = esp_timer_create(&timer_args, &s_timer_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create button timer: %s", esp_err_to_name(ret));
         return ret;

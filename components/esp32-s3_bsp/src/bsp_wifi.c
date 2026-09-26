@@ -35,10 +35,10 @@ static const char *TAG = "bsp_wifi";
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static EventGroupHandle_t s_wifi_event_group = NULL;
-static esp_netif_t       *s_sta_netif        = NULL;
-static bool               s_is_initialized   = false;
-static bool               s_is_connected     = false;
+static EventGroupHandle_t s_wifi_event_group  = NULL;
+static esp_netif_t        *s_sta_netif        = NULL;
+static bool               s_is_initialized    = false;
+static bool               s_is_connected      = false;
 
 /**
  * @brief RTC Fast Reconnect Session Cache Structure
@@ -155,7 +155,7 @@ esp_err_t bsp_wifi_connect(const char *ssid, const char *password, uint32_t time
 
         wifi_cfg.sta.bssid_set = 1;
         memcpy(wifi_cfg.sta.bssid, s_rtc_cache.bssid, 6);
-        wifi_cfg.sta.channel = s_rtc_cache.channel;
+        wifi_cfg.sta.channel     = s_rtc_cache.channel;
         wifi_cfg.sta.scan_method = WIFI_FAST_SCAN;
     } else {
         wifi_cfg.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;

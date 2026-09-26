@@ -27,8 +27,8 @@ esp_err_t app_claiming_generate_key(char *out_key, size_t max_len, size_t key_le
 {
     if (out_key == NULL || max_len == 0) return ESP_ERR_INVALID_ARG;
 
-    /* Enforce 6 to 8 character length requirement */
-    if (key_len < 6) key_len = 6;
+    /* Enforce 4 to 8 character length requirement */
+    if (key_len < 4) key_len = 4;
     if (key_len > 8) key_len = 8;
     if (max_len <= key_len) return ESP_ERR_INVALID_SIZE;
 

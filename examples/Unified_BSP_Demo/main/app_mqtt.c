@@ -26,15 +26,17 @@
 
 static const char *TAG = "app_mqtt";
 
-static esp_mqtt_client_handle_t s_mqtt_client = NULL;
-static bool s_is_connected = false;
-static app_ota_status_cb_t s_ota_cb = NULL;
-static app_shared_config_cb_t s_config_cb = NULL;
-static app_rpc_handler_cb_t s_rpc_cb = NULL;
+static esp_mqtt_client_handle_t s_mqtt_client  = NULL;
+static bool                     s_is_connected = false;
+static app_ota_status_cb_t      s_ota_cb       = NULL;
+static app_shared_config_cb_t   s_config_cb    = NULL;
+static app_rpc_handler_cb_t     s_rpc_cb       = NULL;
 
 static EventGroupHandle_t s_mqtt_sync_evg = NULL;
+
 #define MQTT_SYNC_CONNECTED_BIT BIT0
 #define MQTT_SYNC_PUBLISHED_BIT BIT1
+
 static int s_pending_msg_id = -1;
 
 static app_shared_config_t s_shared_config = {
@@ -75,8 +77,8 @@ static void ota_task(void *pvParameters)
     app_mqtt_report_ota_state("DOWNLOADING", NULL);
 
     esp_http_client_config_t http_config = {
-        .url = fw_url,
-        .timeout_ms = 15000,
+        .url               = fw_url,
+        .timeout_ms        = 15000,
         .crt_bundle_attach = esp_crt_bundle_attach,
         .keep_alive_enable = true,
     };
@@ -316,8 +318,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
  * ThingsBoard Device Auto-Provisioning Flow
  * ========================================================================= */
 static EventGroupHandle_t s_prov_evg = NULL;
+
 #define PROV_SUCCESS_BIT BIT0
 #define PROV_FAIL_BIT    BIT1
+
 static char s_prov_token[128] = {0};
 
 static void prov_mqtt_event_handler(void *args, esp_event_base_t base, int32_t event_id, void *event_data)
@@ -462,8 +466,8 @@ esp_err_t app_mqtt_init(const char *broker_uri,
                 .uri = broker_uri,
             },
             .verification = {
-                .certificate = ca_cert_pem,
-                .crt_bundle_attach = (ca_cert_pem == NULL) ? esp_crt_bundle_attach : NULL,
+                .certificate                 = ca_cert_pem,
+                .crt_bundle_attach           = (ca_cert_pem == NULL) ? esp_crt_bundle_attach : NULL,
                 .skip_cert_common_name_check = true,
             },
         },
@@ -584,13 +588,13 @@ esp_err_t app_mqtt_report_client_attributes(const char *fw_version,
     char payload[256];
     snprintf(payload, sizeof(payload),
              "{\"fw_version\":\"%s\",\"device_name\":\"%s\",\"mac_address\":\"%s\",\"ssid\":\"%s\",\"ip_address\":\"%s\",\"has_sd_card\":%s,\"audio_synced\":%s}",
-             fw_version ? fw_version : "v1.0.4",
-             device_name ? device_name : "HumidOS-Node",
-             mac_address ? mac_address : "00:00:00:00:00:00",
-             ssid ? ssid : "Unknown-AP",
-             ip_address ? ip_address : "0.0.0.0",
-             has_sd_card ? "true" : "false",
-             audio_synced ? "true" : "false");
+             fw_version   ? fw_version   : "v1.0.4",
+             device_name  ? device_name  : "HumidOS-Node",
+             mac_address  ? mac_address  : "00:00:00:00:00:00",
+             ssid         ? ssid         : "Unknown-AP",
+             ip_address   ? ip_address   : "0.0.0.0",
+             has_sd_card  ? "true"       : "false",
+             audio_synced ? "true"       : "false");
 
     int msg_id = esp_mqtt_client_publish(s_mqtt_client, "v1/devices/me/attributes", payload, 0, 1, 0);
     return (msg_id >= 0) ? ESP_OK : ESP_FAIL;

@@ -47,8 +47,8 @@
 static const char *TAG = "main_telemetry";
 
 // RTC Fast Memory Variables (Persist across deep sleep)
-static RTC_DATA_ATTR uint32_t s_rtc_boot_count = 0;
-static RTC_DATA_ATTR bool s_rtc_is_claimed      = false;
+static RTC_DATA_ATTR uint32_t s_rtc_boot_count  = 0;
+static RTC_DATA_ATTR bool     s_rtc_is_claimed  = false;
 
 // Device State
 static char s_device_name[32]      = {0};
@@ -72,10 +72,10 @@ static lv_obj_t *s_lbl_action_hint  = NULL;
  * ========================================================================= */
 static void play_audio_chime(void) 
 {
-    const uint32_t sample_rate = 16000;
-    const size_t tone_samples  = sample_rate / 4;
-    const size_t total_samples = tone_samples * 2;
-    const size_t buf_size      = total_samples * sizeof(int16_t);
+    const uint32_t sample_rate   = 16000;
+    const size_t   tone_samples  = sample_rate / 4;
+    const size_t   total_samples = tone_samples * 2;
+    const size_t   buf_size      = total_samples * sizeof(int16_t);
 
     int16_t *buf = (int16_t *)malloc(buf_size);
     if (!buf) return;
@@ -555,19 +555,9 @@ static void network_telemetry_task(void *pvParameters)
             continue;
         }
 
-        // Prepare for Ultra-Low Power Deep Sleep (Screen contents remain visible!)
+        // Enter Ultra-Low Power Deep Sleep (Power rails gated, display in sleep, screen image retained)
         int sleep_sec = (shared->sleep_interval_sec > 0) ? shared->sleep_interval_sec : 60;
-        ESP_LOGI(TAG, "Entering ultra-low power deep sleep for %d seconds (e-Paper holds image)", sleep_sec);
-
-        bsp_led_set(false);
-        bsp_wifi_disconnect();
-        vTaskDelay(pdMS_TO_TICKS(100));
-
-        // Configure Wakeup Sources (Timer + BOOT GPIO 0)
-        esp_sleep_enable_timer_wakeup((uint64_t)sleep_sec * 1000000ULL);
-        esp_sleep_enable_ext0_wakeup(BSP_PIN_BUTTON_BOOT, 0);
-
-        esp_deep_sleep_start();
+        bsp_power_enter_deep_sleep(sleep_sec);
     }
 
     vTaskDelete(NULL);

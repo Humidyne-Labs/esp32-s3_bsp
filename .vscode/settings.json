@@ -1,4 +1,11 @@
 {
     "idf.currentSetup": "C:\\esp\\v6.1\\esp-idf",
-    "idf.port": "COM3"
+    "idf.port": "COM3",
+    "idf.target": "esp32s3",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/examples/Unified_BSP_Demo/build/compile_commands.json",
+    "C_Cpp.default.compilerPath": "C:/Espressif/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc.exe",
+    "C_Cpp.default.cStandard": "gnu17",
+    "C_Cpp.default.cppStandard": "gnu++23",
+    "C_Cpp.default.intelliSenseMode": "gcc-x64",
+    "C_Cpp.codeAnalysis.clangTidy.enabled": false
 }

@@ -32,14 +32,6 @@ static bool                   s_audio_inited = false;
 void bsp_audio_power_enable(bool enable)
 {
     /* GPIO 42 controls the audio power rail MOSFET (Active-LOW: 0 = Power ON, 1 = Power OFF) */
-    gpio_config_t pa_cfg = {
-        .pin_bit_mask = (1ULL << BSP_PIN_PA_EN),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&pa_cfg);
     gpio_set_level(BSP_PIN_PA_EN, enable ? 0 : 1);
 }
 
@@ -63,7 +55,7 @@ esp_err_t bsp_audio_init(void)
 
     /* 3. Configure Mono I2S Timing & Clocking */
     i2s_std_config_t std_cfg = {
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(16000),
+        .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(16000),
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
         .gpio_cfg = {
             .mclk = BSP_PIN_I2S_MCLK,
@@ -91,8 +83,8 @@ esp_err_t bsp_audio_init(void)
 
     /* 4. Setup ES8311 Codec Control & Data Interfaces */
     audio_codec_i2c_cfg_t i2c_cfg = {
-        .port = I2C_NUM_0,
-        .addr = ES8311_CODEC_DEFAULT_ADDR,
+        .port       = I2C_NUM_0,
+        .addr       = ES8311_CODEC_DEFAULT_ADDR,
         .bus_handle = bsp_i2c_get_handle(),
     };
     if (i2c_cfg.bus_handle == NULL) {
@@ -101,7 +93,7 @@ esp_err_t bsp_audio_init(void)
     }
 
     audio_codec_i2s_cfg_t i2s_cfg = {
-        .port = I2S_NUM_0,
+        .port      = I2S_NUM_0,
         .tx_handle = s_tx_chan,
         .rx_handle = NULL,
     };
@@ -141,8 +133,8 @@ esp_err_t bsp_audio_init(void)
 
     /* 6. Configure Mono Sample Attributes */
     esp_codec_dev_sample_info_t sample_info = {
-        .sample_rate = 16000,
-        .channel = 1,              // Mono Channel
+        .sample_rate     = 16000,
+        .channel         = 1,              // Mono Channel
         .bits_per_sample = 16,     // 16-bit PCM
     };
     ret = esp_codec_dev_open(s_codec, &sample_info);
@@ -160,7 +152,7 @@ esp_err_t bsp_audio_init(void)
 
 esp_err_t bsp_audio_set_volume(float volume)
 {
-    if (volume < 0.0f) volume = 0.0f;
+    if (volume < 0.0f)   volume = 0.0f;
     if (volume > 100.0f) volume = 100.0f;
 
     if (!s_audio_inited || s_codec == NULL) {
@@ -187,7 +179,7 @@ esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written)
     }
 
     const uint8_t *cursor = (const uint8_t *)data;
-    size_t remaining = len;
+    size_t remaining     = len;
     size_t total_written = 0;
     while (remaining > 0) {
         size_t chunk_len = remaining > 256 ? 256 : remaining;
@@ -198,8 +190,8 @@ esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written)
             }
             return ret;
         }
-        cursor += chunk_len;
-        remaining -= chunk_len;
+        cursor        += chunk_len;
+        remaining     -= chunk_len;
         total_written += chunk_len;
     }
 

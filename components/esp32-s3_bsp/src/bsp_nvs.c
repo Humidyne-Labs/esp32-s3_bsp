@@ -17,6 +17,7 @@
 #include "bsp/bsp_nvs.h"
 
 static const char *TAG = "bsp_nvs";
+
 #define BSP_NVS_NAMESPACE "humid_bsp"
 
 static bool s_nvs_initialized = false;

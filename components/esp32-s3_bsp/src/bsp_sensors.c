@@ -27,10 +27,10 @@
 static const char *TAG = "bsp_sensors";
 
 // SHTC3 16-bit Command Words
-#define SHTC3_CMD_WAKEUP            0x3517  /*!< Wakeup command */
-#define SHTC3_CMD_SLEEP             0xB098  /*!< Sleep command */
-#define SHTC3_CMD_READ_ID           0xEFC8  /*!< Read ID register */
-#define SHTC3_CMD_MEAS_NORMAL_T_FIRST 0x7CA2 /*!< Measure Normal Power: Temp First, Clock Stretching Disabled */
+#define SHTC3_CMD_WAKEUP              0x3517  /*!< Wakeup command */
+#define SHTC3_CMD_SLEEP               0xB098  /*!< Sleep command */
+#define SHTC3_CMD_READ_ID             0xEFC8  /*!< Read ID register */
+#define SHTC3_CMD_MEAS_NORMAL_T_FIRST 0x7CA2  /*!< Measure Normal Power: Temp First, Clock Stretching Disabled */
 
 /* =========================================================================
  * Sensirion CRC-8 Polynomial Calculation

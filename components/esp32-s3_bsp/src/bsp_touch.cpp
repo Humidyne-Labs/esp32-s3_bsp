@@ -19,20 +19,14 @@
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_display.h"
 #include "bsp/bsp_touch.h"
+#include "bsp/bsp.h"
 
 static const char *TAG = "bsp_touch";
+
 static bool s_touch_inited = false;
 
 void bsp_touch_reset(void)
 {
-    gpio_config_t io_conf = {};
-    io_conf.pin_bit_mask = (1ULL << BSP_PIN_TOUCH_RST);
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    gpio_config(&io_conf);
-
     gpio_set_level(BSP_PIN_TOUCH_RST, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
     gpio_set_level(BSP_PIN_TOUCH_RST, 0);
@@ -45,17 +39,11 @@ esp_err_t bsp_touch_init(void)
 {
     if (s_touch_inited) return ESP_OK;
 
-    // 1. Perform Hardware Reset
-    bsp_touch_reset();
+    // 1. Ensure master IO configuration is applied
+    bsp_init_io();
 
-    // 2. Configure INT Pin (GPIO 21)
-    gpio_config_t int_cfg = {};
-    int_cfg.pin_bit_mask = (1ULL << BSP_PIN_TOUCH_INT);
-    int_cfg.mode = GPIO_MODE_INPUT;
-    int_cfg.pull_up_en = GPIO_PULLUP_ENABLE;
-    int_cfg.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    int_cfg.intr_type = GPIO_INTR_DISABLE;
-    gpio_config(&int_cfg);
+    // 2. Perform Hardware Reset
+    bsp_touch_reset();
 
     // 3. Probe FT6336 on I2C address 0x38 (Chip ID Register 0xA8)
     uint8_t chip_id = 0;
@@ -95,7 +83,7 @@ bool bsp_touch_read(uint16_t *x, uint16_t *y)
     uint16_t touch_y = (((uint16_t)buf[2] & 0x0F) << 8) | (uint16_t)buf[3];
 
     // Bound checking against 200x200 display resolution
-    if (touch_x >= BSP_DISPLAY_WIDTH)  touch_x = BSP_DISPLAY_WIDTH - 1;
+    if (touch_x >= BSP_DISPLAY_WIDTH)  touch_x = BSP_DISPLAY_WIDTH  - 1;
     if (touch_y >= BSP_DISPLAY_HEIGHT) touch_y = BSP_DISPLAY_HEIGHT - 1;
 
     *x = touch_x;

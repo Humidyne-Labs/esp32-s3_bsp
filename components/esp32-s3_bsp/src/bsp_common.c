@@ -23,28 +23,73 @@ static const char *TAG = "bsp_common";
 
 esp_err_t bsp_init_io(void)
 {
-    gpio_config_t pwr_cfg = {
-        .pin_bit_mask = (1ULL << BSP_PIN_POWER_HOLD)   | 
-                        (1ULL << BSP_PIN_PA_EN)        |
-                        (1ULL << BSP_PIN_LED_STATUS)   |
-                        (1ULL << BSP_PIN_EPD_3V3_EN),
+    static bool s_io_inited = false;
+    if (s_io_inited) return ESP_OK;
+
+    // 1. Configure all standard digital OUTPUT pins
+    gpio_config_t out_cfg = {
+        .pin_bit_mask = (1ULL << BSP_PIN_POWER_HOLD) |
+                        (1ULL << BSP_PIN_PA_EN)      |
+                        (1ULL << BSP_PIN_LED_STATUS) |
+                        (1ULL << BSP_PIN_EPD_3V3_EN) |
+                        (1ULL << BSP_PIN_EPD_RST)    |
+                        (1ULL << BSP_PIN_EPD_DC)     |
+                        (1ULL << BSP_PIN_EPD_CS)     |
+                        (1ULL << BSP_PIN_TOUCH_RST),
         .mode         = GPIO_MODE_OUTPUT,
         .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
     };
-    esp_err_t ret = gpio_config(&pwr_cfg);
+    esp_err_t ret = gpio_config(&out_cfg);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure Base GPIOs: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to configure Output GPIOs: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    // Default power rail levels
-    gpio_set_level(BSP_PIN_POWER_HOLD, 1);  // Hold power LDO ON
-    gpio_set_level(BSP_PIN_PA_EN, 1);       // Power Amp OFF by default (Active LOW)
-    gpio_set_level(BSP_PIN_LED_STATUS, 0);  // LED OFF
-    gpio_set_level(BSP_PIN_EPD_3V3_EN, 1);  // EPD 3.3V ON
+    // 2. Set default power rail and peripheral latch levels
+    gpio_set_level(BSP_PIN_POWER_HOLD, 1);  // Latch onboard LDO power ON (Active HIGH)
+    gpio_set_level(BSP_PIN_PA_EN,      1);  // Power Amp OFF by default (Active LOW: 1=OFF, 0=ON)
+    gpio_set_level(BSP_PIN_LED_STATUS, 1);  // User Status LED OFF (Open-Drain Active LOW: 1=OFF, 0=ON)
+    gpio_set_level(BSP_PIN_EPD_3V3_EN, 0);  // EPD 3.3V Power Rail ON (Active LOW: 0=ON, 1=OFF)
+    gpio_set_level(BSP_PIN_EPD_CS,     1);  // Display SPI CS Deselected (HIGH)
+    gpio_set_level(BSP_PIN_EPD_DC,     1);  // Display Data/Command line default HIGH
+    gpio_set_level(BSP_PIN_EPD_RST,    1);  // Display out of reset (HIGH)
+    gpio_set_level(BSP_PIN_TOUCH_RST,  1);  // Touch controller out of reset (HIGH)
 
+    // 3. Configure all INPUT pins requiring internal pull-ups (Buttons, RTC INT, Touch INT)
+    gpio_config_t in_pullup_cfg = {
+        .pin_bit_mask = (1ULL << BSP_PIN_BUTTON_BOOT)  |
+                        (1ULL << BSP_PIN_BUTTON_POWER) |
+                        (1ULL << BSP_PIN_RTC_INT)      |
+                        (1ULL << BSP_PIN_TOUCH_INT),
+        .mode         = GPIO_MODE_INPUT,
+        .pull_up_en   = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    ret = gpio_config(&in_pullup_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure Pull-up Input GPIOs: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // 4. Configure floating INPUT pins (EPD Busy line)
+    gpio_config_t in_float_cfg = {
+        .pin_bit_mask = (1ULL << BSP_PIN_EPD_BUSY),
+        .mode         = GPIO_MODE_INPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    ret = gpio_config(&in_float_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure EPD Busy GPIO: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    s_io_inited = true;
+    ESP_LOGI(TAG, "All board IO pins configured and latched to safe defaults");
     return ESP_OK;
 }
 

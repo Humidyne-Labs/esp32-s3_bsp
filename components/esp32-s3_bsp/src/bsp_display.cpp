@@ -21,6 +21,7 @@
 #include "esp_heap_caps.h"
 #include "bsp/pinout.h"
 #include "bsp/bsp_display.h"
+#include "bsp/bsp.h"
 
 static const char *TAG = "bsp_display";
 
@@ -58,9 +59,9 @@ static const uint8_t WF_PARTIAL_1IN54[159] = {
     0x02, 0x17, 0x41, 0xB0, 0x32, 0x28
 };
 
-static spi_device_handle_t s_spi_handle          = NULL;
-static uint8_t            *s_frame_buffer       = NULL;
-static uint8_t            *s_prev_frame_buffer  = NULL;
+static spi_device_handle_t s_spi_handle            = NULL;
+static uint8_t             *s_frame_buffer         = NULL;
+static uint8_t             *s_prev_frame_buffer    = NULL;
 static uint32_t            s_partial_refresh_count = 0;
 
 static inline void epd_set_cs (uint8_t level) { gpio_set_level(BSP_PIN_EPD_CS,  level); }
@@ -70,7 +71,7 @@ static inline void epd_set_rst(uint8_t level) { gpio_set_level(BSP_PIN_EPD_RST, 
 esp_err_t bsp_display_wait_busy(uint32_t timeout_ms)
 {
     vTaskDelay(pdMS_TO_TICKS(10));
-    TickType_t start_tick = xTaskGetTickCount();
+    TickType_t start_tick    = xTaskGetTickCount();
     TickType_t timeout_ticks = pdMS_TO_TICKS(timeout_ms);
 
     while (gpio_get_level(BSP_PIN_EPD_BUSY) == 1) {
@@ -87,7 +88,7 @@ static void epd_send_byte(uint8_t data)
 {
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
-    t.length = 8;
+    t.length    = 8;
     t.tx_buffer = &data;
     spi_device_polling_transmit(s_spi_handle, &t);
 }
@@ -115,7 +116,7 @@ static void epd_write_bytes(const uint8_t *data, size_t len)
     epd_set_cs(0);
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
-    t.length = 8 * len;
+    t.length    = 8 * len;
     t.tx_buffer = data;
     spi_device_polling_transmit(s_spi_handle, &t);
     epd_set_cs(1);
@@ -207,40 +208,20 @@ esp_err_t bsp_display_init(void)
         memset(s_prev_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
-    // 1. Configure EPD Power Rail (GPIO 6 Active High)
-    gpio_config_t pwr_conf = {};
-    pwr_conf.pin_bit_mask = (1ULL << BSP_PIN_EPD_3V3_EN);
-    pwr_conf.mode         = GPIO_MODE_OUTPUT;
-    pwr_conf.pull_up_en   = GPIO_PULLUP_DISABLE;
-    pwr_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    gpio_config(&pwr_conf);
-    gpio_set_level(BSP_PIN_EPD_3V3_EN, 1);
+    // 1. Ensure master IO configuration is applied and EPD 3.3V rail is active (Active LOW: 0 = ON)
+    bsp_init_io();
+    gpio_set_level(BSP_PIN_EPD_3V3_EN, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
 
-    // 2. Configure Control Lines (RST, DC, CS)
-    gpio_config_t io_conf = {};
-    io_conf.pin_bit_mask = (1ULL << BSP_PIN_EPD_RST) | (1ULL << BSP_PIN_EPD_DC) | (1ULL << BSP_PIN_EPD_CS);
-    io_conf.mode         = GPIO_MODE_OUTPUT;
-    io_conf.pull_up_en   = GPIO_PULLUP_ENABLE;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    gpio_config(&io_conf);
-
-    // 3. Configure Busy Line
-    io_conf.pin_bit_mask = (1ULL << BSP_PIN_EPD_BUSY);
-    io_conf.mode         = GPIO_MODE_INPUT;
-    io_conf.pull_up_en   = GPIO_PULLUP_DISABLE;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.intr_type    = GPIO_INTR_DISABLE;    
-    gpio_config(&io_conf);
-
-    // 4. Initialize SPI Master Bus (GPIO 12 SCLK, GPIO 13 MOSI)
+    // 2. Initialize SPI Master Bus (GPIO 12 SCLK, GPIO 13 MOSI)
     if (s_spi_handle == NULL) {
         spi_bus_config_t buscfg = {};        
-        buscfg.mosi_io_num     = BSP_PIN_EPD_MOSI;
-        buscfg.miso_io_num     = -1;
-        buscfg.sclk_io_num     = BSP_PIN_EPD_SCK;
-        buscfg.quadwp_io_num   = -1;
-        buscfg.quadhd_io_num   = -1;
-        buscfg.max_transfer_sz = BSP_DISPLAY_BUFFER_SIZE + 8;
+        buscfg.mosi_io_num      = BSP_PIN_EPD_MOSI;
+        buscfg.miso_io_num      = -1;
+        buscfg.sclk_io_num      = BSP_PIN_EPD_SCK;
+        buscfg.quadwp_io_num    = -1;
+        buscfg.quadhd_io_num    = -1;
+        buscfg.max_transfer_sz  = BSP_DISPLAY_BUFFER_SIZE + 8;
 
         spi_device_interface_config_t devcfg = {};
         devcfg.mode           = 0;
