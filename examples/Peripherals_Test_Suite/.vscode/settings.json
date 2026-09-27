@@ -12,6 +12,6 @@
       "--query-driver=**",
       "--compile-commands-dir=c:\\Users\\Matt\\Documents\\GitHub\\esp32-s3_bsp\\examples\\Peripherals_Test_Suite\\build"
     ],
-    "idf.flashType": "JTAG",
+    "idf.flashType": "UART",
     "idf.port": "COM3"
 }

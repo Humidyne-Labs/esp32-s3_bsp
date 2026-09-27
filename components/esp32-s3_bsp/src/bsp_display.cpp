@@ -21,6 +21,7 @@
 #include "esp_heap_caps.h"
 #include "bsp/pinout.h"
 #include "bsp/bsp_display.h"
+#include "bsp/bsp_rtc_mem.h"
 #include "bsp/bsp.h"
 
 static const char *TAG = "bsp_display";
@@ -229,13 +230,20 @@ esp_err_t bsp_display_init(void)
         s_frame_buffer = (uint8_t *)heap_caps_malloc(BSP_DISPLAY_BUFFER_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
         if (s_frame_buffer == NULL) s_frame_buffer = (uint8_t *)malloc(BSP_DISPLAY_BUFFER_SIZE);
         if (s_frame_buffer == NULL) return ESP_ERR_NO_MEM;
-        memset(s_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
     if (s_prev_frame_buffer == NULL) {
         s_prev_frame_buffer = (uint8_t *)heap_caps_malloc(BSP_DISPLAY_BUFFER_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
         if (s_prev_frame_buffer == NULL) s_prev_frame_buffer = (uint8_t *)malloc(BSP_DISPLAY_BUFFER_SIZE);
         if (s_prev_frame_buffer == NULL) return ESP_ERR_NO_MEM;
+    }
+
+    if (bsp_rtc_mem_has_display_frame()) {
+        bsp_rtc_mem_load_display_frame(s_prev_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+        memcpy(s_frame_buffer, s_prev_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+        ESP_LOGI(TAG, "Restored previous EPD frame from RTC Slow Memory");
+    } else {
+        memset(s_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
         memset(s_prev_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
@@ -312,6 +320,7 @@ void bsp_display_flush(void)
     bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
 
     memcpy(s_prev_frame_buffer, s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+    bsp_rtc_mem_save_display_frame(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
     s_partial_refresh_count = 0;
 }
 
@@ -363,11 +372,12 @@ void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t
     epd_send_cmd (0x20);
     bsp_display_wait_busy(EPD_PARTIAL_REFRESH_TIMEOUT_MS);
 
-    // 5. Synchronize local frame buffer
+    // 5. Synchronize local frame buffer and persist to RTC slow memory
     for (uint16_t y = y_start; y <= y_end; y++) {
         uint32_t offset = (y * (BSP_DISPLAY_WIDTH / 8)) + x_s_byte;
         memcpy(&s_prev_frame_buffer[offset], &s_frame_buffer[offset], bytes_per_line);
     }
+    bsp_rtc_mem_save_display_frame(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
 
     s_partial_refresh_count++;
 }

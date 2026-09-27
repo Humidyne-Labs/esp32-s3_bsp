@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
@@ -143,10 +144,12 @@ esp_err_t bsp_audio_init(void)
         return ret;
     }
 
-    esp_codec_dev_set_out_vol(s_codec, 80.0f);
+    /* Keep DAC output muted on startup to prevent pop / phantom beeps */
+    esp_codec_dev_set_out_vol(s_codec, 0.0f);
+    esp_codec_dev_set_out_mute(s_codec, true);
 
     s_audio_inited = true;
-    ESP_LOGI(TAG, "ES8311 mono audio subsystem initialized successfully");
+    ESP_LOGI(TAG, "ES8311 mono audio subsystem initialized successfully (muted)");
     return ESP_OK;
 }
 
@@ -206,5 +209,65 @@ esp_err_t bsp_audio_stop(void)
     if (s_codec != NULL) {
         return esp_codec_dev_set_out_mute(s_codec, true);
     }
+    return ESP_OK;
+}
+
+esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volume_pct)
+{
+    if (freq_hz == 0 || duration_ms == 0) return ESP_OK;
+
+    if (!s_audio_inited || s_codec == NULL) {
+        esp_err_t ret = bsp_audio_init();
+        if (ret != ESP_OK) return ret;
+    }
+
+    if (volume_pct <= 0.0f) {
+        bsp_audio_stop();
+        vTaskDelay(pdMS_TO_TICKS(duration_ms));
+        return ESP_OK;
+    }
+
+    bsp_audio_set_volume(volume_pct);
+    esp_codec_dev_set_out_mute(s_codec, false);
+
+    const uint32_t sample_rate = 16000;
+    size_t total_samples = (sample_rate * duration_ms) / 1000;
+    size_t ramp_samples = (sample_rate * 5) / 1000; // 5ms attack & decay ramp
+    if (ramp_samples > total_samples / 2) {
+        ramp_samples = total_samples / 2;
+    }
+
+    int16_t sample_buffer[256];
+    size_t samples_generated = 0;
+    float phase = 0.0f;
+    float phase_increment = (2.0f * 3.14159265f * (float)freq_hz) / (float)sample_rate;
+
+    while (samples_generated < total_samples) {
+        size_t chunk = (total_samples - samples_generated > 256) ? 256 : (total_samples - samples_generated);
+        for (size_t i = 0; i < chunk; i++) {
+            size_t idx = samples_generated + i;
+            float gain = 1.0f;
+            if (idx < ramp_samples && ramp_samples > 0) {
+                gain = (float)idx / (float)ramp_samples;
+            } else if (idx >= total_samples - ramp_samples && ramp_samples > 0) {
+                gain = (float)(total_samples - idx) / (float)ramp_samples;
+            }
+            sample_buffer[i] = (int16_t)(sinf(phase) * 16000.0f * gain);
+            phase += phase_increment;
+            if (phase >= 2.0f * 3.14159265f) phase -= 2.0f * 3.14159265f;
+        }
+        bsp_audio_play(sample_buffer, chunk * sizeof(int16_t), NULL);
+        samples_generated += chunk;
+    }
+
+    // Flush DMA pipeline with silence samples to prevent cutting off trailing waveform
+    memset(sample_buffer, 0, sizeof(sample_buffer));
+    bsp_audio_play(sample_buffer, sizeof(sample_buffer), NULL);
+    bsp_audio_play(sample_buffer, sizeof(sample_buffer), NULL);
+
+    // Allow hardware DMA to finish playing silence before muting
+    vTaskDelay(pdMS_TO_TICKS(35));
+
+    bsp_audio_stop();
     return ESP_OK;
 }

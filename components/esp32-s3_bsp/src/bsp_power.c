@@ -288,11 +288,10 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
     // 4. Put SHTC3 into low-power sleep
     bsp_shtc3_sleep();
 
-    // 5. Gate Audio Power Amp
+    // 5. Mute Audio Power Amp without cutting codec power rail (prevents I2C bus clamping!)
     bsp_audio_stop();
-    bsp_audio_power_enable(false);
-    gpio_set_level(BSP_PIN_PA_CTRL, 0);
-    gpio_set_level(BSP_PIN_PA_EN, 1);
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_CTRL, 0); // Mute amplifier
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 0);   // Keep codec rail ON (Active LOW) to prevent clamping SDA/SCL
     gpio_hold_en((gpio_num_t)BSP_PIN_PA_EN);
 
     // 6. Configure Wakeup Triggers
@@ -338,10 +337,6 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
         }
     }
 
-    if (ext1_pin_mask != 0) {
-        esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
-    }
-
     if (cfg.mode == BSP_SLEEP_MODE_LIGHT) {
         if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
             gpio_wakeup_enable((gpio_num_t)BSP_PIN_BUTTON_BOOT, GPIO_INTR_LOW_LEVEL);
@@ -355,7 +350,9 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
         }
 
         ESP_LOGI(TAG, "Entering Light Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
-        vTaskDelay(pdMS_TO_TICKS(20));
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(50));
+
         esp_err_t ret = esp_light_sleep_start();
 
         if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
@@ -371,17 +368,25 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
     }
 
     // DEEP SLEEP
+    if (ext1_pin_mask != 0) {
+        esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
+    }
     ESP_LOGI(TAG, "Entering Deep Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
 
     // Maintain EPD & Sensor 3.3V Power Rail
-    gpio_set_level(BSP_PIN_EPD_3V3_EN, 0);
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0);
     gpio_hold_en((gpio_num_t)BSP_PIN_EPD_3V3_EN);
 
+    // Maintain Audio Codec Rail to prevent I2C clamping
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 0);
+    gpio_hold_en((gpio_num_t)BSP_PIN_PA_EN);
+
     // Hold Battery LDO Power Latch
-    gpio_set_level(BSP_PIN_POWER_HOLD, 1);
+    gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1);
     gpio_hold_en((gpio_num_t)BSP_PIN_POWER_HOLD);
     gpio_deep_sleep_hold_en();
 
+    fflush(stdout);
     vTaskDelay(pdMS_TO_TICKS(50));
     esp_deep_sleep_start();
     return ESP_OK;

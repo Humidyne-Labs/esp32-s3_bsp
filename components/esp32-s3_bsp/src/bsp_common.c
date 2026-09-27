@@ -150,7 +150,8 @@ esp_err_t bsp_init_io(void)
     // 2. Pre-set output latch register levels BEFORE configuring direction to prevent glitches
     gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1);  // Latch onboard LDO power ON (Active HIGH)
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0);  // EPD & Sensor 3.3V Power Rail ON (Active LOW: 0=ON, 1=OFF)
-    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN,      1);  // Power Amp OFF by default (Active LOW: 1=OFF, 0=ON)
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN,      0);  // Audio Power Domain ON (Active LOW: 0=ON) to prevent I2C clamping!
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_CTRL,    0);  // NS4168 Amp Muted/Standby by default (Active HIGH)
     gpio_set_level((gpio_num_t)BSP_PIN_LED_STATUS, 1);  // User Status LED OFF (Open-Drain Active LOW: 1=OFF, 0=ON)
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_CS,     1);  // Display SPI CS Deselected (HIGH)
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_DC,     1);  // Display Data/Command line default HIGH
@@ -159,7 +160,7 @@ esp_err_t bsp_init_io(void)
     // Settle 3.3V power rails for sensors and pull-ups
     esp_rom_delay_us(25000);
 
-    // 3. Configure all standard digital OUTPUT pins
+    // 3. Configure all standard digital OUTPUT pins with input buffer enabled for state read-back
     gpio_config_t out_cfg = {
         .pin_bit_mask = (1ULL << BSP_PIN_POWER_HOLD) |
                         (1ULL << BSP_PIN_PA_EN)      |
@@ -168,7 +169,7 @@ esp_err_t bsp_init_io(void)
                         (1ULL << BSP_PIN_EPD_RST)    |
                         (1ULL << BSP_PIN_EPD_DC)     |
                         (1ULL << BSP_PIN_EPD_CS),
-        .mode         = GPIO_MODE_OUTPUT,
+        .mode         = GPIO_MODE_INPUT_OUTPUT,
         .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
@@ -181,6 +182,15 @@ esp_err_t bsp_init_io(void)
 
     // Re-verify power latch is firmly latched HIGH
     gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1);
+
+    // Disable automatic sleep pin isolation on critical control lines so they never drop during sleep
+    gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_POWER_HOLD);
+    gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_EPD_3V3_EN);
+    gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_PA_EN);
+    gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_I2C_SDA);
+    gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_I2C_SCL);
+    gpio_sleep_sel_dis((gpio_num_t)GPIO_NUM_43); // Console UART TX
+    gpio_sleep_sel_dis((gpio_num_t)GPIO_NUM_44); // Console UART RX
 
     // 4. Configure all INPUT pins (RTC INT) with pullups enabled
     gpio_config_t in_pullup_cfg = {
@@ -266,7 +276,9 @@ esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
 
     if (cfg.init_rtc) {
         ret = bsp_rtc_init();
-        if (ret != ESP_OK) {
+        if (ret == ESP_OK) {
+            bsp_time_sync_rtc_to_system();
+        } else {
             ESP_LOGW(TAG, "RTC initialization returned: %s", esp_err_to_name(ret));
         }
     }
@@ -281,7 +293,7 @@ esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
     if (cfg.init_audio) {
         ret = bsp_audio_init();
         if (ret == ESP_OK) {
-            bsp_audio_set_volume(cfg.audio_volume);
+            bsp_audio_stop();
         } else {
             ESP_LOGW(TAG, "Audio codec init returned: %s", esp_err_to_name(ret));
         }

@@ -62,6 +62,16 @@ esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written);
 esp_err_t bsp_audio_set_volume(float volume);
 
 /**
+ * @brief Play Synthesized Sine Tone
+ * 
+ * @param freq_hz Frequency in Hertz (e.g. 440, 523, 1046)
+ * @param duration_ms Duration in milliseconds
+ * @param volume_pct Volume from 0.0 (muted) to 100.0 (maximum)
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volume_pct);
+
+/**
  * @brief Stop Active Audio Playback
  * 
  * @return esp_err_t ESP_OK

@@ -101,6 +101,16 @@ esp_err_t bsp_wifi_get_ip_str(char *out_ip, size_t max_len);
 esp_err_t bsp_wifi_save_credentials(const char *ssid, const char *password);
 
 /**
+ * @brief Scan for Nearby Wi-Fi Access Points
+ * 
+ * @param[out] ap_records Optional array to receive AP record metadata (or NULL)
+ * @param[out] ap_count Pointer to receive total number of discovered APs
+ * @param max_aps Maximum size of ap_records array (pass 0 if ap_records is NULL)
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_wifi_scan(void *ap_records, uint16_t *ap_count, uint16_t max_aps);
+
+/**
  * @brief Invalidate and Clear the RTC Fast Reconnect Session Cache
  */
 void bsp_wifi_invalidate_fast_cache(void);

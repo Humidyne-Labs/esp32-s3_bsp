@@ -17,6 +17,8 @@
 static const char *TAG = "bsp_rtc_mem";
 
 RTC_DATA_ATTR static bsp_rtc_state_t s_rtc_state;
+RTC_DATA_ATTR static uint8_t         s_rtc_frame_buffer[5000];
+RTC_DATA_ATTR static bool            s_rtc_frame_valid = false;
 
 esp_err_t bsp_rtc_mem_init(void)
 {
@@ -70,6 +72,30 @@ esp_err_t bsp_rtc_mem_write_scratchpad(const uint8_t *src, size_t len)
     return ESP_OK;
 }
 
+esp_err_t bsp_rtc_mem_save_display_frame(const uint8_t *frame, size_t len)
+{
+    if (frame == NULL || len == 0 || len > sizeof(s_rtc_frame_buffer)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    memcpy(s_rtc_frame_buffer, frame, len);
+    s_rtc_frame_valid = true;
+    return ESP_OK;
+}
+
+esp_err_t bsp_rtc_mem_load_display_frame(uint8_t *dest, size_t len)
+{
+    if (dest == NULL || len == 0 || len > sizeof(s_rtc_frame_buffer) || !s_rtc_frame_valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    memcpy(dest, s_rtc_frame_buffer, len);
+    return ESP_OK;
+}
+
+bool bsp_rtc_mem_has_display_frame(void)
+{
+    return s_rtc_frame_valid;
+}
+
 void bsp_rtc_mem_reset(void)
 {
     memset(&s_rtc_state, 0, sizeof(bsp_rtc_state_t));
@@ -77,4 +103,5 @@ void bsp_rtc_mem_reset(void)
     s_rtc_state.boot_count     = 1;
     s_rtc_state.last_init_mode = (uint8_t)BSP_INIT_MODE_FULL;
     s_rtc_state.next_init_mode = (uint8_t)BSP_INIT_MODE_FULL;
+    s_rtc_frame_valid          = false;
 }

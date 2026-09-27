@@ -1,0 +1,421 @@
+--- WARNING: GDB cannot open serial ports accessed as COMx
+--- NOTE: Using \\.\COM3 instead...
+--- esp-idf-monitor 1.10.0 on \\.\COM3 115200
+--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x28 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037edca
+--- 0x4037edca: esp_cpu_wait_for_intr at C:/esp/v6.1/esp-idf/components/esp_hw_support/cpu.c:64
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x1664
+load:0x403c8700,len:0xf7c
+load:0x403cb700,len:0x31ec
+entry 0x403c892c
+I (24) boot: ESP-IDF v6.1 2nd stage bootloader
+I (24) boot: compile time Sep 26 2026 19:57:36
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (31) qio_mode: Enabling default flash chip QIO
+I (35) boot.esp32s3: Boot SPI Speed : 80MHz
+I (39) boot.esp32s3: SPI Mode       : QIO
+I (43) boot.esp32s3: SPI Flash Size : 8MB
+I (47) boot: Enabling RNG early entropy source...
+I (51) boot: Partition Table:
+I (54) boot: ## Label            Usage          Type ST Offset   Length
+I (60) boot:  0 nvs              WiFi data        01 02 00009000 00014000
+I (67) boot:  1 otadata          OTA data         01 00 0001d000 00002000
+I (73) boot:  2 phy_init         RF data          01 01 0001f000 00001000
+I (80) boot:  3 ota_0            OTA app          00 10 00020000 00300000
+I (86) boot:  4 ota_1            OTA app          00 11 00320000 00300000
+I (93) boot:  5 storage          Unknown data     01 82 00620000 001e0000
+I (99) boot: End of partition table
+I (103) esp_image: segment 0: paddr=00020020 vaddr=3c100020 size=30cd4h (199892) map
+I (141) esp_image: segment 1: paddr=00050cfc vaddr=3fc9d100 size=05b7ch ( 23420) load
+I (146) esp_image: segment 2: paddr=00056880 vaddr=40374000 size=09798h ( 38808) load
+I (154) esp_image: segment 3: paddr=00060020 vaddr=42000020 size=fdecch (1040076) map
+I (315) esp_image: segment 4: paddr=0015def4 vaddr=4037d798 size=0f90ch ( 63756) load
+I (328) esp_image: segment 5: paddr=0016d808 vaddr=50000000 size=01418h (  5144) load
+I (330) esp_image: segment 6: paddr=0016ec28 vaddr=600fe000 size=0006ch (   108) load
+I (344) boot: Loaded app from partition at offset 0x20000
+I (344) boot: Disabling RNG early entropy source...
+I (354) octal_psram: vendor id    : 0x0d (AP)
+I (354) octal_psram: dev id       : 0x02 (generation 3)
+I (355) octal_psram: density      : 0x03 (64 Mbit)
+I (357) octal_psram: good-die     : 0x01 (Pass)
+I (361) octal_psram: Latency      : 0x01 (Fixed)
+I (365) octal_psram: VCC          : 0x01 (3V)
+I (369) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (374) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (379) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (384) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (389) octal_psram: DriveStrength: 0x00 (1/1)
+I (393) MSPI Timing: Enter psram timing tuning
+I (398) esp_psram: Found 8MB PSRAM device
+I (401) esp_psram: Speed: 80MHz
+I (404) cpu_start: Multicore app
+I (833) esp_psram: SPI SRAM memory test OK
+I (841) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (842) cpu_start: Pro cpu start user code
+I (842) cpu_start: cpu freq: 240000000 Hz
+I (843) app_init: Application information:
+I (847) app_init: Project name:     peripherals_test_suite
+I (852) app_init: App version:      2ec4150
+I (856) app_init: Compile time:     Sep 26 2026 23:44:04
+I (861) app_init: ELF file SHA256:  a00b8b9ec...
+I (866) app_init: ESP-IDF:          v6.1
+I (869) efuse_init: Min chip rev:     v0.0
+I (873) efuse_init: Max chip rev:     v0.99 
+I (877) efuse_init: Chip rev:         v0.2
+I (881) heap_init: Initializing. RAM available for dynamic allocation:
+I (887) heap_init: At 3FCB7490 len 00032280 (200 KiB): RAM
+I (892) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (898) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (903) heap_init: At 600FE06C len 00001F7C (7 KiB): RTCRAM
+I (908) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (915) spi_flash: detected chip: gd
+I (918) spi_flash: flash io: qio
+I (922) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (927) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (942) main_task: Started on CPU0
+I (945) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (953) main_task: Calling app_main()
+I (956) test_suite: ==================================================
+I (962) test_suite:   ESP32-S3 ePaper BSP Staged Verification Suite    
+I (969) test_suite: ==================================================
+I (975) bsp_rtc_mem: RTC Slow Memory uninitialized or invalid (magic 0x00000000); re-initializing
+I (983) test_suite: [BOOT INFO] Reset Reason: 11, Wake Cause: 0, Recommended Mode: 0, Boot Count: 1, Silicon: v0.2
+I (994) test_suite: >>> [COLD BOOT] Clearing NVS Partition & Initializing Subsystems (FULL Mode) <<<
+I (1548) bsp_rtc_mem: RTC Slow Memory valid (Boot count: 2, Deep sleep count: 0)
+I (1549) bsp_rtc_mem: RTC Slow Memory valid (Boot count: 3, Deep sleep count: 0)
+I (1552) bsp_common: Executing Dynamic Init Profile: FULL (Cold Boot)
+I (1558) bsp_common: Initializing ESP32-S3 ePaper BSP Subsystems (v0.1.0)...
+I (1640) bsp_common: All board IO pins configured and latched to safe defaults
+I (1640) bsp_power: Initializing Battery ADC Monitor (GPIO 4 / ADC1_CH3)
+I (1642) bsp_power: ADC Calibration curve successfully registered
+I (1648) bsp_button: Buttons initialized (BOOT GPIO0, POWER GPIO18)
+I (1654) bsp_nvs: Initializing NVS Flash Subsystem
+I (1673) bsp_i2c: Shared I2C master bus initialized (SDA: 47, SCL: 48 @ 400kHz)
+I (1676) bsp_rtc: PCF85063A RTC initialized (12.5pF crystal, 24h mode, INT pin GPIO 5)
+I (1678) bsp_time: Synchronized ESP32 system clock from PCF85063A RTC: 2026-09-27 01:46:02
+I (1685) bsp_sensors: Initializing SHTC3 Environmental Sensor on I2C 0x70
+I (1693) bsp_sensors: SHTC3 Sensor detected successfully (ID: 0x0887)
+I (1755) ES8311: Work in Slave mode
+I (1758) I2S_IF: No paired data, current mode: playback
+I (1758) I2S_IF: STD: TX, data_bit: 16, slot_bit: 16, ws_width: 16, slot_mode: MONO, slot_mask: 0x1
+I (1761) I2S_IF: STD: TX, sample_rate_hz: 16000, mclk_multiple: 256, clk_src: 6
+I (1784) Adev_Codec: Open codec device OK
+I (1785) bsp_audio: ES8311 mono audio subsystem initialized successfully (muted)
+I (1857) bsp_display: SSD1681 1.54-inch EPD initialized successfully
+I (1861) bsp_lvgl: LVGL v9 port initialized in 1-bit monochrome mode
+I (1861) bsp_lvgl: LVGL background task started (Priority 5, Core 1)
+I (1861) bsp_lvgl: LVGL port task active
+I (1864) bsp_common: Device Hardware Unique ID: ESP32S3-6ED30FE8
+I (1874) bsp_common: ESP32-S3 ePaper Board initialized successfully
+I (1880) test_suite: [PASS 1/15] Board Subsystems Initialized Successfully
+I (1886) test_suite: [INFO] Device ID: ESP32S3-6ED30FE8, Name: HumidOS-0FE8, Silicon Revision: v0.2 (v0.2)
+I (1898) bsp_common: ==================================================
+I (1902) bsp_common:   ESP32-S3 ePaper BSP System Diagnostics
+I (1907) bsp_common: ==================================================
+I (1914) bsp_common:   BSP Version:          0.1.0
+I (1918) bsp_common:   Silicon Chip:         ESP32-S3 (v0.2, 2 Cores)
+I (1924) bsp_common:   Uptime:               0 s
+I (1929) bsp_common:   Internal Heap Free:   218955 B (Min Free: 186924 B)
+I (1935) bsp_common:   PSRAM Free:           8384260 B
+I (1940) bsp_common:   Battery:              4140 mV (93%)
+I (1945) bsp_common:   Power Rail Hold:      ACTIVE (HIGH)
+I (1951) bsp_common:   I2C Sensor Bus:       HEALTHY
+I (1955) bsp_common:   Display Framebuffer:  INITIALIZED
+I (1960) bsp_common:   Wi-Fi Station:        DISCONNECTED (RSSI: 0 dBm)
+I (1967) bsp_common: ==================================================
+I (1973) test_suite: [PASS 2/15] System Identification & Diagnostics API Verified
+I (1982) test_suite: [PASS 3/15] Battery Voltage: 4140 mV (93%)
+I (2002) test_suite: [PASS 4/15] SHTC3 Sensor: Temp = 30.78 C (87.41 F), Humidity = 38.18 %RH
+I (2003) test_suite: [PASS 5/15] PCF85063A RTC: 2026-09-27 01:46:02 (DOW: 0)
+I (2007) bsp_time: Synchronized ESP32 system clock from PCF85063A RTC: 2026-09-27 01:46:02
+I (2015) test_suite: [PASS 5/15] PCF85063A 8-Bit NVRAM Read/Write Verified (0xAB)
+I (2022) test_suite: [PASS 6/15] RTC Slow Memory Valid: Boot Count=3, Deep Sleeps=0, Light Sleeps=0
+I (2030) test_suite: [PASS 6/15] RTC Scratchpad Persistence Verified: 'HumidOS_SelfTest_OK'
+I (2038) test_suite: [PASS 7/15] Hardware Buttons (BOOT & POWER) Event Handlers Active
+I (2046) test_suite: Playing 4-stage Audio Chirp Verification (0%, 25%, 50%, 100% volume)...
+I (2054) test_suite:   Chirp 1/4: 523 Hz (C5) @ 0% Volume (Muted)
+I (2711) test_suite:   Chirp 2/4: 659 Hz (E5) @ 25% Volume
+I (3303) test_suite:   Chirp 3/4: 784 Hz (G5) @ 50% Volume
+I (3888) test_suite:   Chirp 4/4: 1046 Hz (C6) @ 100% Volume
+I (4548) test_suite: [PASS 8/15] Audio Codec & 4-Stage Chirp Sequence Verified (0%, 25%, 50%, 100%)
+I (4549) bsp_time: System timezone set to: EST5EDT,M3.2.0,M11.1.0
+I (4553) test_suite: [PASS 9/15] Time Formats: 24h=[21:46:04, 21:46], 12h=[09:46:04 PM, 09:46 PM]
+I (4561) test_suite: [PASS 9/15] Date Formats: Date=[09/26/26], DOW=[Saturday], Full=[09/26/26 Saturday]
+I (4570) test_suite: [PASS 10/15] ThingsBoard Telemetry Struct Schema (4 Generic Entries Formatted)
+I (4579) test_suite: [PASS 11/15] Unambiguous Keys Generated: 8-char PoP='zLusdTDz', 6-char Claim='BXpBiN'
+I (4590) test_suite: [PASS 12/15] NVS Key-Value Persistence Verified (u32=42, str='HumidOS_NVS_OK')
+I (4598) SD_HOST: src_freq_hz: 160000000
+E (4628) sdmmc_common: sdmmc_init_ocr: send_op_cond (1) returned 0x107
+E (4629) vfs_fat_sdmmc: sdmmc_card_init failed (0x107).
+E (4629) vfs_fat_sdmmc: esp_vfs_fat_sdmmc_sdcard_init failed (0x107).
+I (4635) bsp_sdcard: No SD card detected in slot
+W (4639) test_suite: [SKIP 13/15] MicroSD Slot Empty / Not Inserted (Status: ESP_ERR_NOT_FOUND)
+I (4648) bsp_wifi: Initializing Wi-Fi Subsystem (Station Mode)
+I (4654) pp: pp rom version: e7ae62f
+I (4657) net80211: net80211 rom version: e7ae62f
+I (4663) wifi:wifi driver task: 3fcca1b0, prio:23, stack:6656, core=0
+I (4670) wifi:wifi firmware version: e12a754
+I (4671) wifi:wifi certification version: v7.0
+I (4675) wifi:config NVS flash: enabled
+I (4679) wifi:config nano formatting: disabled
+I (4683) wifi:Init data frame dynamic rx buffer num: 32
+I (4688) wifi:Init static rx mgmt buffer num: 5
+I (4692) wifi:Init management short buffer num: 32
+I (4697) wifi:Init dynamic tx buffer num: 32
+I (4701) wifi:Init static tx FG buffer num: 2
+I (4705) wifi:Init static rx buffer size: 1600
+I (4709) wifi:Init static rx buffer num: 10
+I (4713) wifi:Init dynamic rx buffer num: 32
+I (4717) wifi_init: rx ba win: 6
+I (4720) wifi_init: accept mbox: 6
+I (4723) wifi_init: tcpip mbox: 32
+I (4726) wifi_init: udp mbox: 6
+I (4729) wifi_init: tcp mbox: 6
+I (4732) wifi_init: tcp tx win: 5760
+I (4735) wifi_init: tcp rx win: 5760
+I (4738) wifi_init: tcp mss: 1440
+I (4741) wifi_init: WiFi IRAM OP enabled
+I (4745) wifi_init: WiFi RX IRAM OP enabled
+I (4750) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+W (4755) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (4795) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (4804) wifi:mode : sta (ac:27:6e:d3:0f:e8)
+I (4804) wifi:enable tsf
+I (4805) test_suite: Starting passive Wi-Fi scan...
+I (7806) bsp_wifi: Wi-Fi scan completed. Discovered 7 APs
+I (7806) test_suite: [PASS 14/15] Wi-Fi Subsystem Operational. Found 7 Access Points in scan
+I (7808) test_suite: Rendering Fullscreen 180x180 px BLE Provisioning QR Code...
+I (7860) bsp_prov: Rendered QR code (180x180 px) with payload: {"ver":"v1","name":"PROV_ESP32S3-6ED30FE8","pop":"HumidOS-1.0.0-OK","transport":"ble"}
+I (7862) test_suite: [PASS 15/15] Fullscreen QR Code rendered. Pausing 3.5 seconds for display...
+I (11376) test_suite: [PASS 15/15] E-Paper Display & LVGL Rendering Operational
+I (11376) test_suite: ==================================================
+I (11379) test_suite:   STATIC TESTS COMPLETE -> WAITING FOR BOOT CLICK 
+I (11385) test_suite:   Press BOOT (GPIO0) to execute LS-1              
+I (11392) test_suite: ==================================================
+I (11398) main_task: Returned from app_main()
+I (18198) test_suite: >>> Button Event: [BOOT] -> CLICK (Current Stage: 1) <<<
+I (18198) test_suite: ==================================================
+I (18200) test_suite:   [STAGE 1/4] Executing LS-1: Internal Timer (3s)  
+I (18207) test_suite: ==================================================
+I (18720) wifi:flush txq
+I (18720) wifi:stop sw txq
+I (18721) wifi:lmac stop hw txq
+I (18832) bsp_power: Entering Light Sleep for 3 seconds...
+--- ERROR: ClearCommError failed (PermissionError(13, 'The device does not recognize the command.', None, 22))
+--- Waiting for the device to reconnect..............................................................................................................................................................................
+I (838) esp_psram: SPI SRAM memory test OK
+I (847) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (847) cpu_start: Pro cpu start user code
+I (847) cpu_start: cpu freq: 240000000 Hz
+I (849) app_init: Application information:
+I (853) app_init: Project name:     peripherals_test_suite
+I (858) app_init: App version:      2ec4150
+I (862) app_init: Compile time:     Sep 26 2026 23:44:04
+I (867) app_init: ELF file SHA256:  a00b8b9ec...
+I (871) app_init: ESP-IDF:          v6.1
+I (875) efuse_init: Min chip rev:     v0.0
+I (879) efuse_init: Max chip rev:     v0.99 
+I (883) efuse_init: Chip rev:         v0.2
+I (887) heap_init: Initializing. RAM available for dynamic allocation:
+I (893) heap_init: At 3FCB7490 len 00032280 (200 KiB): RAM
+I (898) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (903) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (908) heap_init: At 600FE06C len 00001F7C (7 KiB): RTCRAM
+I (914) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (921) spi_flash: detected chip: gd
+I (923) spi_flash: flash io: qio
+I (927) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (933) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (948) main_task: Started on CPU0
+I (951) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (959) main_task: Calling app_main()
+I (962) test_suite: ==================================================
+I (968) test_suite:   ESP32-S3 ePaper BSP Staged Verification Suite    
+I (975) test_suite: ==================================================
+I (981) bsp_rtc_mem: RTC Slow Memory valid (Boot count: 11, Deep sleep count: 4)
+I (988) test_suite: [BOOT INFO] Reset Reason: 8, Wake Cause: 4, Recommended Mode: 1, Boot Count: 11, Silicon: v0.2
+I (998) test_suite: >>> [WAKE 1/2] Processing DS-1 (Internal Timer -> FAST Mode) <<<
+I (1006) bsp_rtc_mem: RTC Slow Memory valid (Boot count: 12, Deep sleep count: 4)
+I (1013) bsp_common: Executing Dynamic Init Profile: FAST (Wake Boot)
+I (1019) bsp_common: Initializing ESP32-S3 ePaper BSP Subsystems (v0.1.0)...
+I (1101) bsp_common: All board IO pins configured and latched to safe defaults
+I (1101) bsp_power: Initializing Battery ADC Monitor (GPIO 4 / ADC1_CH3)
+I (1103) bsp_power: ADC Calibration curve successfully registered
+I (1109) bsp_button: Buttons initialized (BOOT GPIO0, POWER GPIO18)
+I (1115) bsp_nvs: Initializing NVS Flash Subsystem
+I (1153) bsp_i2c: Shared I2C master bus initialized (SDA: 47, SCL: 48 @ 400kHz)
+I (1156) bsp_rtc: PCF85063A RTC initialized (12.5pF crystal, 24h mode, INT pin GPIO 5)
+I (1158) bsp_time: Synchronized ESP32 system clock from PCF85063A RTC: 2026-09-27 01:48:03
+I (1165) bsp_sensors: Initializing SHTC3 Environmental Sensor on I2C 0x70
+I (1173) bsp_sensors: SHTC3 Sensor detected successfully (ID: 0x0887)
+I (1179) bsp_display: Restored previous EPD frame from RTC Slow Memory
+I (1254) bsp_display: SSD1681 1.54-inch EPD initialized successfully
+I (1257) bsp_lvgl: Wake cycle detected: LVGL first flush configured for fast partial update
+I (1258) bsp_lvgl: LVGL v9 port initialized in 1-bit monochrome mode
+I (1263) bsp_lvgl: LVGL background task started (Priority 5, Core 1)
+I (1263) bsp_lvgl: LVGL port task active
+I (1269) bsp_common: Device Hardware Unique ID: ESP32S3-6ED30FE8
+I (1279) bsp_common: ESP32-S3 ePaper Board initialized successfully
+I (1302) test_suite: [HEALTH CHECK] I2C Sensor: HEALTHY (T=31.0 C, RH=40.5%), Battery: HEALTHY (4138 mV)
+I (1302) test_suite: [PASS DS-1] Deep Sleep + Internal Timer Wake Verified in FAST Mode!
+I (1878) main_task: Returned from app_main()
+I (4729) test_suite: >>> Button Event: [BOOT] -> CLICK (Current Stage: 5) <<<
+I (4729) test_suite: ==================================================
+I (4731) test_suite:   [STAGE 4/4] Entering DS-2: Ext RTC (4s) -> MIN  
+I (4738) test_suite: ==================================================
+I (5760) bsp_power: Entering Deep Sleep for 4 seconds...
+--- ERROR: ClearCommError failed (PermissionError(13, 'The device does not recognize the command.', None, 22))
+--- Waiting for the device to reconnect.
+I (1083) bsp_common: All board IO pins configured and latched to safe defaults
+I (1098) bsp_i2c: Shared I2C master bus initialized (SDA: 47, SCL: 48 @ 400kHz)
+I (1099) bsp_rtc_mem: RTC Slow Memory valid (Boot count: 14, Deep sleep count: 5)
+I (1102) bsp_common: Executing Dynamic Init Profile: MIN (Lean Telemetry + Display)
+I (1109) bsp_common: Initializing ESP32-S3 ePaper BSP Subsystems (v0.1.0)...
+I (1116) bsp_power: Initializing Battery ADC Monitor (GPIO 4 / ADC1_CH3)
+I (1122) bsp_power: ADC Calibration curve successfully registered
+I (1128) bsp_button: Buttons initialized (BOOT GPIO0, POWER GPIO18)
+I (1134) bsp_nvs: Initializing NVS Flash Subsystem
+I (1159) bsp_rtc: PCF85063A RTC initialized (12.5pF crystal, 24h mode, INT pin GPIO 5)
+I (1160) bsp_time: Synchronized ESP32 system clock from PCF85063A RTC: 2026-09-27 01:48:08
+I (1164) bsp_sensors: Initializing SHTC3 Environmental Sensor on I2C 0x70
+I (1171) bsp_sensors: SHTC3 Sensor detected successfully (ID: 0x0887)
+I (1177) bsp_display: Restored previous EPD frame from RTC Slow Memory
+I (1253) bsp_display: SSD1681 1.54-inch EPD initialized successfully
+I (1256) bsp_lvgl: LVGL v9 port initialized in 1-bit monochrome mode
+I (1257) bsp_lvgl: LVGL background task started (Priority 5, Core 1)
+I (1257) bsp_lvgl: LVGL port task active
+I (1260) bsp_common: Device Hardware Unique ID: ESP32S3-6ED30FE8
+I (1270) bsp_common: ESP32-S3 ePaper Board initialized successfully
+I (1293) test_suite: [HEALTH CHECK] I2C Sensor: HEALTHY (T=31.0 C, RH=40.6%), Battery: HEALTHY (4142 mV)
+I (1293) test_suite: [PASS DS-2] Deep Sleep + External RTC Wake Verified in MIN Mode! (TF=0)
+I (1300) test_suite: ==================================================
+I (1306) test_suite:   ALL STATIC & SLEEP/WAKE TESTS PASSED 100%       
+I (1312) test_suite: ==================================================
+I (7669) test_suite: [Heartbeat 1] System Normal. Silicon: v0.2, Deep Sleeps: 5, Light Sleeps: 5
+I (11128) test_suite: >>> Button Event: [BOOT] -> LONG_PRESS (Current Stage: 7) <<<
+I (11128) test_suite: >>> Triggering Interactive Deep Sleep with Button Wake (Press BOOT to wake)... <<<
+I (11144) bsp_power: Entering Deep Sleep for 0 seconds...
+--- ERROR: ClearCommError failed (PermissionError(13, 'The device does not recognize the command.', None, 22))
+--- Waiting for the device to reconnect.
+I (1000) test_suite: >>> [COLD BOOT] Clearing NVS Partition & Initializing Subsystems (FULL Mode) <<<
+I (1531) bsp_rtc_mem: RTC Slow Memory valid (Boot count: 16, Deep sleep count: 6)
+I (1532) bsp_rtc_mem: RTC Slow Memory valid (Boot count: 17, Deep sleep count: 6)
+I (1535) bsp_common: Executing Dynamic Init Profile: FAST (Wake Boot)
+I (1541) bsp_common: Initializing ESP32-S3 ePaper BSP Subsystems (v0.1.0)...
+I (1623) bsp_common: All board IO pins configured and latched to safe defaults
+I (1623) bsp_power: Initializing Battery ADC Monitor (GPIO 4 / ADC1_CH3)
+I (1625) bsp_power: ADC Calibration curve successfully registered
+I (1631) bsp_button: Buttons initialized (BOOT GPIO0, POWER GPIO18)
+I (1637) bsp_nvs: Initializing NVS Flash Subsystem
+I (1656) bsp_i2c: Shared I2C master bus initialized (SDA: 47, SCL: 48 @ 400kHz)
+I (1659) bsp_rtc: PCF85063A RTC initialized (12.5pF crystal, 24h mode, INT pin GPIO 5)
+I (1661) bsp_time: Synchronized ESP32 system clock from PCF85063A RTC: 2026-09-27 01:48:20
+I (1668) bsp_sensors: Initializing SHTC3 Environmental Sensor on I2C 0x70
+I (1676) bsp_sensors: SHTC3 Sensor detected successfully (ID: 0x0887)
+I (1682) bsp_display: Restored previous EPD frame from RTC Slow Memory
+I (1757) bsp_display: SSD1681 1.54-inch EPD initialized successfully
+I (1760) bsp_lvgl: Wake cycle detected: LVGL first flush configured for fast partial update
+I (1761) bsp_lvgl: LVGL v9 port initialized in 1-bit monochrome mode
+I (1766) bsp_lvgl: LVGL background task started (Priority 5, Core 1)
+I (1766) bsp_lvgl: LVGL port task active
+I (1772) bsp_common: Device Hardware Unique ID: ESP32S3-6ED30FE8
+I (1782) bsp_common: ESP32-S3 ePaper Board initialized successfully
+I (1788) test_suite: [PASS 1/15] Board Subsystems Initialized Successfully
+I (1794) test_suite: [INFO] Device ID: ESP32S3-6ED30FE8, Name: HumidOS-0FE8, Silicon Revision: v0.2 (v0.2)
+I (1806) bsp_common: ==================================================
+I (1810) bsp_common:   ESP32-S3 ePaper BSP System Diagnostics
+I (1815) bsp_common: ==================================================
+I (1822) bsp_common:   BSP Version:          0.1.0
+I (1826) bsp_common:   Silicon Chip:         ESP32-S3 (v0.2, 2 Cores)
+I (1832) bsp_common:   Uptime:               0 s
+I (1837) bsp_common:   Internal Heap Free:   222435 B (Min Free: 190404 B)
+I (1843) bsp_common:   PSRAM Free:           8384848 B
+I (1848) bsp_common:   Battery:              4144 mV (93%)
+I (1853) bsp_common:   Power Rail Hold:      ACTIVE (HIGH)
+I (1859) bsp_common:   I2C Sensor Bus:       HEALTHY
+I (1863) bsp_common:   Display Framebuffer:  INITIALIZED
+I (1868) bsp_common:   Wi-Fi Station:        DISCONNECTED (RSSI: 0 dBm)
+I (1875) bsp_common: ==================================================
+I (1881) test_suite: [PASS 2/15] System Identification & Diagnostics API Verified
+I (1890) test_suite: [PASS 3/15] Battery Voltage: 4140 mV (93%)
+I (1910) test_suite: [PASS 4/15] SHTC3 Sensor: Temp = 31.04 C (87.87 F), Humidity = 40.51 %RH
+I (1911) test_suite: [PASS 5/15] PCF85063A RTC: 2026-09-27 01:48:20 (DOW: 0)
+I (1915) bsp_time: Synchronized ESP32 system clock from PCF85063A RTC: 2026-09-27 01:48:20
+I (1923) test_suite: [PASS 5/15] PCF85063A 8-Bit NVRAM Read/Write Verified (0xAB)
+I (1929) test_suite: [PASS 6/15] RTC Slow Memory Valid: Boot Count=17, Deep Sleeps=6, Light Sleeps=5
+I (1938) test_suite: [PASS 6/15] RTC Scratchpad Persistence Verified: 'HumidOS_SelfTest_OK'
+I (1946) test_suite: [PASS 7/15] Hardware Buttons (BOOT & POWER) Event Handlers Active
+I (2011) ES8311: Work in Slave mode
+I (2014) I2S_IF: No paired data, current mode: playback
+I (2014) I2S_IF: STD: TX, data_bit: 16, slot_bit: 16, ws_width: 16, slot_mode: MONO, slot_mask: 0x1
+I (2017) I2S_IF: STD: TX, sample_rate_hz: 16000, mclk_multiple: 256, clk_src: 6
+I (2040) Adev_Codec: Open codec device OK
+I (2041) bsp_audio: ES8311 mono audio subsystem initialized successfully (muted)
+I (2042) test_suite: Playing 4-stage Audio Chirp Verification (0%, 25%, 50%, 100% volume)...
+I (2048) test_suite:   Chirp 1/4: 523 Hz (C5) @ 0% Volume (Muted)
+I (2705) test_suite:   Chirp 2/4: 659 Hz (E5) @ 25% Volume
+I (3289) test_suite:   Chirp 3/4: 784 Hz (G5) @ 50% Volume
+I (3874) test_suite:   Chirp 4/4: 1046 Hz (C6) @ 100% Volume
+I (4534) test_suite: [PASS 8/15] Audio Codec & 4-Stage Chirp Sequence Verified (0%, 25%, 50%, 100%)
+I (4535) bsp_time: System timezone set to: EST5EDT,M3.2.0,M11.1.0
+I (4539) test_suite: [PASS 9/15] Time Formats: 24h=[21:48:22, 21:48], 12h=[09:48:22 PM, 09:48 PM]
+I (4547) test_suite: [PASS 9/15] Date Formats: Date=[09/26/26], DOW=[Saturday], Full=[09/26/26 Saturday]
+I (4556) test_suite: [PASS 10/15] ThingsBoard Telemetry Struct Schema (4 Generic Entries Formatted)
+I (4565) test_suite: [PASS 11/15] Unambiguous Keys Generated: 8-char PoP='yD7vZHHa', 6-char Claim='SB3qTE'
+I (4577) test_suite: [PASS 12/15] NVS Key-Value Persistence Verified (u32=42, str='HumidOS_NVS_OK')
+I (4584) SD_HOST: src_freq_hz: 160000000
+E (4614) sdmmc_common: sdmmc_init_ocr: send_op_cond (1) returned 0x107
+E (4615) vfs_fat_sdmmc: sdmmc_card_init failed (0x107).
+E (4615) vfs_fat_sdmmc: esp_vfs_fat_sdmmc_sdcard_init failed (0x107).
+I (4621) bsp_sdcard: No SD card detected in slot
+W (4625) test_suite: [SKIP 13/15] MicroSD Slot Empty / Not Inserted (Status: ESP_ERR_NOT_FOUND)
+I (4634) bsp_wifi: Initializing Wi-Fi Subsystem (Station Mode)
+I (4640) pp: pp rom version: e7ae62f
+I (4643) net80211: net80211 rom version: e7ae62f
+I (4649) wifi:wifi driver task: 3fcca2c0, prio:23, stack:6656, core=0
+I (4656) wifi:wifi firmware version: e12a754
+I (4657) wifi:wifi certification version: v7.0
+I (4661) wifi:config NVS flash: enabled
+I (4665) wifi:config nano formatting: disabled
+I (4669) wifi:Init data frame dynamic rx buffer num: 32
+I (4674) wifi:Init static rx mgmt buffer num: 5
+I (4678) wifi:Init management short buffer num: 32
+I (4683) wifi:Init dynamic tx buffer num: 32
+I (4687) wifi:Init static tx FG buffer num: 2
+I (4691) wifi:Init static rx buffer size: 1600
+I (4695) wifi:Init static rx buffer num: 10
+I (4699) wifi:Init dynamic rx buffer num: 32
+I (4703) wifi_init: rx ba win: 6
+I (4706) wifi_init: accept mbox: 6
+I (4709) wifi_init: tcpip mbox: 32
+I (4712) wifi_init: udp mbox: 6
+I (4715) wifi_init: tcp mbox: 6
+I (4718) wifi_init: tcp tx win: 5760
+I (4721) wifi_init: tcp rx win: 5760
+I (4724) wifi_init: tcp mss: 1440
+I (4727) wifi_init: WiFi IRAM OP enabled
+I (4731) wifi_init: WiFi RX IRAM OP enabled
+I (4736) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+W (4741) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (4801) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (4811) wifi:mode : sta (ac:27:6e:d3:0f:e8)
+I (4811) wifi:enable tsf
+I (4812) test_suite: Starting passive Wi-Fi scan...
+I (7613) bsp_wifi: Wi-Fi scan completed. Discovered 5 APs
+I (7613) test_suite: [PASS 14/15] Wi-Fi Subsystem Operational. Found 5 Access Points in scan
+I (7615) test_suite: Rendering Fullscreen 180x180 px BLE Provisioning QR Code...
+I (7667) bsp_prov: Rendered QR code (180x180 px) with payload: {"ver":"v1","name":"PROV_ESP32S3-6ED30FE8","pop":"HumidOS-1.0.0-OK","transport":"ble"}
+I (7669) test_suite: [PASS 15/15] Fullscreen QR Code rendered. Pausing 3.5 seconds for display...
+I (11183) test_suite: [PASS 15/15] E-Paper Display & LVGL Rendering Operational
+I (11184) test_suite: ==================================================
+I (11186) test_suite:   STATIC TESTS COMPLETE -> WAITING FOR BOOT CLICK 
+I (11192) test_suite:   Press BOOT (GPIO0) to execute LS-1              
+I (11199) test_suite: ==================================================
+I (11205) main_task: Returned from app_main()

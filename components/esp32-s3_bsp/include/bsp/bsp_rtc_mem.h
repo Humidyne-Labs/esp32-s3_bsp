@@ -117,6 +117,31 @@ esp_err_t bsp_rtc_mem_read_scratchpad(uint8_t *dest, size_t len);
 esp_err_t bsp_rtc_mem_write_scratchpad(const uint8_t *src, size_t len);
 
 /**
+ * @brief Save 200x200 1-bit EPD frame buffer to RTC Slow Memory for partial refresh persistence
+ * 
+ * @param frame Pointer to 5000-byte frame buffer
+ * @param len Size of buffer in bytes
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_rtc_mem_save_display_frame(const uint8_t *frame, size_t len);
+
+/**
+ * @brief Load 200x200 1-bit EPD frame buffer from RTC Slow Memory
+ * 
+ * @param dest Destination buffer (5000 bytes)
+ * @param len Size of buffer in bytes
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_rtc_mem_load_display_frame(uint8_t *dest, size_t len);
+
+/**
+ * @brief Check if a valid display frame is stored in RTC Slow Memory
+ * 
+ * @return true if valid frame exists
+ */
+bool bsp_rtc_mem_has_display_frame(void);
+
+/**
  * @brief Reset RTC memory structure to defaults
  */
 void bsp_rtc_mem_reset(void);

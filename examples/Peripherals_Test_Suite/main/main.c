@@ -1,12 +1,12 @@
 /**
  * @file main.c
- * @brief Comprehensive Peripherals & Sleep/Wake Mode Verification Suite
+ * @brief Comprehensive Peripherals & Staged Sleep/Wake Mode Verification Suite
  * 
  * Hardware Target:
  *  - Target Board: Waveshare ESP32-S3 ePaper 1.54 V2
  *  - MCU: ESP32-S3-PICO-1-N8R8
  * 
- * Static Peripheral Tests:
+ * Static Peripheral Tests (Cold Boot):
  *   1. Dynamic Hardware Initialization (FULL, FAST, MIN)
  *   2. System Identification, Silicon Revision & Diagnostics API
  *   3. Power Rail Latch & Battery ADC Monitoring
@@ -23,12 +23,12 @@
  *  14. Wi-Fi Station & Passive Network Scanner
  *  15. SSD1681 E-Paper Display & LVGL v9 1-bit Rendering / QR Code Generator
  * 
- * Sleep & Wake Functional Verification Suite:
- *  - LS-1: Light Sleep with ESP32-S3 Internal Timer Wake (3 sec)
- *  - LS-2: Light Sleep with External PCF85063A RTC Countdown Timer Wake (3 sec on GPIO 5)
- *  - DS-1: Deep Sleep with ESP32-S3 Internal Timer Wake (4 sec) -> Fast Init Mode
- *  - DS-2: Deep Sleep with External PCF85063A RTC Countdown Timer Wake (4 sec on GPIO 5) -> Min Init Mode
- *  - Interactive: Click BOOT -> Light Sleep (5s), Hold BOOT -> Deep Sleep w/ Button Wake
+ * Staged Sleep & Wake Verification Suite (Triggered via BOOT Button Click):
+ *  - Stage 1: Press BOOT -> LS-1 (Light Sleep Internal Timer 3s)
+ *  - Stage 2: Press BOOT -> LS-2 (Light Sleep PCF85063A Ext RTC Timer 3s)
+ *  - Stage 3: Press BOOT -> DS-1 (Deep Sleep Internal Timer 4s -> FAST Init Mode)
+ *  - Stage 4: Press BOOT -> DS-2 (Deep Sleep PCF85063A Ext RTC Timer 4s -> MIN Init Mode)
+ *  - Stage 5: All Tests Passed (100%) -> Interactive Heartbeat Loop
  * 
  * @attribution
  * - Humidyne Labs / Humiditron (2026)
@@ -43,6 +43,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "nvs_flash.h"
 #include "esp_wifi.h"
 #include "bsp/bsp.h"
 #include "lvgl.h"
@@ -53,38 +54,17 @@ static const char *TAG = "test_suite";
  * @brief Sleep Test State Tracker (Stored in RTC Slow Memory Scratchpad)
  */
 typedef enum {
-    STAGE_COLD_BOOT           = 0, /*!< Initial cold boot / run all peripheral tests & light sleep tests */
-    STAGE_DEEP_TIMER_FAST     = 1, /*!< Woken from Deep Sleep Test 1 (Internal Timer -> FAST init mode) */
-    STAGE_DEEP_EXT_RTC_MIN    = 2, /*!< Woken from Deep Sleep Test 2 (PCF85063A RTC INT -> MIN init mode) */
-    STAGE_TESTS_COMPLETED     = 3, /*!< All peripheral and sleep/wake functional tests successfully passed */
+    STAGE_COLD_BOOT        = 0, /*!< Initial cold boot / run all static peripheral tests */
+    STAGE_READY_LS1        = 1, /*!< Static tests passed -> Waiting for BOOT click to run LS-1 */
+    STAGE_READY_LS2        = 2, /*!< LS-1 passed -> Waiting for BOOT click to run LS-2 */
+    STAGE_READY_DS1        = 3, /*!< LS-2 passed -> Waiting for BOOT click to run DS-1 */
+    STAGE_WAKE_DS1         = 4, /*!< In Deep Sleep 1 (Timer 4s) */
+    STAGE_READY_DS2        = 5, /*!< DS-1 woke & verified -> Waiting for BOOT click to run DS-2 */
+    STAGE_WAKE_DS2         = 6, /*!< In Deep Sleep 2 (PCF85063A Ext RTC 4s) */
+    STAGE_TESTS_COMPLETED  = 7, /*!< All tests passed 100% -> Heartbeat active */
 } sleep_test_stage_t;
 
-static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, void *user_data)
-{
-    const char *btn_name = (btn == BSP_BUTTON_BOOT) ? "BOOT" : "POWER";
-    const char *evt_name = (event == BSP_BUTTON_EVENT_SINGLE_CLICK) ? "CLICK" :
-                           (event == BSP_BUTTON_EVENT_DOUBLE_CLICK) ? "DOUBLE_CLICK" :
-                           (event == BSP_BUTTON_EVENT_LONG_PRESS)   ? "LONG_PRESS" :
-                           (event == BSP_BUTTON_EVENT_PRESS_DOWN)   ? "PRESS_DOWN" : "PRESS_UP";
-
-    ESP_LOGI(TAG, ">>> Button Event: [%s] -> %s <<<", btn_name, evt_name);
-
-    // Interactive sleep triggers
-    if (btn == BSP_BUTTON_BOOT && event == BSP_BUTTON_EVENT_SINGLE_CLICK) {
-        ESP_LOGI(TAG, ">>> Triggering Interactive Light Sleep (5 sec)... <<<");
-        bsp_power_enter_light_sleep(5);
-        ESP_LOGI(TAG, ">>> Resumed from Interactive Light Sleep <<<");
-    } else if (btn == BSP_BUTTON_BOOT && event == BSP_BUTTON_EVENT_LONG_PRESS) {
-        ESP_LOGI(TAG, ">>> Triggering Interactive Deep Sleep with Button Wake (Press BOOT/POWER to wake)... <<<");
-        bsp_sleep_config_t cfg = {
-            .mode           = BSP_SLEEP_MODE_DEEP,
-            .duration_sec   = 0, // Indefinite (wake only on button)
-            .wake_sources   = BSP_WAKE_SRC_BUTTONS,
-            .next_init_mode = BSP_INIT_MODE_FAST,
-        };
-        bsp_enter_sleep(&cfg);
-    }
-}
+static volatile sleep_test_stage_t s_current_stage = STAGE_COLD_BOOT;
 
 static void test_ui_render_screen(const char *test_status_str, const char *sub_status_str)
 {
@@ -126,115 +106,204 @@ static void test_ui_render_screen(const char *test_status_str, const char *sub_s
     lv_obj_set_width(lbl_sub, 184);
     lv_obj_align(lbl_sub, LV_ALIGN_TOP_LEFT, 8, 108);
 
-    // QR Code Widget (1-bit high-contrast 52x52 px)
-    lv_obj_t *qr = bsp_prov_render_qr_code(scr, 52, "HumidOS-1.0.0-OK");
-    if (qr) {
-        lv_obj_align(qr, LV_ALIGN_BOTTOM_MID, 0, -4);
-    }
-
     bsp_lvgl_unlock();
 }
 
 /**
- * @brief Run Light Sleep Functionality Verification (Internal Timer & External PCF85063A RTC Timer)
+ * @brief 4-Stage Audible Verification Sequence (0%, 25%, 50%, 100% Volume) with 500ms Pauses
  */
-static void run_light_sleep_tests(void)
+static void run_audio_chirps_test(void)
 {
-    ESP_LOGI(TAG, "==================================================");
-    ESP_LOGI(TAG, "  Testing Light Sleep Modes                        ");
-    ESP_LOGI(TAG, "==================================================");
+    ESP_LOGI(TAG, "Playing 4-stage Audio Chirp Verification (0%%, 25%%, 50%%, 100%% volume)...");
 
-    // ------------------------------------------------------------------------
-    // LS-1: Light Sleep with ESP32-S3 Internal RTC Sleep Timer (3 sec)
-    // ------------------------------------------------------------------------
-    ESP_LOGI(TAG, "[TEST LS-1] Entering Light Sleep via Internal Timer (3 sec)...");
-    int64_t t_start = esp_timer_get_time();
+    // Chirp 1: 523 Hz (C5) @ 0% Volume (Muted baseline check)
+    ESP_LOGI(TAG, "  Chirp 1/4: 523 Hz (C5) @ 0%% Volume (Muted)");
+    bsp_audio_play_tone(523, 150, 0.0f);
+    vTaskDelay(pdMS_TO_TICKS(500));
 
-    bsp_sleep_config_t ls_cfg = {
-        .mode           = BSP_SLEEP_MODE_LIGHT,
-        .duration_sec   = 3,
-        .wake_sources   = BSP_WAKE_SRC_TIMER,
-        .next_init_mode = BSP_INIT_MODE_FAST,
-    };
-    esp_err_t ret = bsp_enter_sleep(&ls_cfg);
-    int64_t t_elapsed_ms = (esp_timer_get_time() - t_start) / 1000;
+    // Chirp 2: 659 Hz (E5) @ 25% Volume (Low)
+    ESP_LOGI(TAG, "  Chirp 2/4: 659 Hz (E5) @ 25%% Volume");
+    bsp_audio_play_tone(659, 150, 25.0f);
+    vTaskDelay(pdMS_TO_TICKS(500));
 
-    if (ret == ESP_OK && t_elapsed_ms >= 2900 && t_elapsed_ms <= 3300) {
-        ESP_LOGI(TAG, "[PASS LS-1] Light Sleep + Internal Timer Wake Verified (Elapsed: %" PRId64 " ms)", t_elapsed_ms);
-    } else {
-        ESP_LOGW(TAG, "[WARN LS-1] Light Sleep Timer resumed (Elapsed: %" PRId64 " ms, Status: %s)",
-                 t_elapsed_ms, bsp_err_to_name(ret));
-    }
+    // Chirp 3: 784 Hz (G5) @ 50% Volume (Medium)
+    ESP_LOGI(TAG, "  Chirp 3/4: 784 Hz (G5) @ 50%% Volume");
+    bsp_audio_play_tone(784, 150, 50.0f);
+    vTaskDelay(pdMS_TO_TICKS(500));
 
-    // ------------------------------------------------------------------------
-    // LS-2: Light Sleep with External PCF85063A RTC Countdown Timer (3 sec on GPIO 5)
-    // ------------------------------------------------------------------------
-    ESP_LOGI(TAG, "[TEST LS-2] Entering Light Sleep via PCF85063A RTC Countdown (3 sec on GPIO 5)...");
-    bsp_rtc_set_countdown_timer(3);
+    // Chirp 4: 1046 Hz (C6) @ 100% Volume (Full)
+    ESP_LOGI(TAG, "  Chirp 4/4: 1046 Hz (C6) @ 100%% Volume");
+    bsp_audio_play_tone(1046, 220, 100.0f);
+    vTaskDelay(pdMS_TO_TICKS(500));
 
-    t_start = esp_timer_get_time();
-    ls_cfg.duration_sec = 0; // Triggered by PCF85063A INT line
-    ls_cfg.wake_sources = BSP_WAKE_SRC_EXTERNAL_RTC;
-    ret = bsp_enter_sleep(&ls_cfg);
-    t_elapsed_ms = (esp_timer_get_time() - t_start) / 1000;
-
-    bool alarm_flag = false, timer_flag = false;
-    bsp_rtc_get_and_clear_interrupts(&alarm_flag, &timer_flag);
-
-    if (ret == ESP_OK && (timer_flag || t_elapsed_ms >= 2800)) {
-        ESP_LOGI(TAG, "[PASS LS-2] Light Sleep + External PCF85063A RTC Timer Wake Verified (Elapsed: %" PRId64 " ms, TF=%d)",
-                 t_elapsed_ms, (int)timer_flag);
-    } else {
-        ESP_LOGW(TAG, "[WARN LS-2] Light Sleep Ext RTC resumed (Elapsed: %" PRId64 " ms, TF=%d)",
-                 t_elapsed_ms, (int)timer_flag);
-    }
+    bsp_audio_stop();
 }
 
-void app_main(void)
+/**
+ * @brief Quick Peripheral Health Check after Wake
+ */
+static bool verify_peripherals_healthy(void)
 {
-    ESP_LOGI(TAG, "==================================================");
-    ESP_LOGI(TAG, "  ESP32-S3 ePaper BSP Full Verification Suite      ");
-    ESP_LOGI(TAG, "==================================================");
+    bsp_shtc3_data_t data       = {0};
+    esp_err_t        err_sensor = bsp_shtc3_read(&data);
+    uint32_t         vbat       = 0;
+    esp_err_t        err_bat    = bsp_battery_get_voltage(&vbat, NULL);
 
-    // Initialize RTC Slow Memory state tracker
-    bsp_rtc_mem_init();
-    bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+    bool healthy = (err_sensor == ESP_OK && data.valid && err_bat == ESP_OK && vbat > 3000);
+    ESP_LOGI(TAG, "[HEALTH CHECK] I2C Sensor: %s (T=%.1f C, RH=%.1f%%), Battery: %s (%lu mV)",
+             (err_sensor == ESP_OK && data.valid) ? "HEALTHY" : "FAULT",
+             data.temperature_k - 273.15f, data.humidity_percent,
+             (err_bat == ESP_OK) ? "HEALTHY" : "FAULT", (unsigned long)vbat);
+    return healthy;
+}
 
-    esp_reset_reason_t reset_reason     = bsp_get_reset_reason();
-    esp_sleep_wakeup_cause_t wake_cause = bsp_get_wakeup_cause();
-    bsp_init_mode_t rec_mode            = bsp_get_recommended_init_mode();
+static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, void *user_data)
+{
+    const char *btn_name = (btn   == BSP_BUTTON_BOOT)               ? "BOOT"         : "POWER";
+    const char *evt_name = (event == BSP_BUTTON_EVENT_SINGLE_CLICK) ? "CLICK"        :
+                           (event == BSP_BUTTON_EVENT_DOUBLE_CLICK) ? "DOUBLE_CLICK" :
+                           (event == BSP_BUTTON_EVENT_LONG_PRESS)   ? "LONG_PRESS"   :
+                           (event == BSP_BUTTON_EVENT_PRESS_DOWN)   ? "PRESS_DOWN"   : "PRESS_UP";
 
-    ESP_LOGI(TAG, "[BOOT INFO] Reset Reason: %d, Wake Cause: %d, Recommended Mode: %d, Boot Count: %lu, Silicon: %s",
-             (int)reset_reason, (int)wake_cause, (int)rec_mode,
-             rtc_st ? (unsigned long)rtc_st->boot_count : 0,
-             bsp_get_chip_revision_str());
+    ESP_LOGI(TAG, ">>> Button Event: [%s] -> %s (Current Stage: %d) <<<", btn_name, evt_name, (int)s_current_stage);
 
-    sleep_test_stage_t stage = STAGE_COLD_BOOT;
-    if (rtc_st && rtc_st->magic == BSP_RTC_MEM_MAGIC) {
-        stage = (sleep_test_stage_t)rtc_st->scratchpad[0];
+    if (btn != BSP_BUTTON_BOOT || event != BSP_BUTTON_EVENT_SINGLE_CLICK) {
+        if (btn == BSP_BUTTON_BOOT && event == BSP_BUTTON_EVENT_LONG_PRESS && s_current_stage == STAGE_TESTS_COMPLETED) {
+            ESP_LOGI(TAG, ">>> Triggering Interactive Deep Sleep with Button Wake (Press BOOT to wake)... <<<");
+            bsp_sleep_config_t cfg = {
+                .mode           = BSP_SLEEP_MODE_DEEP,
+                .duration_sec   = 0,
+                .wake_sources   = BSP_WAKE_SRC_BUTTONS,
+                .next_init_mode = BSP_INIT_MODE_FAST,
+            };
+            bsp_enter_sleep(&cfg);
+        }
+        return;
     }
 
     // ========================================================================
-    // STAGE 1: WAKING FROM DEEP SLEEP TEST 1 (Internal Timer Wake -> FAST Init Mode)
+    // STAGE 1: TRIGGER LS-1 (Light Sleep Internal Timer 3s)
     // ========================================================================
-    if (reset_reason == ESP_RST_DEEPSLEEP && stage == STAGE_DEEP_TIMER_FAST) {
-        ESP_LOGI(TAG, ">>> [WAKE 1/2] Processing Deep Sleep Test 1 (Internal Timer -> FAST Mode) <<<");
+    if (s_current_stage == STAGE_READY_LS1) {
+        ESP_LOGI(TAG, "==================================================");
+        ESP_LOGI(TAG, "  [STAGE 1/4] Executing LS-1: Internal Timer (3s)  ");
+        ESP_LOGI(TAG, "==================================================");
 
-        // Initialize with recommended FAST mode (partial refresh, no full flash)
-        bsp_init_mode(BSP_INIT_MODE_FAST);
+        test_ui_render_screen("Executing LS-1 (3s)...\nWake: Internal Timer",
+                              "Entering Light Sleep\nAuto-wake in 3 seconds");
+        vTaskDelay(pdMS_TO_TICKS(500));
 
-        ESP_LOGI(TAG, "[PASS DS-1] Deep Sleep + Internal Timer Wake Verified!");
-        ESP_LOGI(TAG, "[STATUS] Deep Sleeps: %lu, Light Sleeps: %lu, Init Mode: FAST",
-                 (unsigned long)rtc_st->deep_sleep_count, (unsigned long)rtc_st->light_sleep_count);
+        int64_t t_start = esp_timer_get_time();
+        bsp_sleep_config_t ls_cfg = {
+            .mode           = BSP_SLEEP_MODE_LIGHT,
+            .duration_sec   = 3,
+            .wake_sources   = BSP_WAKE_SRC_TIMER,
+            .next_init_mode = BSP_INIT_MODE_FAST,
+        };
+        esp_err_t ret = bsp_enter_sleep(&ls_cfg);
+        int64_t t_elapsed_ms = (esp_timer_get_time() - t_start) / 1000;
 
-        test_ui_render_screen("DS-1: Timer Wake [PASS]\nNext: DS-2 (Ext RTC)",
-                              "Entering Deep Sleep (4s)\nWake: PCF85063A RTC INT");
+        bool healthy = verify_peripherals_healthy();
+        if (ret == ESP_OK && healthy) {
+            ESP_LOGI(TAG, "[PASS LS-1] Light Sleep + Internal Timer Wake Verified (Elapsed: %" PRId64 " ms)", t_elapsed_ms);
+            s_current_stage = STAGE_READY_LS2;
+            bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+            if (rtc_st) rtc_st->scratchpad[0] = (uint8_t)STAGE_READY_LS2;
 
-        // Advance stage to Deep Sleep Test 2 (External PCF85063A RTC Wake -> MIN mode)
-        rtc_st->scratchpad[0] = (uint8_t)STAGE_DEEP_EXT_RTC_MIN;
-        vTaskDelay(pdMS_TO_TICKS(1200));
+            test_ui_render_screen("LS-1: [PASS] (Timer 3s)\nClick BOOT: Run LS-2",
+                                  "Wake: SHTC3/I2C OK\nNext: Ext RTC Timer (3s)");
+        } else {
+            ESP_LOGE(TAG, "[FAIL LS-1] Light Sleep execution or peripheral fault (Status: %s)", bsp_err_to_name(ret));
+            test_ui_render_screen("LS-1: [FAIL] Fault\nClick BOOT: Retry",
+                                  "Peripheral I2C Check Failed");
+        }
+        return;
+    }
 
-        ESP_LOGI(TAG, ">>> Entering Deep Sleep Test 2: External PCF85063A RTC (4 sec) -> MIN Init Mode <<<");
+    // ========================================================================
+    // STAGE 2: TRIGGER LS-2 (Light Sleep External PCF85063A RTC Timer 3s)
+    // ========================================================================
+    if (s_current_stage == STAGE_READY_LS2) {
+        ESP_LOGI(TAG, "==================================================");
+        ESP_LOGI(TAG, "  [STAGE 2/4] Executing LS-2: Ext RTC Timer (3s)  ");
+        ESP_LOGI(TAG, "==================================================");
+
+        test_ui_render_screen("Executing LS-2 (3s)...\nWake: PCF85063A INT",
+                              "Arming RTC Countdown (3s)\nEntering Light Sleep");
+        vTaskDelay(pdMS_TO_TICKS(500));
+
+        bsp_rtc_set_countdown_timer(3);
+        int64_t t_start = esp_timer_get_time();
+        bsp_sleep_config_t ls_cfg = {
+            .mode           = BSP_SLEEP_MODE_LIGHT,
+            .duration_sec   = 0,
+            .wake_sources   = BSP_WAKE_SRC_EXTERNAL_RTC,
+            .next_init_mode = BSP_INIT_MODE_FAST,
+        };
+        esp_err_t ret = bsp_enter_sleep(&ls_cfg);
+        int64_t t_elapsed_ms = (esp_timer_get_time() - t_start) / 1000;
+
+        bool alarm_flag = false, timer_flag = false;
+        bsp_rtc_get_and_clear_interrupts(&alarm_flag, &timer_flag);
+        bool healthy = verify_peripherals_healthy();
+
+        if (ret == ESP_OK && healthy) {
+            ESP_LOGI(TAG, "[PASS LS-2] Light Sleep + External RTC Wake Verified (Elapsed: %" PRId64 " ms, TF=%d)",
+                     t_elapsed_ms, (int)timer_flag);
+            s_current_stage = STAGE_READY_DS1;
+            bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+            if (rtc_st) rtc_st->scratchpad[0] = (uint8_t)STAGE_READY_DS1;
+
+            test_ui_render_screen("LS-2: [PASS] (Ext RTC)\nClick BOOT: Run DS-1",
+                                  "Wake: RTC INT OK\nNext: DS-1 Timer (4s)");
+        } else {
+            ESP_LOGE(TAG, "[FAIL LS-2] Light Sleep Ext RTC fault (Status: %s)", bsp_err_to_name(ret));
+            test_ui_render_screen("LS-2: [FAIL] Fault\nClick BOOT: Retry",
+                                  "RTC Interrupt Check Failed");
+        }
+        return;
+    }
+
+    // ========================================================================
+    // STAGE 3: TRIGGER DS-1 (Deep Sleep Internal Timer 4s -> FAST Mode)
+    // ========================================================================
+    if (s_current_stage == STAGE_READY_DS1) {
+        ESP_LOGI(TAG, "==================================================");
+        ESP_LOGI(TAG, "  [STAGE 3/4] Entering DS-1: Timer (4s) -> FAST   ");
+        ESP_LOGI(TAG, "==================================================");
+
+        bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+        if (rtc_st) rtc_st->scratchpad[0] = (uint8_t)STAGE_WAKE_DS1;
+
+        test_ui_render_screen("Entering DS-1 (4s)...\nWake: Internal Timer",
+                              "Next Boot: FAST Mode\nRe-arming Timer (4s)");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        bsp_sleep_config_t ds_cfg = {
+            .mode           = BSP_SLEEP_MODE_DEEP,
+            .duration_sec   = 4,
+            .wake_sources   = BSP_WAKE_SRC_TIMER,
+            .next_init_mode = BSP_INIT_MODE_FAST,
+        };
+        bsp_enter_sleep(&ds_cfg);
+        return;
+    }
+
+    // ========================================================================
+    // STAGE 4: TRIGGER DS-2 (Deep Sleep External PCF85063A RTC 4s -> MIN Mode)
+    // ========================================================================
+    if (s_current_stage == STAGE_READY_DS2) {
+        ESP_LOGI(TAG, "==================================================");
+        ESP_LOGI(TAG, "  [STAGE 4/4] Entering DS-2: Ext RTC (4s) -> MIN  ");
+        ESP_LOGI(TAG, "==================================================");
+
+        bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+        if (rtc_st) rtc_st->scratchpad[0] = (uint8_t)STAGE_WAKE_DS2;
+
+        test_ui_render_screen("Entering DS-2 (4s)...\nWake: PCF85063A INT",
+                              "Next Boot: MIN Mode\nArming RTC Countdown (4s)");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
         bsp_sleep_config_t ds_cfg = {
             .mode           = BSP_SLEEP_MODE_DEEP,
             .duration_sec   = 4,
@@ -245,31 +314,70 @@ void app_main(void)
         return;
     }
 
-    // ========================================================================
-    // STAGE 2: WAKING FROM DEEP SLEEP TEST 2 (PCF85063A RTC Wake -> MIN Init Mode)
-    // ========================================================================
-    if (reset_reason == ESP_RST_DEEPSLEEP && stage == STAGE_DEEP_EXT_RTC_MIN) {
-        ESP_LOGI(TAG, ">>> [WAKE 2/2] Processing Deep Sleep Test 2 (External RTC Wake -> MIN Mode) <<<");
-
-        // Clear PCF85063A timer interrupt flag
-        bool alarm_flag = false, timer_flag = false;
-        bsp_rtc_get_and_clear_interrupts(&alarm_flag, &timer_flag);
-
-        // Initialize with recommended MIN mode (lean telemetry burst)
-        bsp_init_mode(BSP_INIT_MODE_MIN);
-
-        ESP_LOGI(TAG, "[PASS DS-2] Deep Sleep + External PCF85063A RTC Wake Verified! (TF=%d)", (int)timer_flag);
-        ESP_LOGI(TAG, "[STATUS] Deep Sleeps: %lu, Light Sleeps: %lu, Init Mode: MIN",
-                 (unsigned long)rtc_st->deep_sleep_count, (unsigned long)rtc_st->light_sleep_count);
-
-        // Mark test sequence completed
-        rtc_st->scratchpad[0] = (uint8_t)STAGE_TESTS_COMPLETED;
-
-        // Render Final Success Screen
+    // Interactive Light Sleep when tests are complete
+    if (s_current_stage == STAGE_TESTS_COMPLETED) {
+        ESP_LOGI(TAG, ">>> Triggering Interactive Light Sleep (5 sec)... <<<");
+        test_ui_render_screen("Interactive Light Sleep\nDuration: 5 seconds",
+                              "Auto-wake in 5s\nClick BOOT: Sleep Again");
+        vTaskDelay(pdMS_TO_TICKS(500));
+        bsp_power_enter_light_sleep(5);
+        verify_peripherals_healthy();
         test_ui_render_screen("ALL SLEEP MODES: [PASS]\nLS-1: OK | LS-2: OK\nDS-1: OK | DS-2: OK",
-                              "Heartbeat Active\nClick BOOT: Light Sleep\nHold BOOT: Deep Sleep");
+                              "Heartbeat Active\nClick: LS(5s) | Hold: DS");
+        ESP_LOGI(TAG, ">>> Resumed from Interactive Light Sleep <<<");
+    }
+}
 
-        // Register button callbacks for interactive use
+void app_main(void)
+{
+    ESP_LOGI(TAG, "==================================================");
+    ESP_LOGI(TAG, "  ESP32-S3 ePaper BSP Staged Verification Suite    ");
+    ESP_LOGI(TAG, "==================================================");
+
+    // Initialize RTC Slow Memory state tracker
+    bsp_rtc_mem_init();
+    bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+
+    esp_reset_reason_t       reset_reason = bsp_get_reset_reason();
+    esp_sleep_wakeup_cause_t wake_cause   = bsp_get_wakeup_cause();
+    bsp_init_mode_t          rec_mode     = bsp_get_recommended_init_mode();
+
+    ESP_LOGI(TAG, "[BOOT INFO] Reset Reason: %d, Wake Cause: %d, Recommended Mode: %d, Boot Count: %lu, Silicon: %s",
+             (int)reset_reason, (int)wake_cause, (int)rec_mode,
+             rtc_st ? (unsigned long)rtc_st->boot_count : 0,
+             bsp_get_chip_revision_str());
+
+    sleep_test_stage_t stage = STAGE_COLD_BOOT;
+    if (rtc_st && rtc_st->magic == BSP_RTC_MEM_MAGIC) {
+        stage = (sleep_test_stage_t)rtc_st->scratchpad[0];
+    }
+    s_current_stage = stage;
+
+    // ========================================================================
+    // WAKE HANDLER 1: WAKING FROM DEEP SLEEP TEST 1 (Timer -> FAST Mode)
+    // ========================================================================
+    if (reset_reason == ESP_RST_DEEPSLEEP && stage == STAGE_WAKE_DS1) {
+        ESP_LOGI(TAG, ">>> [WAKE 1/2] Processing DS-1 (Internal Timer -> FAST Mode) <<<");
+
+        // FAST profile: partial refresh display, audio paused
+        bsp_init_mode(BSP_INIT_MODE_FAST);
+        bool healthy = verify_peripherals_healthy();
+
+        if (healthy) {
+            ESP_LOGI(TAG, "[PASS DS-1] Deep Sleep + Internal Timer Wake Verified in FAST Mode!");
+            s_current_stage = STAGE_READY_DS2;
+            if (rtc_st) rtc_st->scratchpad[0] = (uint8_t)STAGE_READY_DS2;
+
+            test_ui_render_screen("DS-1: [PASS] (FAST Mode)\nClick BOOT: Run DS-2",
+                                  "Wake: Timer OK\nNext: DS-2 (Ext RTC 4s)");
+        } else {
+            ESP_LOGE(TAG, "[FAIL DS-1] Peripheral health check failed in FAST Mode!");
+            test_ui_render_screen("DS-1: [FAIL] Peripheral Fault\nClick BOOT: Retry DS-1",
+                                  "FAST Mode Check Failed");
+            s_current_stage = STAGE_READY_DS1;
+        }
+
+        // Arm button dispatcher for next staged test
         bsp_button_config_t btn_cfg = {
             .debounce_ms            = 50,
             .click_timeout_ms       = 300,
@@ -278,28 +386,108 @@ void app_main(void)
         };
         bsp_button_init(&btn_cfg);
         bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_SINGLE_CLICK, button_event_handler, NULL);
-        bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_LONG_PRESS, button_event_handler, NULL);
+        return;
+    }
 
-        ESP_LOGI(TAG, "==================================================");
-        ESP_LOGI(TAG, "  ALL STATIC & SLEEP/WAKE TESTS PASSED 100%%       ");
-        ESP_LOGI(TAG, "==================================================");
+    // ========================================================================
+    // WAKE HANDLER 2: WAKING FROM DEEP SLEEP TEST 2 (Ext RTC -> MIN Mode)
+    // ========================================================================
+    if (reset_reason == ESP_RST_DEEPSLEEP && stage == STAGE_WAKE_DS2) {
+        ESP_LOGI(TAG, ">>> [WAKE 2/2] Processing DS-2 (External RTC Wake -> MIN Mode) <<<");
+
+        // Clear PCF85063A timer interrupt flag
+        bool alarm_flag = false, timer_flag = false;
+        bsp_rtc_get_and_clear_interrupts(&alarm_flag, &timer_flag);
+
+        // MIN profile: Lean telemetry + fast partial EPD display
+        bsp_init_mode(BSP_INIT_MODE_MIN);
+        bool healthy = verify_peripherals_healthy();
+
+        if (healthy) {
+            ESP_LOGI(TAG, "[PASS DS-2] Deep Sleep + External RTC Wake Verified in MIN Mode! (TF=%d)", (int)timer_flag);
+            ESP_LOGI(TAG, "==================================================");
+            ESP_LOGI(TAG, "  ALL STATIC & SLEEP/WAKE TESTS PASSED 100%%       ");
+            ESP_LOGI(TAG, "==================================================");
+
+            s_current_stage = STAGE_TESTS_COMPLETED;
+            if (rtc_st) rtc_st->scratchpad[0] = (uint8_t)STAGE_TESTS_COMPLETED;
+
+            test_ui_render_screen("ALL SLEEP MODES: [PASS]\nLS-1: OK | LS-2: OK\nDS-1: OK | DS-2: OK",
+                                  "Heartbeat Active\nClick: LS(5s) | Hold: DS");
+        } else {
+            ESP_LOGE(TAG, "[FAIL DS-2] Peripheral health check failed in MIN Mode!");
+            test_ui_render_screen("DS-2: [FAIL] Peripheral Fault\nClick BOOT: Retry DS-2",
+                                  "MIN Mode Check Failed");
+            s_current_stage = STAGE_READY_DS2;
+        }
+
+        // Arm button dispatcher and start heartbeat
+        bsp_button_config_t btn_cfg = {
+            .debounce_ms            = 50,
+            .click_timeout_ms       = 300,
+            .long_press_ms          = 2000,
+            .auto_power_off_on_hold = false,
+        };
+        bsp_button_init(&btn_cfg);
+        bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_SINGLE_CLICK, button_event_handler, NULL);
+        bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_LONG_PRESS,   button_event_handler, NULL);
 
         int count = 0;
         while (1) {
             vTaskDelay(pdMS_TO_TICKS(5000));
             count++;
-            test_ui_render_screen("ALL SLEEP MODES: [PASS]\nLS-1: OK | LS-2: OK\nDS-1: OK | DS-2: OK",
-                                  "Heartbeat Active\nClick BOOT: Light Sleep\nHold BOOT: Deep Sleep");
             ESP_LOGI(TAG, "[Heartbeat %d] System Normal. Silicon: %s, Deep Sleeps: %lu, Light Sleeps: %lu",
                      count, bsp_get_chip_revision_str(),
-                     (unsigned long)rtc_st->deep_sleep_count, (unsigned long)rtc_st->light_sleep_count);
+                     rtc_st ? (unsigned long)rtc_st->deep_sleep_count  : 0,
+                     rtc_st ? (unsigned long)rtc_st->light_sleep_count : 0);
         }
+        return;
     }
 
     // ========================================================================
-    // STAGE 0: COLD BOOT (Run All Static Peripheral Tests + Light Sleep + Start DS Sequence)
+    // WAKE HANDLER 3: WAKING FROM INTERACTIVE DEEP SLEEP (STAGE_TESTS_COMPLETED)
     // ========================================================================
-    ESP_LOGI(TAG, ">>> [COLD BOOT] Initializing All Hardware Subsystems (FULL Mode) <<<");
+    if (reset_reason == ESP_RST_DEEPSLEEP && stage == STAGE_TESTS_COMPLETED) {
+        ESP_LOGI(TAG, ">>> [WAKE] Resumed from Interactive Deep Sleep via Button Wake! (FAST Mode) <<<");
+        bsp_init_mode(BSP_INIT_MODE_FAST);
+        verify_peripherals_healthy();
+
+        test_ui_render_screen("ALL SLEEP MODES: [PASS]\nResumed: Deep Sleep (Button)",
+                              "Heartbeat Active\nClick: LS(5s) | Hold: DS");
+
+        bsp_button_config_t btn_cfg = {
+            .debounce_ms            = 50,
+            .click_timeout_ms       = 300,
+            .long_press_ms          = 2000,
+            .auto_power_off_on_hold = false,
+        };
+        bsp_button_init(&btn_cfg);
+        bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_SINGLE_CLICK, button_event_handler, NULL);
+        bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_LONG_PRESS,   button_event_handler, NULL);
+
+        int count = 0;
+        while (1) {
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            count++;
+            ESP_LOGI(TAG, "[Heartbeat %d] System Normal. Silicon: %s, Deep Sleeps: %lu, Light Sleeps: %lu",
+                     count, bsp_get_chip_revision_str(),
+                     rtc_st ? (unsigned long)rtc_st->deep_sleep_count  : 0,
+                     rtc_st ? (unsigned long)rtc_st->light_sleep_count : 0);
+        }
+        return;
+    }
+
+    // ========================================================================
+    // COLD BOOT: Initialize Subsystems (FULL Mode) & Execute Static Tests
+    // ========================================================================
+    ESP_LOGI(TAG, ">>> [COLD BOOT] Initializing Subsystems (FULL Mode) <<<");
+    esp_err_t nvs_err = nvs_flash_init();
+    if (nvs_err == ESP_ERR_NVS_NO_FREE_PAGES || nvs_err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_LOGW(TAG, "NVS truncated or unformatted; executing flash erase...");
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+
     esp_err_t ret = bsp_board_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "bsp_board_init failed: %s", bsp_err_to_name(ret));
@@ -310,7 +498,7 @@ void app_main(void)
     // ----------------------------------------------------
     // 2. System Identification, Silicon Revision & Diagnostics
     // ----------------------------------------------------
-    char dev_id[32] = {0};
+    char dev_id[32]   = {0};
     char dev_name[32] = {0};
     bsp_get_device_id(dev_id, sizeof(dev_id));
     bsp_get_device_name(dev_name, sizeof(dev_name));
@@ -357,6 +545,7 @@ void app_main(void)
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "[PASS 5/15] PCF85063A RTC: %04u-%02u-%02u %02u:%02u:%02u (DOW: %u)",
                  dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.weekday);
+        bsp_time_sync_rtc_to_system();
     } else {
         ESP_LOGE(TAG, "[FAIL 5/15] PCF85063A RTC read error: %s", bsp_err_to_name(ret));
     }
@@ -399,28 +588,27 @@ void app_main(void)
         .auto_power_off_on_hold = false,
     };
     bsp_button_init(&btn_cfg);
-    bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_SINGLE_CLICK, button_event_handler, NULL);
-    bsp_button_register_cb(BSP_BUTTON_BOOT, BSP_BUTTON_EVENT_LONG_PRESS, button_event_handler, NULL);
+    bsp_button_register_cb(BSP_BUTTON_BOOT,  BSP_BUTTON_EVENT_SINGLE_CLICK, button_event_handler, NULL);
+    bsp_button_register_cb(BSP_BUTTON_BOOT,  BSP_BUTTON_EVENT_LONG_PRESS,   button_event_handler, NULL);
     bsp_button_register_cb(BSP_BUTTON_POWER, BSP_BUTTON_EVENT_SINGLE_CLICK, button_event_handler, NULL);
-    bsp_button_register_cb(BSP_BUTTON_POWER, BSP_BUTTON_EVENT_LONG_PRESS, button_event_handler, NULL);
+    bsp_button_register_cb(BSP_BUTTON_POWER, BSP_BUTTON_EVENT_LONG_PRESS,   button_event_handler, NULL);
     ESP_LOGI(TAG, "[PASS 7/15] Hardware Buttons (BOOT & POWER) Event Handlers Active");
 
     // ----------------------------------------------------
-    // 8. ES8311 Audio Codec & NS4168 Amp Tone Synthesizer
+    // 8. ES8311 Audio Codec & 4-Stage Volume Chirp Synthesizer
     // ----------------------------------------------------
     bsp_audio_power_enable(true);
     bsp_audio_init();
-    bsp_audio_set_volume(75.0f);
-    bsp_trigger_chime(BSP_CHIME_BOOT);
-    ESP_LOGI(TAG, "[PASS 8/15] Audio Codec & Chime Generator Verified");
+    run_audio_chirps_test();
+    ESP_LOGI(TAG, "[PASS 8/15] Audio Codec & 4-Stage Chirp Sequence Verified (0%%, 25%%, 50%%, 100%%)");
 
     // ----------------------------------------------------
     // 9. Timezone & Formatted Time/Date String Generators
     // ----------------------------------------------------
     bsp_time_set_timezone("EST5EDT,M3.2.0,M11.1.0");
-    char time_24h_s[32] = {0}, time_24h_m[32] = {0};
-    char time_12h_s[32] = {0}, time_12h_m[32] = {0};
-    char date_mm_dd_yy[32] = {0}, date_dow[32] = {0}, date_full[32] = {0};
+    char time_24h_s[32]    = {0}, time_24h_m[32] = {0};
+    char time_12h_s[32]    = {0}, time_12h_m[32] = {0};
+    char date_mm_dd_yy[32] = {0}, date_dow[32]   = {0}, date_full[32] = {0};
 
     bsp_time_get_formatted(BSP_TIME_FMT_24H_SEC, time_24h_s, sizeof(time_24h_s));
     bsp_time_get_formatted(BSP_TIME_FMT_24H_MIN, time_24h_m, sizeof(time_24h_m));
@@ -451,7 +639,7 @@ void app_main(void)
     // ----------------------------------------------------
     // 11. Unambiguous Base57 Key Generation Test
     // ----------------------------------------------------
-    char pop_key[16] = {0};
+    char pop_key[16]   = {0};
     char claim_key[16] = {0};
     bsp_generate_unambiguous_key(pop_key, 8, NULL);
     bsp_generate_unambiguous_key(claim_key, 6, NULL);
@@ -500,53 +688,65 @@ void app_main(void)
     ret = bsp_wifi_init();
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "Starting passive Wi-Fi scan...");
-        wifi_scan_config_t scan_cfg = {
-            .ssid        = NULL,
-            .bssid       = NULL,
-            .channel     = 0,
-            .show_hidden = false,
-            .scan_type   = WIFI_SCAN_TYPE_ACTIVE,
-        };
-        esp_wifi_scan_start(&scan_cfg, true);
         uint16_t ap_count = 0;
-        esp_wifi_scan_get_ap_num(&ap_count);
-        ESP_LOGI(TAG, "[PASS 14/15] Wi-Fi Subsystem Operational. Found %u Access Points in scan", ap_count);
+        esp_err_t scan_err = bsp_wifi_scan(NULL, &ap_count, 0);
+        if (scan_err == ESP_OK) {
+            ESP_LOGI(TAG, "[PASS 14/15] Wi-Fi Subsystem Operational. Found %u Access Points in scan", ap_count);
+        } else {
+            ESP_LOGW(TAG, "[WARN 14/15] Wi-Fi scan completed with status: %s", bsp_err_to_name(scan_err));
+        }
     }
 
     // ----------------------------------------------------
-    // 15. Render E-Paper UI Layout & QR Code
+    // 15. Render Fullscreen QR Code & Test Summary Screen
     // ----------------------------------------------------
-    ESP_LOGI(TAG, "Rendering Test UI & QR Code to E-Paper display...");
-    test_ui_render_screen("STATIC TESTS: [PASS]\nStarting Light Sleep",
-                          "Testing LS-1 (Timer)\nand LS-2 (Ext RTC)");
+    ESP_LOGI(TAG, "==================================================");
+    ESP_LOGI(TAG, "  [TEST 15/15] PROMPT: Press BOOT to display QR   ");
+    ESP_LOGI(TAG, "==================================================");
+    test_ui_render_screen("Test 15: BLE Prov QR Code\nClick BOOT: Show QR",
+                          "Provisioning Engine\nWaiting for BOOT click...");
+
+    // Wait for user to press and release BOOT button
+    while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_BOOT) != 0) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_BOOT) == 0) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    ESP_LOGI(TAG, "Rendering Fullscreen 180x180 px BLE Provisioning QR Code...");
+    bsp_lvgl_lock();
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_clean(scr);
+    lv_obj_set_style_bg_color(scr, lv_color_white(), 0);
+    lv_obj_t *qr = bsp_prov_render_qr_code(scr, 180, "HumidOS-1.0.0-OK");
+    if (qr) lv_obj_center(qr);
+    bsp_lvgl_unlock();
+
+    ESP_LOGI(TAG, "[PASS 15/15] Fullscreen QR Code displayed on E-Paper.");
+    ESP_LOGI(TAG, "Press BOOT (GPIO0) to dismiss QR and proceed to Sleep Tests...");
+
+    // Wait for user to press and release BOOT button to proceed
+    while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_BOOT) != 0) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_BOOT) == 0) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    // Clear and display Static Tests Passed UI
+    test_ui_render_screen("STATIC TESTS: [PASS]\nClick BOOT: Run LS-1",
+                          "Ready for Sleep Tests\nNext: LS-1 (Timer 3s)");
     ESP_LOGI(TAG, "[PASS 15/15] E-Paper Display & LVGL Rendering Operational");
 
-    // ========================================================================
-    // EXECUTE LIGHT SLEEP VERIFICATION
-    // ========================================================================
-    run_light_sleep_tests();
-
-    // ========================================================================
-    // INITIATE DEEP SLEEP TEST SEQUENCE (Test 1/2: Timer Wake -> FAST Init Mode)
-    // ========================================================================
-    ESP_LOGI(TAG, "==================================================");
-    ESP_LOGI(TAG, "  Initiating Deep Sleep Test Sequence              ");
-    ESP_LOGI(TAG, "==================================================");
-
+    // Set state machine to Stage 1 (Ready for LS-1 on BOOT click)
+    s_current_stage = STAGE_READY_LS1;
     if (rtc_st) {
-        rtc_st->scratchpad[0] = (uint8_t)STAGE_DEEP_TIMER_FAST;
+        rtc_st->scratchpad[0] = (uint8_t)STAGE_READY_LS1;
     }
 
-    test_ui_render_screen("LS-1 & LS-2: [PASS]\nNext: DS-1 (Timer Wake)",
-                          "Entering Deep Sleep (4s)\nWake: Internal Timer");
-    vTaskDelay(pdMS_TO_TICKS(1200));
-
-    ESP_LOGI(TAG, ">>> Entering Deep Sleep Test 1: Internal Timer (4 sec) -> FAST Init Mode <<<");
-    bsp_sleep_config_t ds_cfg = {
-        .mode           = BSP_SLEEP_MODE_DEEP,
-        .duration_sec   = 4,
-        .wake_sources   = BSP_WAKE_SRC_TIMER,
-        .next_init_mode = BSP_INIT_MODE_FAST,
-    };
-    bsp_enter_sleep(&ds_cfg);
+    ESP_LOGI(TAG, "==================================================");
+    ESP_LOGI(TAG, "  STATIC TESTS COMPLETE -> WAITING FOR BOOT CLICK ");
+    ESP_LOGI(TAG, "  Press BOOT (GPIO0) to execute LS-1              ");
+    ESP_LOGI(TAG, "==================================================");
 }

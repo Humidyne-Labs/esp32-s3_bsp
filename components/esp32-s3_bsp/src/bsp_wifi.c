@@ -123,6 +123,7 @@ esp_err_t bsp_wifi_init(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     s_is_initialized = true;
     return ESP_OK;
@@ -255,6 +256,46 @@ esp_err_t bsp_wifi_save_credentials(const char *ssid, const char *password)
     bsp_nvs_set_str("wifi_ssid", ssid);
     bsp_nvs_set_str("wifi_pass", password ? password : "");
     bsp_wifi_invalidate_fast_cache();
+    return ESP_OK;
+}
+
+esp_err_t bsp_wifi_scan(void *ap_records, uint16_t *ap_count, uint16_t max_aps)
+{
+    if (!s_is_initialized) {
+        esp_err_t err = bsp_wifi_init();
+        if (err != ESP_OK) return err;
+    }
+
+    wifi_scan_config_t scan_cfg = {
+        .ssid        = NULL,
+        .bssid       = NULL,
+        .channel     = 0,
+        .show_hidden = false,
+        .scan_type   = WIFI_SCAN_TYPE_ACTIVE,
+        .scan_time   = {
+            .active = {
+                .min = 100,
+                .max = 300,
+            }
+        }
+    };
+
+    esp_err_t ret = esp_wifi_scan_start(&scan_cfg, true);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Wi-Fi scan failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    uint16_t count = 0;
+    esp_wifi_scan_get_ap_num(&count);
+    if (ap_count) *ap_count = count;
+
+    if (ap_records && max_aps > 0) {
+        uint16_t fetch_count = (count < max_aps) ? count : max_aps;
+        esp_wifi_scan_get_ap_records(&fetch_count, (wifi_ap_record_t *)ap_records);
+    }
+
+    ESP_LOGI(TAG, "Wi-Fi scan completed. Discovered %u APs", count);
     return ESP_OK;
 }
 
