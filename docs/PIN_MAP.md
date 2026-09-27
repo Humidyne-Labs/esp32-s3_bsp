@@ -1,6 +1,6 @@
-# GPIO Pin Map & Electrical Characteristics — ESP32-S3 Touch ePaper 1.54″ V2
+# GPIO Pin Map & Electrical Characteristics — ESP32-S3 ePaper 1.54″ V2
 
-Hardware target: **Waveshare ESP32-S3-Touch-ePaper-1.54 V2** (ESP32-S3-PICO-1-N8R8)
+Hardware target: **Waveshare ESP32-S3-ePaper-1.54 V2** (ESP32-S3-PICO-1-N8R8)
 
 ---
 
@@ -15,7 +15,7 @@ Hardware target: **Waveshare ESP32-S3-Touch-ePaper-1.54 V2** (ESP32-S3-PICO-1-N8
 | **IO4** | `BAT_ADC` | Power Management | Analog Input | ADC1 Channel 3 | Linear 0-3.1V sensing | Measured via 1:2 divider (100kΩ / 100kΩ; VBAT = VADC * 2.0) |
 | **IO5** | `RTC_INT` | PCF85063A RTC | Digital Input | **Active LOW**, Open-Drain | `INPUT_PULLUP` enabled | PCF85063A INT is open-drain; PCB has NO pull-up $\rightarrow$ internal pull-up mandatory |
 | **IO6** | `EPD3V3_EN` | 1.54″ e-Paper Display | Digital Output | **Active LOW** (0 = ON, 1 = OFF) | `0` (Power ON) | Gate control for EPD 3.3V power rail; drive 1 + `gpio_hold_en` in sleep |
-| **IO7** | `EPD_TP_RST` | FT6336 Touch Panel | Digital Output | **Active LOW** (0 = Reset, 1 = Run) | `1` (Not in reset) | Toggled low for 10ms during hardware reset sequence |
+| **IO7** | `IO7` | Expansion / Unused | GPIO | Floating | Tristate | Available GPIO |
 | **IO8** | `EPD_BUSY` | 1.54″ e-Paper Display | Digital Input | **Active HIGH** (1 = Busy, 0 = Ready) | Floating Input | Monitored during SSD1681 LUT execution and refreshes |
 | **IO9** | `EPD_RST` | 1.54″ e-Paper Display | Digital Output | **Active LOW** (0 = Reset, 1 = Run) | `1` (Not in reset) | SSD1681 display controller hardware reset |
 | **IO10** | `EPD_D/C` | 1.54″ e-Paper Display | Digital Output | Push-Pull (0 = Command, 1 = Data) | `1` (Data mode) | Controls byte interpretation during SPI transactions |
@@ -29,7 +29,7 @@ Hardware target: **Waveshare ESP32-S3-Touch-ePaper-1.54 V2** (ESP32-S3-PICO-1-N8
 | **IO18** | `BAT_KEY` | Power Management | Digital Input | **Active LOW** (0 = Pressed, 1 = Idle) | `INPUT_PULLUP` enabled | Hardware battery power key / wakeup trigger |
 | **IO19** | `U_N` | USB-JTAG-Serial / D- | USB Native / Output | Differential D- | USB PHY | Native USB negative line |
 | **IO20** | `U_P` | USB-JTAG-Serial / D+ | USB Native / Output | Differential D+ | USB PHY | Native USB positive line |
-| **IO21** | `EPD_TP_INT` | FT6336 Touch Panel | Digital Input | **Active LOW** (0 = Touch detected) | `INPUT_PULLUP` enabled | Falling edge interrupt when contact points are registered |
+| **IO21** | `IO21` | Expansion / Unused | GPIO | Floating | Tristate | Available GPIO |
 | **IO38** | `I2S_LRCK` | Audio Codec (ES8311) | I2S0 WS Output | Left / Right Word Select (16kHz) | Driven by I2S driver | Synchronizes audio left-slot mono packets |
 | **IO39** | `SD_CLK` | MicroSD Card Slot | SDMMC / SPI Clock | Clock line (400kHz init, up to 20MHz) | Driven by SD driver | MicroSD clock |
 | **IO40** | `SD_MISO` | MicroSD Card Slot | SDMMC D0 / SPI MISO | Master In Slave Out (Data 0) | `INPUT_PULLUP` enabled | MicroSD read line |
@@ -39,7 +39,7 @@ Hardware target: **Waveshare ESP32-S3-Touch-ePaper-1.54 V2** (ESP32-S3-PICO-1-N8
 | **IO44** | `RXD` | UART0 RX | UART Input | Serial Debug Receive | 115200 8N1 default | Console log input / flashing |
 | **IO45** | `I2S_DSDIN` | Audio Codec (ES8311) | I2S0 DOUT Output | Serial Audio Data Out to Codec | Driven by I2S driver | Mono audio playback stream |
 | **IO46** | `PA_CTRL` | Audio Power Amp (NS4168)| Digital Output | **Active HIGH** (1 = Enabled, 0 = Standby)| `0` (Muted) | Controlled by ES8311 codec driver PA pin interface |
-| **IO47** | `RTC_SDA` | Shared I2C0 Bus | I2C Open-Drain | **Fast Mode (400 kHz)** | External 4.7kΩ pull-up | Shared by SHTC3 (0x70), PCF85063 (0x51), FT6336 (0x38), ES8311 (0x18) |
+| **IO47** | `RTC_SDA` | Shared I2C0 Bus | I2C Open-Drain | **Fast Mode (400 kHz)** | External 4.7kΩ pull-up | Shared by SHTC3 (0x70), PCF85063A (0x51), ES8311 (0x18) |
 | **IO48** | `RTC_SCL` | Shared I2C0 Bus | I2C Open-Drain | **Fast Mode (400 kHz)** | External 4.7kΩ pull-up | Shared clock line; all devices require standard I2C ACK |
 
 ---
@@ -50,13 +50,12 @@ Hardware target: **Waveshare ESP32-S3-Touch-ePaper-1.54 V2** (ESP32-S3-PICO-1-N8
 graph TD
     subgraph ESP32-S3 ["ESP32-S3-PICO-1-N8R8 (Dual LX7 240MHz)"]
         CORE0["Core 0: Networking / OS / BLE / MQTT / Time"]
-        CORE1["Core 1: Display / LVGL v9 / Touch / Assets"]
+        CORE1["Core 1: Display / LVGL v9 / Sensors / Audio"]
     end
 
     subgraph I2C_BUS ["Shared I2C0 Bus (IO47 SDA, IO48 SCL @ 400kHz)"]
         SHTC3["SHTC3 Temp/Humidity (0x70)"]
         PCF85063["PCF85063A RTC (0x51, INT=IO5)"]
-        FT6336["FT6336 Touch (0x38, RST=IO7, INT=IO21)"]
         ES8311_CTRL["ES8311 Codec Control (0x18)"]
     end
 

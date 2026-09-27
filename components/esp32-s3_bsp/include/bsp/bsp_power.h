@@ -1,15 +1,20 @@
 /**
  * @file bsp_power.h
- * @brief Power Management, LDO Power Latch, and Battery Voltage Monitor
+ * @brief Power Management, LDO Power Latch, Battery Monitor, and Dual Sleep Modes
  * 
  * Hardware Description:
  *  - Power Hold Latch: GPIO 17 (BAT_CTRL) maintains LDO regulator power from battery.
  *  - Battery Voltage: ADC1 CH3 (GPIO 4 / BAT_ADC) with 1:2 resistive divider (R1=100k, R2=100k).
- *  - Status LED: GPIO 3 (Active High).
+ *  - Status LED: GPIO 3 (Active Low).
+ * 
+ * Sleep Architecture:
+ *  - Light Sleep: Preserves CPU/SRAM state, fast resume.
+ *  - Deep Sleep: Powers down CPU/peripherals, preserves RTC Slow Memory and state flags.
+ *  - Wake Sources: ESP32-S3 Internal Timer, PCF85063A External RTC INT (GPIO 5), BOOT/POWER Buttons.
  * 
  * @attribution
  * - Circuit Design: Waveshare Electronics
- * - BSP Unification: Humidyne Labs / Humiditron (2026)
+ * - BSP Architecture: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -20,11 +25,44 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
+#include "esp_system.h"
+#include "esp_sleep.h"
 #include "bsp/pinout.h"
+#include "bsp/bsp_rtc_mem.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Wakeup Source Selection Flags
+ */
+typedef enum {
+    BSP_WAKE_SRC_TIMER        = (1 << 0), /*!< ESP32-S3 Internal RTC Sleep Timer */
+    BSP_WAKE_SRC_EXTERNAL_RTC = (1 << 1), /*!< External PCF85063A RTC INT on GPIO 5 */
+    BSP_WAKE_SRC_BUTTONS      = (1 << 2), /*!< Hardware BOOT0 (GPIO 0) and POWER (GPIO 18) keys */
+    BSP_WAKE_SRC_ALL          = (BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_EXTERNAL_RTC | BSP_WAKE_SRC_BUTTONS),
+} bsp_wake_source_mask_t;
+
+/**
+ * @brief Unified Sleep Configuration
+ */
+typedef struct {
+    bsp_sleep_mode_t       mode;           /*!< Target sleep mode (Light or Deep) */
+    uint32_t               duration_sec;   /*!< Sleep duration in seconds (0 for indefinite / button only) */
+    bsp_wake_source_mask_t wake_sources;   /*!< Bitmask of enabled wake triggers */
+    bsp_init_mode_t        next_init_mode; /*!< Hardware initialization mode to perform on wake */
+} bsp_sleep_config_t;
+
+/**
+ * @brief Default Deep Sleep Configuration Macro
+ */
+#define BSP_SLEEP_CONFIG_DEFAULT() { \
+    .mode           = BSP_SLEEP_MODE_DEEP, \
+    .duration_sec   = 0, \
+    .wake_sources   = BSP_WAKE_SRC_ALL, \
+    .next_init_mode = BSP_INIT_MODE_FAST \
+}
 
 /**
  * @brief Initialize Power Subsystem & Battery ADC Monitor
@@ -49,6 +87,13 @@ esp_err_t bsp_power_hold(void);
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_power_release(void);
+
+/**
+ * @brief Turn board completely off
+ * 
+ * Releases LDO power hold latch. If USB is not connected, board powers down immediately.
+ */
+void bsp_power_off(void);
 
 /**
  * @brief Set Status LED Output State
@@ -91,9 +136,15 @@ uint8_t bsp_battery_get_percentage(void);
 bool bsp_battery_is_low(uint8_t threshold_pct);
 
 /**
- * @brief Enter Ultra-Low Power Deep Sleep Mode
+ * @brief Enter Configurable Sleep Mode (Light or Deep Sleep)
  * 
- * Configures timer and button wakeups, turns off status LED, and starts deep sleep.
+ * @param config Sleep configuration parameters
+ * @return esp_err_t ESP_OK (returns upon wake if Light Sleep)
+ */
+esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config);
+
+/**
+ * @brief Enter Ultra-Low Power Deep Sleep Mode (Convenience wrapper)
  * 
  * @param duration_sec Sleep duration in seconds (0 for indefinite wakeup by button)
  * @return esp_err_t ESP_OK
@@ -101,15 +152,33 @@ bool bsp_battery_is_low(uint8_t threshold_pct);
 esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec);
 
 /**
- * @brief Enter Light Sleep Mode
- * 
- * Pauses CPU, powers down radios, and retains all RAM/tasks.
- * Resumes execution at the next line of code without board re-initialization.
+ * @brief Enter Light Sleep Mode (Convenience wrapper)
  * 
  * @param duration_sec Sleep duration in seconds (0 for indefinite wakeup by button)
  * @return esp_err_t ESP_OK upon wakeup
  */
 esp_err_t bsp_power_enter_light_sleep(uint32_t duration_sec);
+
+/**
+ * @brief Get the system reset reason reported by ESP-IDF
+ * 
+ * @return esp_reset_reason_t Reset reason
+ */
+esp_reset_reason_t bsp_get_reset_reason(void);
+
+/**
+ * @brief Get the sleep wakeup cause reported by ESP-IDF
+ * 
+ * @return esp_sleep_wakeup_cause_t Wakeup cause
+ */
+esp_sleep_wakeup_cause_t bsp_get_wakeup_cause(void);
+
+/**
+ * @brief Determine the recommended hardware initialization mode based on reset & wake history
+ * 
+ * @return bsp_init_mode_t Recommended init mode (FULL, FAST, or MIN)
+ */
+bsp_init_mode_t bsp_get_recommended_init_mode(void);
 
 #ifdef __cplusplus
 }

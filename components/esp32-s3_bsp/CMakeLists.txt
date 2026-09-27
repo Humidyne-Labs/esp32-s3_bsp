@@ -6,7 +6,6 @@ idf_component_register(
         "src/bsp_button.c"
         "src/bsp_power.c"
         "src/bsp_display.cpp"
-        "src/bsp_touch.cpp"
         "src/bsp_sensors.c"
         "src/bsp_sdcard.c"
         "src/bsp_audio.c"
@@ -14,6 +13,12 @@ idf_component_register(
         "src/bsp_nvs.c"
         "src/bsp_wifi.c"
         "src/bsp_assets.c"
+        "src/bsp_rtc_mem.c"
+        "src/bsp_splash.c"
+        "src/bsp_time.c"
+        "src/bsp_prov.c"
+        "src/bsp_ota.c"
+        "src/bsp_tb.c"
     INCLUDE_DIRS 
         "include"
     REQUIRES 
@@ -32,6 +37,15 @@ idf_component_register(
         esp_wifi
         esp_netif
         esp_event
+        network_provisioning
+        bt
+        protocomm
+        app_update
+        esp_https_ota
+        mqtt
+        mbedtls
+        esp-tls
+        cjson
         lvgl
         esp_mmap_assets
         esp_lv_fs

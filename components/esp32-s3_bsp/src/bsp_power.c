@@ -1,6 +1,6 @@
 /**
  * @file bsp_power.c
- * @brief Power Control Latch, Status LED, and Battery Voltage ADC Monitor Implementation
+ * @brief Power Control Latch, Status LED, Battery ADC, and Dual Sleep Modes Implementation
  * 
  * Circuit Architecture:
  *  - Power Latch: GPIO 17 (BAT_CTRL) is driven HIGH to turn on the onboard LDO gate and hold power.
@@ -13,7 +13,7 @@
  * 
  * @attribution
  * - Circuit Design: Waveshare Electronics
- * - BSP Unification: Humidyne Labs / Humiditron (2026)
+ * - BSP Architecture: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -35,6 +35,7 @@
 #include "bsp/bsp_rtc.h"
 #include "bsp/bsp_sensors.h"
 #include "bsp/bsp_power.h"
+#include "bsp/bsp_rtc_mem.h"
 #include "bsp/bsp.h"
 #include "sdkconfig.h"
 
@@ -153,50 +154,58 @@ void bsp_led_set(bool state)
 
 void bsp_led_toggle(void)
 {
-    s_led_state = !s_led_state;
-    // Open-Drain Active LOW: 0 = LED ON, 1 = LED OFF
-    gpio_set_level(BSP_PIN_LED_STATUS, s_led_state ? 0 : 1);
+    bsp_led_set(!s_led_state);
 }
 
 esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw)
 {
-    if (!s_power_inited || s_adc_handle == NULL) {
+    if (out_mv == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!s_power_inited) {
         esp_err_t err = bsp_power_init();
         if (err != ESP_OK) return err;
     }
 
+    // Multisample ADC for noise rejection (16 samples)
+    const int SAMPLES = 16;
+    int raw_accum = 0;
     int raw_val = 0;
-    // Multi-sampling average (8 samples for noise reduction)
-    int samples = 8;
-    int raw_sum = 0;
-    for (int i = 0; i < samples; i++) {
-        int r = 0;
-        adc_oneshot_read(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &r);
-        raw_sum += r;
-    }
-    raw_val = raw_sum / samples;
 
-    if (out_raw) *out_raw = (uint32_t)raw_val;
+    for (int i = 0; i < SAMPLES; i++) {
+        esp_err_t err = adc_oneshot_read(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &raw_val);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "ADC read failed: %s", esp_err_to_name(err));
+            return err;
+        }
+        raw_accum += raw_val;
+    }
+    int raw_avg = raw_accum / SAMPLES;
+
+    if (out_raw != NULL) {
+        *out_raw = (uint32_t)raw_avg;
+    }
 
     int voltage_mv = 0;
-    if (s_calibrated && s_cali_handle) {
-        adc_cali_raw_to_voltage(s_cali_handle, raw_val, &voltage_mv);
+    if (s_calibrated && s_cali_handle != NULL) {
+        adc_cali_raw_to_voltage(s_cali_handle, raw_avg, &voltage_mv);
     } else {
-        // Fallback linear calculation for 12-bit ADC @ 3.3V full-scale
-        voltage_mv = (raw_val * 3300) / 4095;
+        // Fallback: 12-bit ADC -> 3.3V VREF
+        voltage_mv = (raw_avg * 3300) / 4095;
     }
 
-    // Multiply by 2.0 to compensate for 1:2 resistor divider (100k + 100k)
-    uint32_t bat_mv = (uint32_t)(voltage_mv * 2);
-
-    if (out_mv) *out_mv = bat_mv;
+    // Compensate for 1:2 resistor divider (R1=100k, R2=100k -> 2.0x factor)
+    *out_mv = (uint32_t)(voltage_mv * 2);
     return ESP_OK;
 }
 
 uint8_t bsp_battery_get_percentage(void)
 {
     uint32_t vbat_mv = 0;
-    if (bsp_battery_get_voltage(&vbat_mv, NULL) != ESP_OK) {
+    esp_err_t err = bsp_battery_get_voltage(&vbat_mv, NULL);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Unable to read battery voltage; returning 100%%");
         return 100;
     }
 
@@ -222,143 +231,184 @@ bool bsp_battery_is_low(uint8_t threshold_pct)
     return (bsp_battery_get_percentage() <= threshold_pct);
 }
 
-esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec)
+esp_reset_reason_t bsp_get_reset_reason(void)
 {
-    ESP_LOGI(TAG, "Preparing deep sleep power isolation (%lu seconds)...", (unsigned long)duration_sec);
+    return esp_reset_reason();
+}
 
-    // 1. Turn off Status LED (Active LOW: 1 = OFF)
+esp_sleep_wakeup_cause_t bsp_get_wakeup_cause(void)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    return esp_sleep_get_wakeup_cause();
+#pragma GCC diagnostic pop
+}
+
+bsp_init_mode_t bsp_get_recommended_init_mode(void)
+{
+    esp_reset_reason_t rst = esp_reset_reason();
+    if (rst != ESP_RST_DEEPSLEEP) {
+        return BSP_INIT_MODE_FULL;
+    }
+
+    bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+    if (rtc_st && rtc_st->magic == BSP_RTC_MEM_MAGIC) {
+        return (bsp_init_mode_t)rtc_st->next_init_mode;
+    }
+
+    return BSP_INIT_MODE_FAST;
+}
+
+esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
+{
+    bsp_sleep_config_t cfg = (config != NULL) ? *config : (bsp_sleep_config_t)BSP_SLEEP_CONFIG_DEFAULT();
+
+    // Store sleep state in RTC Slow Memory
+    bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+    if (rtc_st && rtc_st->magic == BSP_RTC_MEM_MAGIC) {
+        rtc_st->last_sleep_mode         = (uint8_t)cfg.mode;
+        rtc_st->next_init_mode          = (uint8_t)cfg.next_init_mode;
+        rtc_st->last_sleep_duration_sec = cfg.duration_sec;
+        if (cfg.mode == BSP_SLEEP_MODE_DEEP) {
+            rtc_st->deep_sleep_count++;
+        } else {
+            rtc_st->light_sleep_count++;
+        }
+    }
+
+    // 1. Turn off Status LED
     bsp_led_set(false);
 
-    // 2. Disconnect Wi-Fi and Bluetooth Radios
+    // 2. Disconnect Wi-Fi
     bsp_wifi_disconnect();
 
     // 3. Put SSD1681 e-Paper into ultra-low power deep sleep mode (<1 uA)
     bsp_display_deep_sleep();
 
-    // 4. Configure RTC hardware timers and clock output while 3.3V I2C bus is still active
-    bsp_rtc_disable_clkout();
+    // 4. Put SHTC3 into low-power sleep
+    bsp_shtc3_sleep();
 
-    uint64_t ext1_pin_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_BUTTON_POWER);
-
-#if defined(CONFIG_BSP_RTC_WAKEUP_EXTERNAL_PCF85063)
-    // --- Mode A: External PCF85063A Quartz Crystal Timer ---
-    if (duration_sec > 0) {
-        if (duration_sec <= 255) {
-            ESP_LOGI(TAG, "Arming PCF85063A external RTC countdown timer for %lu seconds", (unsigned long)duration_sec);
-            bsp_rtc_set_countdown_timer((uint8_t)duration_sec);
-        } else {
-            // For durations exceeding 255s, read current time and arm RTC alarm
-            bsp_rtc_datetime_t now;
-            if (bsp_rtc_get_datetime(&now) == ESP_OK) {
-                uint32_t total_sec  = (uint32_t)now.hour * 3600 + (uint32_t)now.minute * 60 + now.second + duration_sec;
-                uint32_t target_sec = total_sec % 60;
-                uint32_t target_min = (total_sec / 60) % 60;
-                uint32_t target_hr  = (total_sec / 3600) % 24;
-
-                bsp_rtc_alarm_t alarm = {
-                    .second  = (int8_t)target_sec,
-                    .minute  = (int8_t)target_min,
-                    .hour    = (int8_t)target_hr,
-                    .day     = -1,
-                    .weekday = -1,
-                };
-                ESP_LOGI(TAG, "Arming PCF85063A alarm for %02d:%02d:%02d (%lu seconds sleep)",
-                         (int)target_hr, (int)target_min, (int)target_sec, (unsigned long)duration_sec);
-                bsp_rtc_set_alarm(&alarm);
-            } else {
-                ESP_LOGW(TAG, "RTC read failed; falling back to internal timer wakeup");
-                esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
-            }
-        }
-    }
-    // Include PCF85063A RTC INT (GPIO 5) in EXT1 wakeup
-    gpio_pullup_en((gpio_num_t)BSP_PIN_RTC_INT);
-    gpio_pulldown_dis((gpio_num_t)BSP_PIN_RTC_INT);
-    ext1_pin_mask |= (1ULL << BSP_PIN_RTC_INT);
-
-#else
-    // --- Mode B: ESP32-S3 Internal RTC Sleep Timer ---
-    // Clear external RTC countdown timer and alarm to prevent spurious GPIO 5 interrupts
-    bsp_rtc_clear_countdown_timer();
-    bsp_rtc_clear_alarm();
-
-    if (duration_sec > 0) {
-        ESP_LOGI(TAG, "Arming ESP32-S3 internal RTC timer wakeup for %lu seconds", (unsigned long)duration_sec);
-        esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
-    }
-#endif
-
-    // 5. Gate Audio Power Amp (GPIO 42 = HIGH / 1 -> Cut NS4168 PA power)
+    // 5. Gate Audio Power Amp
     bsp_audio_stop();
     bsp_audio_power_enable(false);
     gpio_set_level(BSP_PIN_PA_CTRL, 0);
     gpio_set_level(BSP_PIN_PA_EN, 1);
     gpio_hold_en((gpio_num_t)BSP_PIN_PA_EN);
 
-    // 6. Put SHTC3 Environmental Sensor into ultra-low power standby (<0.6 uA)
-    bsp_shtc3_sleep();
+    // 6. Configure Wakeup Triggers
+    uint64_t ext1_pin_mask = 0;
+    if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
+        ext1_pin_mask |= (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_BUTTON_POWER);
+    }
 
-    // 7. Maintain EPD & Sensor 3.3V Power Rail across sleep (Active LOW: GPIO 6 = 0 -> Rail ON)
-    // SSD1681 (<1 nA) and SHTC3 (<0.6 uA) are in software deep sleep.
-    // Maintaining 3.3V preserves I2C pullup stability, eliminates sensor power-on delays,
-    // and avoids display controller reset glitches upon waking.
+    if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
+        bsp_rtc_disable_clkout();
+        if (cfg.duration_sec > 0) {
+            if (cfg.duration_sec <= 255) {
+                bsp_rtc_set_countdown_timer((uint8_t)cfg.duration_sec);
+            } else {
+                bsp_rtc_datetime_t now;
+                if (bsp_rtc_get_datetime(&now) == ESP_OK) {
+                    uint32_t total_sec  = (uint32_t)now.hour * 3600 + (uint32_t)now.minute * 60 + now.second + cfg.duration_sec;
+                    uint32_t target_sec = total_sec % 60;
+                    uint32_t target_min = (total_sec / 60) % 60;
+                    uint32_t target_hr  = (total_sec / 3600) % 24;
+
+                    bsp_rtc_alarm_t alarm = {
+                        .second  = (int8_t)target_sec,
+                        .minute  = (int8_t)target_min,
+                        .hour    = (int8_t)target_hr,
+                        .day     = -1,
+                        .weekday = -1,
+                    };
+                    bsp_rtc_set_alarm(&alarm);
+                } else {
+                    esp_sleep_enable_timer_wakeup((uint64_t)cfg.duration_sec * 1000000ULL);
+                }
+            }
+        }
+        gpio_pullup_en((gpio_num_t)BSP_PIN_RTC_INT);
+        gpio_pulldown_dis((gpio_num_t)BSP_PIN_RTC_INT);
+        ext1_pin_mask |= (1ULL << BSP_PIN_RTC_INT);
+    }
+
+    if (cfg.wake_sources & BSP_WAKE_SRC_TIMER) {
+        if (cfg.duration_sec > 0) {
+            esp_sleep_enable_timer_wakeup((uint64_t)cfg.duration_sec * 1000000ULL);
+        }
+    }
+
+    if (ext1_pin_mask != 0) {
+        esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
+    }
+
+    if (cfg.mode == BSP_SLEEP_MODE_LIGHT) {
+        if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
+            gpio_wakeup_enable((gpio_num_t)BSP_PIN_BUTTON_BOOT, GPIO_INTR_LOW_LEVEL);
+            gpio_wakeup_enable((gpio_num_t)BSP_PIN_BUTTON_POWER, GPIO_INTR_LOW_LEVEL);
+        }
+        if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
+            gpio_wakeup_enable((gpio_num_t)BSP_PIN_RTC_INT, GPIO_INTR_LOW_LEVEL);
+        }
+        if (ext1_pin_mask != 0) {
+            esp_sleep_enable_gpio_wakeup();
+        }
+
+        ESP_LOGI(TAG, "Entering Light Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
+        vTaskDelay(pdMS_TO_TICKS(20));
+        esp_err_t ret = esp_light_sleep_start();
+
+        if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
+            gpio_wakeup_disable((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+            gpio_wakeup_disable((gpio_num_t)BSP_PIN_BUTTON_POWER);
+        }
+        if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
+            gpio_wakeup_disable((gpio_num_t)BSP_PIN_RTC_INT);
+        }
+        bsp_shtc3_wakeup();
+        ESP_LOGI(TAG, "Resumed from Light Sleep");
+        return ret;
+    }
+
+    // DEEP SLEEP
+    ESP_LOGI(TAG, "Entering Deep Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
+
+    // Maintain EPD & Sensor 3.3V Power Rail
     gpio_set_level(BSP_PIN_EPD_3V3_EN, 0);
     gpio_hold_en((gpio_num_t)BSP_PIN_EPD_3V3_EN);
 
-    // 8. Keep Touch Controller out of reset (Active HIGH: GPIO 7 = 1)
-    // Prevents FT6336 from pulling SDA/SCL lines LOW during sleep and on wake
-    gpio_set_level(BSP_PIN_TOUCH_RST, 1);
-    gpio_hold_en((gpio_num_t)BSP_PIN_TOUCH_RST);
-
-    // 9. Hold Battery LDO Power Latch (GPIO 17 = HIGH) across deep sleep
+    // Hold Battery LDO Power Latch
     gpio_set_level(BSP_PIN_POWER_HOLD, 1);
     gpio_hold_en((gpio_num_t)BSP_PIN_POWER_HOLD);
     gpio_deep_sleep_hold_en();
 
-    // 10. Wakeup on Active LOW buttons (and RTC INT if external timer selected)
-    esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
-
-    ESP_LOGI(TAG, "Power rails isolated. Starting ESP32-S3 deep sleep now");
     vTaskDelay(pdMS_TO_TICKS(50));
     esp_deep_sleep_start();
     return ESP_OK;
 }
 
+esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec)
+{
+    bsp_sleep_config_t cfg = {
+        .mode           = BSP_SLEEP_MODE_DEEP,
+        .duration_sec   = duration_sec,
+#if defined(CONFIG_BSP_RTC_WAKEUP_EXTERNAL_PCF85063)
+        .wake_sources   = (bsp_wake_source_mask_t)(BSP_WAKE_SRC_EXTERNAL_RTC | BSP_WAKE_SRC_BUTTONS),
+#else
+        .wake_sources   = (bsp_wake_source_mask_t)(BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_BUTTONS),
+#endif
+        .next_init_mode = BSP_INIT_MODE_FAST,
+    };
+    return bsp_enter_sleep(&cfg);
+}
+
 esp_err_t bsp_power_enter_light_sleep(uint32_t duration_sec)
 {
-    ESP_LOGI(TAG, "Entering Light Sleep for %lu seconds (RAM & FreeRTOS tasks retained)...", (unsigned long)duration_sec);
-
-    // 1. Turn off Status LED
-    bsp_led_set(false);
-
-    // 2. Disconnect Wi-Fi to allow RF MAC / PHY power down during sleep
-    bsp_wifi_disconnect();
-
-    // 3. Put SSD1681 e-Paper into ultra-low power standby (<1 uA)
-    bsp_display_deep_sleep();
-
-    // 4. Put SHTC3 Environmental Sensor into standby sleep (<0.6 uA)
-    bsp_shtc3_sleep();
-
-    // 5. Configure wakeups (Timer & Buttons)
-    uint64_t ext1_pin_mask = (1ULL << BSP_PIN_BUTTON_BOOT) | (1ULL << BSP_PIN_BUTTON_POWER);
-    esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
-
-    if (duration_sec > 0) {
-        esp_sleep_enable_timer_wakeup((uint64_t)duration_sec * 1000000ULL);
-    }
-
-    // 6. Enter Light Sleep (Execution pauses here; CPU and DRAM enter retention)
-    vTaskDelay(pdMS_TO_TICKS(20));
-    esp_err_t err = esp_light_sleep_start();
-
-    // =========================================================================
-    // LIGHT SLEEP WAKEUP RESUME (No reset, continues execution immediately)
-    // =========================================================================
-    ESP_LOGI(TAG, "Resumed execution from Light Sleep (No board re-init needed)");
-
-    // Wake SHTC3 sensor from standby
-    bsp_shtc3_wakeup();
-
-    return err;
+    bsp_sleep_config_t cfg = {
+        .mode           = BSP_SLEEP_MODE_LIGHT,
+        .duration_sec   = duration_sec,
+        .wake_sources   = (bsp_wake_source_mask_t)(BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_BUTTONS),
+        .next_init_mode = BSP_INIT_MODE_FAST,
+    };
+    return bsp_enter_sleep(&cfg);
 }

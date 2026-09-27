@@ -65,6 +65,13 @@ bool bsp_lvgl_lock(void);
  */
 void bsp_lvgl_unlock(void);
 
+/**
+ * @brief Configure whether the next LVGL display flush performs a full OTP refresh or fast partial update
+ * 
+ * @param full_refresh true for full OTP clear/refresh (e.g. on cold boot), false for fast partial refresh (e.g. on wake)
+ */
+void bsp_lvgl_set_first_flush_mode(bool full_refresh);
+
 #ifdef __cplusplus
 }
 #endif

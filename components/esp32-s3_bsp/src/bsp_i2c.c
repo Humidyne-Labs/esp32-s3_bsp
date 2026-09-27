@@ -88,7 +88,6 @@ esp_err_t bsp_i2c_init(void)
     bsp_init_io();
     gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1); // Main LDO power latch ON
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0); // EPD, Sensor & I2C Pullup 3.3V ON (Active LOW)
-    gpio_set_level((gpio_num_t)BSP_PIN_TOUCH_RST, 1);  // Touch controller out of reset
     vTaskDelay(pdMS_TO_TICKS(15));                      // Allow 3.3V rail & sensor power-on-reset to settle
 
     if (s_i2c_mutex == NULL) {
@@ -272,6 +271,19 @@ esp_err_t bsp_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len)
         ret = i2c_master_transmit_receive(dev, &reg, 1, data, len, I2C_TIMEOUT_MS);
     }
 
+    if (s_i2c_mutex) xSemaphoreGiveRecursive(s_i2c_mutex);
+    return ret;
+}
+
+esp_err_t bsp_i2c_probe(uint8_t addr)
+{
+    if (s_i2c_bus_handle == NULL) {
+        esp_err_t err = bsp_i2c_init();
+        if (err != ESP_OK) return err;
+    }
+
+    if (s_i2c_mutex) xSemaphoreTakeRecursive(s_i2c_mutex, portMAX_DELAY);
+    esp_err_t ret = i2c_master_probe(s_i2c_bus_handle, addr, I2C_TIMEOUT_MS);
     if (s_i2c_mutex) xSemaphoreGiveRecursive(s_i2c_mutex);
     return ret;
 }

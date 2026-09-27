@@ -1,10 +1,10 @@
 /**
  * @file pinout.h
- * @brief Complete Hardware Pinout Mapping for Waveshare ESP32-S3-Touch-ePaper-1.54 V2
+ * @brief Complete Hardware Pinout Mapping for Waveshare ESP32-S3-ePaper-1.54 V2
  * 
  * Hardware Subsystems:
  *  - E-Paper SPI Display (SSD1681 200x200 1-bit Mono)
- *  - Shared I2C Bus (SHTC3, PCF85063A, FT6336)
+ *  - Shared I2C Bus (SHTC3, PCF85063A, ES8311)
  *  - I2S Audio Codec & Amp (ES8311 + NS4168)
  *  - MicroSD Card Slot (SPI / SDMMC Mode)
  *  - Power Management (BAT_CTRL Latch, Battery ADC Divider)
@@ -65,7 +65,7 @@ extern "C" {
 #define BSP_GPIO_BAT_KEY            BSP_PIN_BUTTON_POWER
 
 /* =========================================================================
- * 3. Shared I2C Master Bus (Sensors, RTC, Capacitive Touch)
+ * 3. Shared I2C Master Bus (Sensors, RTC, Audio Codec)
  * ========================================================================= */
 #define BSP_PIN_I2C_SDA             GPIO_NUM_47  /*!< Shared I2C Serial Data line (RTC_SDA, external 4.7k pull-up) */
 #define BSP_PIN_I2C_SCL             GPIO_NUM_48  /*!< Shared I2C Serial Clock line (RTC_SCL, external 4.7k pull-up) */
@@ -74,17 +74,9 @@ extern "C" {
 #define BSP_GPIO_I2C_SCL            BSP_PIN_I2C_SCL
 #define BSP_GPIO_RTC_INT            BSP_PIN_RTC_INT
 
-/* Capacitive Touch (FT6336) */
-#define BSP_PIN_TOUCH_RST           GPIO_NUM_7   /*!< FT6336 Touch reset (Active Low) */
-#define BSP_PIN_TOUCH_INT           GPIO_NUM_21  /*!< FT6336 Touch interrupt (Active Low, internal pull-up) */
-#define BSP_GPIO_TOUCH_RST          BSP_PIN_TOUCH_RST
-#define BSP_GPIO_TOUCH_INT          BSP_PIN_TOUCH_INT
-
 /* 7-Bit I2C Slave Addresses */
 #define BSP_I2C_ADDR_SHTC3          0x70         /*!< Sensirion SHTC3 Environmental Sensor */
 #define BSP_I2C_ADDR_PCF85063       0x51         /*!< NXP PCF85063A Real-Time Clock */
-#define BSP_I2C_ADDR_FT6336         0x38         /*!< FocalTech FT6336 Touch Controller */
-#define BSP_I2C_ADDR_TOUCH          BSP_I2C_ADDR_FT6336
 #define BSP_I2C_ADDR_ES8311         0x18         /*!< Everest Semi ES8311 Audio Codec */
 
 /* =========================================================================

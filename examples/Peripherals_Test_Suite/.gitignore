@@ -1,0 +1,3 @@
+# Removes Build Directories.
+/build/
+/managed_components/

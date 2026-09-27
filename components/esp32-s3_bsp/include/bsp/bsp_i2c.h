@@ -102,6 +102,14 @@ esp_err_t bsp_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size
  */
 esp_err_t bsp_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len);
 
+/**
+ * @brief Probe whether an I2C slave responds on the bus
+ * 
+ * @param addr 7-bit slave address
+ * @return esp_err_t ESP_OK if ACKed, error otherwise
+ */
+esp_err_t bsp_i2c_probe(uint8_t addr);
+
 #ifdef __cplusplus
 }
 #endif

@@ -370,3 +370,14 @@ esp_err_t bsp_rtc_enable_wakeup(bool deep_sleep)
         return esp_sleep_enable_gpio_wakeup();
     }
 }
+
+esp_err_t bsp_rtc_ram_read(uint8_t *val)
+{
+    if (val == NULL) return ESP_ERR_INVALID_ARG;
+    return bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_RAM_BYTE, val, 1);
+}
+
+esp_err_t bsp_rtc_ram_write(uint8_t val)
+{
+    return bsp_i2c_write_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_RAM_BYTE, &val, 1);
+}

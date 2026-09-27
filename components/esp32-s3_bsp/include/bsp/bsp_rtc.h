@@ -154,6 +154,24 @@ esp_err_t bsp_rtc_start_oscillator(void);
  */
 esp_err_t bsp_rtc_enable_wakeup(bool deep_sleep);
 
+/**
+ * @brief Read the PCF85063A 8-bit general storage RAM byte (Register 0x03)
+ * 
+ * Stays powered as long as battery rail is active.
+ * 
+ * @param[out] val Destination pointer for byte value
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_rtc_ram_read(uint8_t *val);
+
+/**
+ * @brief Write the PCF85063A 8-bit general storage RAM byte (Register 0x03)
+ * 
+ * @param val Byte value to store
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_rtc_ram_write(uint8_t val);
+
 #ifdef __cplusplus
 }
 #endif

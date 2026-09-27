@@ -1,8 +1,8 @@
 # System Architecture & Multi-Threaded Runtime Specification
 
-**Project:** ESP32-S3 Touch ePaper BSP & Telemetry Node  
-**Hardware Target:** Waveshare ESP32-S3-Touch-ePaper-1.54 V2 (`ESP32-S3-PICO-1-N8R8`)  
-**Firmware Framework:** ESP-IDF v5.1 / v6.1 (C / C++20) with FreeRTOS SMP  
+**Project:** ESP32-S3 ePaper 1.54" V2 BSP & Telemetry Framework  
+**Hardware Target:** Waveshare ESP32-S3-ePaper-1.54 V2 (`ESP32-S3-PICO-1-N8R8`)  
+**Firmware Framework:** ESP-IDF v5.1 / v5.3 / v6.1 (C / C++20) with FreeRTOS SMP  
 **Display Engine:** LVGL v9.6.0 (Debloated 1-Bit Monochrome SSD1681 Pipeline)  
 
 ---
@@ -13,34 +13,35 @@ The architecture enforces a strict three-tier boundary ensuring modularity, thre
 
 ```mermaid
 graph TD
-    subgraph APP_LAYER ["Application Layer (examples/Unified_BSP_Demo/main)"]
-        MAIN["main.cpp (State Machine & UI Lifecycle)"]
-        APP_MQTT["app_mqtt.c (ThingsBoard MQTTS Client & Attributes)"]
-        APP_BLE["app_ble_prov.c (NimBLE GATT Provisioning Manager)"]
-        APP_TIME["app_time_sync.c (SNTP Network Time to PCF85063A Sync)"]
-        APP_CLAIM["app_claiming.c (RNG Claiming Key Generator)"]
+    subgraph APP_LAYER ["Application Layer (examples/Peripherals_Test_Suite)"]
+        MAIN["main.c (Static HW Tests & Sleep/Wake Sequence)"]
+        APP_DIAG["bsp_diagnostics_dump() (Silicon & Heap Diagnostics)"]
+        APP_SLEEP["Sleep State Machine (RTC Slow Memory Scratchpad)"]
     end
 
     subgraph BSP_LAYER ["Board Support Package (components/esp32-s3_bsp)"]
-        BSP_COMMON["bsp_common.c (Master Init & Centralized IO Latch)"]
-        BSP_POWER["bsp_power.c (Battery ADC, Power Latch, Deep Sleep Gating)"]
-        BSP_DISPLAY["bsp_display.cpp (SSD1681 SPI DMA & Custom Partial LUTs)"]
+        BSP_COMMON["bsp_common.c (Master Init, Diagnostics, Silicon Rev, Base57)"]
+        BSP_POWER["bsp_power.c (Battery ADC, Power Latch, Light & Deep Sleep)"]
+        BSP_DISPLAY["bsp_display.cpp (SSD1681 SPI DMA & Partial/Full LUTs)"]
         BSP_LVGL["bsp_lvgl.cpp (LVGL v9 Port, FreeRTOS Task & Mutex Guard)"]
-        BSP_TOUCH["bsp_touch.cpp (FT6336 Capacitive Touch I2C Driver)"]
         BSP_SENSORS["bsp_sensors.c (Sensirion SHTC3 Temp/Humidity Driver)"]
-        BSP_RTC["bsp_rtc.c (NXP PCF85063A RTC, 1Hz Timer, Alarms & Drift Offset)"]
+        BSP_RTC["bsp_rtc.c (NXP PCF85063A RTC, 1Hz Timer, Alarms & NVRAM)"]
+        BSP_RTC_MEM["bsp_rtc_mem.c (ESP32-S3 RTC Slow Memory State Engine)"]
         BSP_AUDIO["bsp_audio.c (ES8311 Codec & NS4168 Class-D Amp Control)"]
         BSP_WIFI["bsp_wifi.c (Fast RTC Cache Reconnect <400ms & NVS)"]
-        BSP_BUTTON["bsp_button.c (10ms Debounce & Click/Hold State Machine)"]
+        BSP_PROV["bsp_prov.c (NimBLE GATT Provisioning & QR Code Generator)"]
+        BSP_TB["bsp_tb.c (ThingsBoard MQTTS Client, Generic Serializer, RPC, Alarms)"]
+        BSP_OTA["bsp_ota.c (Dual-Partition HTTPS Firmware Update Engine)"]
+        BSP_BUTTON["bsp_button.c (Debounce & Multi-Event State Machine)"]
         BSP_ASSETS["bsp_assets.c (Zero-Copy Flash MMU 1-Bit Asset Decoder)"]
     end
 
     subgraph HW_LAYER ["Physical Hardware Subsystems"]
         ESP32S3["ESP32-S3-PICO-1 (240MHz Dual LX7, 8MB Flash, 8MB PSRAM)"]
         EPD_PANEL["1.54\" 200x200 Mono e-Paper Display (SSD1681)"]
-        I2C_BUS["Shared I2C Bus (SHTC3, PCF85063A, FT6336, ES8311)"]
-        AUDIO_AMP["NS4168 Power Amp & Speaker"]
-        BATTERY["400mAh LiPo Cell & Power Hold Circuit"]
+        I2C_BUS["Shared I2C Bus (SHTC3, PCF85063A, ES8311)"]
+        AUDIO_AMP["ES8311 Codec & NS4168 Power Amp"]
+        BATTERY["LiPo Cell, ADC Divider & Power Hold Circuit"]
     end
 
     APP_LAYER --> BSP_LAYER
@@ -60,24 +61,23 @@ flowchart TD
         BLE_HOST["NimBLE Host & Provisioning (Priority 21)"]
         TCPIP["LwIP TCP/IP Stack & TLS (Priority 18)"]
         MQTT_CLIENT["ThingsBoard MQTTS Client (Priority 5)"]
-        NET_TASK["network_telemetry_task (Priority 3, 8KB Stack)<br/>• Fast Wi-Fi Reconnect (&lt;400ms)<br/>• SNTP Cloud Time Synchronization<br/>• Synchronous MQTTS Telemetry Publishing<br/>• Device Claiming Sequencing<br/>• Deep Sleep Gating & RTC Timer Arming"]
+        NET_TASK["Network & Telemetry Task (Priority 3)<br/>• Fast Wi-Fi Reconnect (&lt;400ms)<br/>• SNTP Cloud Time Synchronization<br/>• Synchronous MQTTS Telemetry Publishing<br/>• Device Claiming Sequencing<br/>• Deep Sleep Gating & RTC Timer Arming"]
     end
 
     subgraph CORE1 ["Core 1: Display & UI Graphics Engine"]
-        LVGL_TASK["bsp_lvgl_port_task (Priority 5, 4KB Stack)<br/>• LVGL v9 Timer Handler (lv_timer_handler)<br/>• 1-Bit Mono Bit-Blit & Dirty Bounding Box Accumulator<br/>• SSD1681 SPI DMA Display Driver Flush<br/>• FT6336 Capacitive Touch Input Polling<br/>• Zero-Copy MMU Flash Asset Streaming"]
-        BTN_TIMER["bsp_btn_tmr (Priority 10, 2KB Stack)<br/>• 10ms High-Resolution Periodic Button Debounce Timer"]
+        LVGL_TASK["bsp_lvgl_port_task (Priority 5, 4KB Stack)<br/>• LVGL v9 Timer Handler (lv_timer_handler)<br/>• 1-Bit Mono Bit-Blit & Dirty Bounding Box Accumulator<br/>• SSD1681 SPI DMA Display Driver Flush<br/>• Zero-Copy MMU Flash Asset Streaming"]
+        BTN_TIMER["bsp_btn_tmr (Priority 10, 2KB Stack)<br/>• Periodic Button Debounce Timer & Multi-Click Detector"]
     end
 
     subgraph SYNC ["Thread-Safe Inter-Core Synchronization"]
         LVGL_MUTEX["bsp_lvgl_lock() / bsp_lvgl_unlock()<br/>(Protects UI tree mutations from Core 0)"]
-        I2C_MUTEX["s_i2c_mutex (Recursive Mutex)<br/>(Serializes SHTC3, PCF85063A, & FT6336 transactions)"]
+        I2C_MUTEX["s_i2c_mutex (Recursive Mutex)<br/>(Serializes SHTC3, PCF85063A, & ES8311 transactions)"]
     end
 
     NET_TASK -->|Mutates Dashboard Labels & Cards| LVGL_MUTEX
     LVGL_MUTEX --> LVGL_TASK
 
     NET_TASK -->|SHTC3 Reads & Battery ADC| I2C_MUTEX
-    LVGL_TASK -->|FT6336 Touch Coordinates| I2C_MUTEX
 ```
 
 ### Task Hierarchy & Resource Allocation
@@ -89,37 +89,36 @@ flowchart TD
 | **Core 0** | `tcpip` | 18 | System | LwIP TCP/IP packet routing, DHCP, & mbedTLS |
 | **Core 0** | `mqtt_task` | 5 | 6 KB | Secure MQTTS transport loop & telemetry ACKs |
 | **Core 0** | `net_telemetry` | 3 | 8 KB | Main lifecycle, Wi-Fi reconnection, SNTP, sensor sampling, and deep sleep orchestration |
-| **Core 1** | `bsp_lvgl_task` | 5 | 4 KB | LVGL v9 UI render loop, partial differential refresh LUTs, and touch input |
+| **Core 1** | `bsp_lvgl_task` | 5 | 4 KB | LVGL v9 UI render loop, partial differential refresh LUTs |
 | **Core 1** | `bsp_btn_tmr` | 10 | 2 KB | 10ms periodic debounce timer & multi-click detection |
 
 ---
 
 ## 3. Hardware Bus & Electrical Pinout Matrix
 
-All GPIO lines are initialized and latched in [`bsp_init_io()`](file:///c:/Users/Matt/Documents/GitHub/esp32-s3_bsp/components/esp32-s3_bsp/src/bsp_common.c#L24-L85) before peripheral drivers start:
+All GPIO lines are initialized and latched in [`bsp_init_io()`](file:///c:/Users/Matt/Documents/GitHub/esp32-s3_bsp/components/esp32-s3_bsp/src/bsp_common.c) before peripheral drivers start:
 
 | GPIO | Signal Name | Peripheral Subsystem | Electrical Polarity & Mode | Configured Default State |
 |---|---|---|---|---|
-| **GPIO 17** | `BAT_Control` | Power Management | **Active HIGH** (1 = Latch Power ON, 0 = Drop Rail) | `1` (Latched ON at boot + `gpio_deep_sleep_hold_en`) |
-| **GPIO 6** | `EPD3V3_EN` | 1.54″ e-Paper Display | **Active LOW** (0 = Power ON, 1 = Cut Power Rail) | `0` (Power ON during runtime; `1` held in deep sleep) |
+| **GPIO 17** | `POWER_HOLD` | Power Management | **Active HIGH** (1 = Latch Power ON, 0 = Drop Rail) | `1` (Latched ON at boot + `gpio_deep_sleep_hold_en`) |
+| **GPIO 6** | `EPD_3V3_EN` | 1.54″ e-Paper Display | **Active LOW** (0 = Power ON, 1 = Cut Power Rail) | `0` (Power ON during runtime; `1` held in deep sleep) |
 | **GPIO 42** | `PA_EN` | NS4168 Audio Amp | **Active LOW** (0 = Power ON, 1 = Cut Power Rail) | `1` (Cut by default to eliminate pops; `0` on playback) |
 | **GPIO 46** | `PA_CTRL` | NS4168 Audio Amp | **Active HIGH** (1 = Enabled, 0 = Standby) | Managed via ES8311 codec driver interface |
-| **GPIO 3** | `LED_GREEN` | User Status LED | **Open-Drain, Active LOW** (0 = ON, 1 = OFF) | `1` (OFF; driven low via `bsp_led_set(true)`) |
-| **GPIO 0** | `BOOT0` | Tactile Boot Button | **Active LOW** (0 = Pressed, 1 = Idle) | `INPUT_PULLUP` enabled |
-| **GPIO 18** | `BAT_KEY` | Hardware Power Button | **Active LOW** (0 = Pressed, 1 = Idle) | `INPUT_PULLUP` enabled |
+| **GPIO 3** | `LED_STATUS` | User Status LED | **Open-Drain, Active LOW** (0 = ON, 1 = OFF) | `1` (OFF; driven low via `bsp_led_set(true)`) |
+| **GPIO 0** | `BTN_BOOT` | Tactile Boot Button | **Active LOW** (0 = Pressed, 1 = Idle) | `INPUT_PULLUP` enabled |
+| **GPIO 18** | `BTN_POWER` | Hardware Power Button | **Active LOW** (0 = Pressed, 1 = Idle) | `INPUT_PULLUP` enabled |
 | **GPIO 5** | `RTC_INT` | PCF85063A RTC INT | **Active LOW, Open-Drain** (No PCB pull-up) | `INPUT_PULLUP` enabled on ESP32-S3 internal pull-up |
-| **GPIO 7** | `EPD_TP_RST` | FT6336 Touch Panel | **Active LOW** (0 = Reset, 1 = Run) | `1` (Not in reset) |
-| **GPIO 21** | `EPD_TP_INT` | FT6336 Touch Panel | **Active LOW** (0 = Touch Interrupt) | `INPUT_PULLUP` enabled |
-| **GPIO 4** | `BAT_ADC` | Battery ADC Monitor | ADC1 Channel 3 (0–3.1V linear curve) | Measured through 100kΩ/100kΩ divider ($V_{BAT} = 2.0 \cdot V_{ADC}$) |
-| **GPIO 47 / 48** | `SDA / SCL` | Shared I2C0 Bus | Open-Drain @ 400 kHz (Fast Mode) | External 4.7kΩ pull-ups present on PCB |
-| **GPIO 11–13, 8–10**| `EPD SPI` | SSD1681 SPI Display | SPI2 Master (20MHz) + CS, DC, RST, BUSY | Full/Partial OTP waveform management |
+| **GPIO 4** | `BATTERY_ADC` | Battery ADC Monitor | ADC1 Channel 3 (0–3.1V linear curve) | Measured through 100kΩ/100kΩ divider ($V_{BAT} = 2.0 \cdot V_{ADC}$) |
+| **GPIO 47 / 48** | `I2C_SDA / SCL` | Shared I2C0 Bus | Open-Drain @ 400 kHz (Fast Mode) | External 4.7kΩ pull-ups present on PCB |
+| **GPIO 8–13** | `EPD SPI` | SSD1681 SPI Display | SPI2 Master (20MHz) + CS, DC, RST, BUSY, 3V3_EN | Full/Partial OTP waveform management |
 | **GPIO 14–16, 38, 45**| `I2S0` | ES8311 Codec Audio | Standard Mono Left-Slot (16kHz 16-bit PCM) | Low-power master clocking |
+| **GPIO 39–41** | `SDMMC` | MicroSD Slot | 1-bit SDMMC / SPI mode | Clock, D0 (MISO), CMD (MOSI) |
 
 ---
 
 ## 4. Power Management & Deep Sleep Gating Cycle
 
-To maximize runtime on the **400mAh LiPo cell**, the system spends >95% of its lifespan in ultra-low power deep sleep:
+To maximize runtime on battery power, the system spends the majority of its lifespan in ultra-low power deep sleep:
 
 ```mermaid
 sequenceDiagram
@@ -130,13 +129,13 @@ sequenceDiagram
     participant NET as Wi-Fi / ThingsBoard MQTTS
 
     Note over ESP32,RTC: 1. Wake from Deep Sleep (EXT1 Trigger via RTC GPIO5 or BOOT GPIO0)
-    ESP32->>ESP32: bsp_board_init() -> Centralized IO Latching
+    ESP32->>ESP32: bsp_init_mode() -> Dynamic Hardware Bringup (FAST/MIN)
     ESP32->>ESP32: bsp_shtc3_read() (Sample Temperature & Humidity)
     ESP32->>ESP32: bsp_battery_get_voltage() (Read ADC1_CH3)
 
     par Fast Reconnect & Telemetry Publish (Core 0)
         ESP32->>NET: bsp_wifi_connect_from_nvs() (RTC Slow Mem Fast Cache &lt;400ms)
-        ESP32->>NET: app_mqtt_publish_telemetry_sync() (Synchronously Awaited)
+        ESP32->>NET: bsp_tb_send_telemetry_entries() (Synchronously Awaited)
     and Update Display (Core 1)
         ESP32->>EPD: bsp_display_flush_partial_area() (Differential Bit-Blit)
     end
@@ -144,15 +143,12 @@ sequenceDiagram
     Note over ESP32,EPD: 2. Deep Sleep Preparation & Executive Rail Isolation
     ESP32->>ESP32: bsp_audio_power_enable(false) (PA_EN = 1) + gpio_hold_en
     ESP32->>EPD: bsp_display_deep_sleep() (&lt;1uA sleep mode)
-    ESP32->>ESP32: Cut EPD 3.3V Rail (EPD3V3_EN = 1) + gpio_hold_en
-    ESP32->>ESP32: FT6336 in Reset (TOUCH_RST = 0) + gpio_hold_en
+    ESP32->>ESP32: Cut EPD 3.3V Rail (EPD_3V3_EN = 1) + gpio_hold_en
     ESP32->>RTC: bsp_rtc_set_countdown_timer(sleep_sec) (0.22uA crystal timing)
-    ESP32->>ESP32: Hold BAT_Control (GPIO17 = 1) + gpio_deep_sleep_hold_en()
+    ESP32->>ESP32: Hold POWER_HOLD (GPIO17 = 1) + gpio_deep_sleep_hold_en()
     ESP32->>ESP32: esp_sleep_enable_ext1_wakeup_io(GPIO 0 | GPIO 5, ANY_LOW)
     ESP32->>ESP32: esp_deep_sleep_start()
 ```
-
----
 
 ---
 
@@ -161,25 +157,25 @@ sequenceDiagram
 When the user initiates a shutdown (via long-pressing the **POWER** button / GPIO 18):
 
 1. **Task & Thread Termination**:
-   - The button debounce timer (`bsp_btn_tmr`) is immediately stopped to prevent re-entrant events.
-   - Active Core 0 application tasks (`net_telemetry` and `thread_mon`) are safely deleted (`vTaskDelete`) before power or display lines change.
+   - Button debounce timers are stopped to prevent re-entrant events.
+   - Background telemetry tasks are cleanly stopped before power or display lines change.
 2. **Displaying Power-Off Indicator**:
-   - The shutdown callback renders `space_cat.bin` to the active screen via LVGL.
+   - The shutdown splash callback renders the shutdown screen via LVGL.
    - `bsp_display_wait_busy(10000)` waits for the SSD1681 e-Paper hardware refresh cycle to finish completely.
 3. **Display & Peripheral Gating**:
    - `bsp_lvgl_stop()` terminates the LVGL background rendering task.
    - The SSD1681 display controller is placed into deep sleep mode (`bsp_display_deep_sleep()`).
-   - The EPD 3.3V power rail is isolated (`EPD3V3_EN` GPIO 6 = 1).
+   - The EPD 3.3V power rail is isolated (`EPD_3V3_EN` GPIO 6 = 1).
    - Audio power amp is disabled and muted (`PA_EN` = 1, `PA_CTRL` = 0).
-   - Wi-Fi and BLE radios are disconnected.
+   - Wi-Fi and BLE radios are powered down.
 4. **Physical Button Release Guard**:
-   - The system polls until the user physically releases the POWER button (`gpio_get_level(18) == 1`). This prevents immediate false re-triggering upon shutdown.
+   - The system polls until the user physically releases the POWER button (`gpio_get_level(18) == 1`) to prevent immediate false wakeups.
 5. **Battery Power Cutoff**:
-   - `BAT_CTRL` (GPIO 17) is de-asserted (driven `0`) and hardware hold is released.
+   - `POWER_HOLD` (GPIO 17) is de-asserted (driven `0`) and hardware hold is released.
    - **On Battery**: The onboard PMIC/LDO immediately cuts power, completely powering off the device.
 6. **USB Connected Behavior (Deep Sleep Fallback)**:
    - **On USB**: Because USB VBUS continues powering the board, the ESP32 automatically transitions to `esp_deep_sleep_start()` with `ESP_EXT1_WAKEUP_ANY_LOW` armed on `GPIO 18` (POWER) and `GPIO 0` (BOOT).
-   - The CPU enters ultra-low power sleep while Space Cat remains displayed on the bistable e-Paper panel.
+   - The CPU enters ultra-low power sleep while the shutdown image remains displayed on the bi-stable e-Paper panel.
    - Pressing the **POWER** or **BOOT** button instantly wakes up the system and restarts execution.
 
 ---
@@ -190,7 +186,7 @@ When the user initiates a shutdown (via long-pressing the **POWER** button / GPI
    - Color format is configured strictly to `LV_COLOR_FORMAT_I1` (1-bit packed, 1 byte per 8 pixels).
    - Entire 200x200 display buffer requires only **5,000 bytes** of RAM.
 2. **Zero-Copy SPI Flash Asset Streaming**:
-   - Static artwork (such as the shutdown screen `space_cat.bin`) is pre-compiled into an `esp_mmap_assets` flash partition.
+   - Static artwork is pre-compiled into an `esp_mmap_assets` flash partition.
    - The custom LVGL v9 decoder in [`bsp_assets.c`](file:///c:/Users/Matt/Documents/GitHub/esp32-s3_bsp/components/esp32-s3_bsp/src/bsp_assets.c) passes MMU flash memory pointers directly to `lv_draw_buf_t` with `dsc->args.no_cache = true`, avoiding RAM framebuffer allocation.
 3. **Differential Partial Refresh Accumulator**:
-   - [`bsp_lvgl.cpp`](file:///c:/Users/Matt/Documents/GitHub/esp32-s3_bsp/components/esp32-s3_bsp/src/bsp_lvgl.cpp) accumulates dirty bounding boxes across render passes, sending only the modified pixel slice to the SSD1681 differential RAM (`0x24` new RAM / `0x26` old RAM) with partial LUTs (`~0.3s` refresh) to prevent full-screen flashing.
+   - [`bsp_lvgl.cpp`](file:///c:/Users/Matt/Documents/GitHub/esp32-s3_bsp/components/esp32-s3_bsp/src/bsp_lvgl.cpp) accumulates dirty bounding boxes across render passes, sending only the modified pixel slice to the SSD1681 differential RAM with partial LUTs to prevent full-screen flashing.

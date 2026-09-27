@@ -1,28 +1,25 @@
 # VS Code + ESP-IDF Extension — Setup Guide
 
-This guide walks through setting up, building, flashing, and monitoring the **ESP32-S3 Touch ePaper BSP** using **Visual Studio Code** and the official **Espressif IDF Extension**.
+This guide walks through setting up, building, flashing, and monitoring the **ESP32-S3 ePaper 1.54" V2 BSP** using **Visual Studio Code** and the official **Espressif IDF Extension**.
 
 ---
 
 ## 1. Prerequisites & Installation
 
 ### Step 1 — Install Visual Studio Code
-
 Download and install [Visual Studio Code](https://code.visualstudio.com/).
 
 ### Step 2 — Install the Espressif IDF Extension
-
 1. Open VS Code.
 2. Open the Extensions Marketplace (`Ctrl+Shift+X` on Windows/Linux, `Cmd+Shift+X` on macOS).
 3. Search for **Espressif IDF** (Extension ID: `espressif.esp-idf-extension`).
 4. Click **Install**.
 
 ### Step 3 — Run the Setup Wizard
-
 1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
 2. Select: **`ESP-IDF: Configure ESP-IDF Extension`**.
 3. Choose **EXPRESS** installation.
-4. Select ESP-IDF **v5.1** or **v5.3+** (v6.x is also supported).
+4. Select ESP-IDF **v5.1**, **v5.3+**, or **v6.1**.
 5. Click **Install** — this automatically downloads Python environments, CMake, Ninja, and the `xtensa-esp32s3-elf` toolchain.
 
 ---
@@ -30,7 +27,7 @@ Download and install [Visual Studio Code](https://code.visualstudio.com/).
 ## 2. Opening and Configuring the Project
 
 1. Open the repository in VS Code:
-   `File → Open Folder…` → select `esp32-s3_bsp/` (or `examples/Unified_BSP_Demo/` to work directly in the demo app).
+   `File → Open Folder…` → select `esp32-s3_bsp/` (or `examples/Peripherals_Test_Suite/` to work directly in the test suite).
 
 2. **Set the Target Device**:
    - Click the **ESP-IDF Target** chip icon in the VS Code status bar (or press `Ctrl+Shift+P` → `ESP-IDF: Set Espressif Device Target`).
@@ -60,14 +57,14 @@ The VS Code status bar provides one-click actions for all development tasks:
 
 ## 4. Hardware Configuration
 
-The project includes a pre-configured [`sdkconfig.defaults`](../examples/Unified_BSP_Demo/sdkconfig.defaults) tuned for the `ESP32-S3-PICO-1-N8R8`:
+The project includes a pre-configured [`sdkconfig.defaults`](../examples/Peripherals_Test_Suite/sdkconfig.defaults) tuned for the `ESP32-S3-PICO-1-N8R8`:
 
 | Setting | Value |
 |---|---|
 | **Target** | ESP32-S3 |
 | **Flash** | 8 MB Quad SPI (QIO, 80 MHz) |
 | **PSRAM** | 8 MB Octal SPI (80 MHz) |
-| **Partition Table** | Custom dual-slot OTA ([`partitions.csv`](../examples/Unified_BSP_Demo/partitions.csv)) |
+| **Partition Table** | Custom dual-slot OTA ([`partitions.csv`](../examples/Peripherals_Test_Suite/partitions.csv)) |
 | **FreeRTOS Tick Rate** | 1000 Hz |
 
 To inspect or modify board parameters interactively:
