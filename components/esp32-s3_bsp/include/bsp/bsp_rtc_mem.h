@@ -35,7 +35,6 @@ extern "C" {
 typedef enum {
     BSP_INIT_MODE_FULL = 0, /*!< Cold boot / all subsystems & LVGL initialized */
     BSP_INIT_MODE_FAST = 1, /*!< Wake boot / fast display refresh (no clearing) */
-    BSP_INIT_MODE_MIN  = 2, /*!< Minimal telemetry burst (Sensors + Power + RTC only) */
 } bsp_init_mode_t;
 
 /**

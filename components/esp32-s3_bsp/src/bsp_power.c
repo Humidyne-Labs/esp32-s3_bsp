@@ -301,6 +301,10 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
     }
 
     if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
+        // Clear any pending RTC interrupt flags so RTC_INT pin is HIGH before arming
+        bool alarm_flag = false, timer_flag = false;
+        bsp_rtc_get_and_clear_interrupts(&alarm_flag, &timer_flag);
+
         bsp_rtc_disable_clkout();
         if (cfg.duration_sec > 0) {
             if (cfg.duration_sec <= 255) {
@@ -331,6 +335,15 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
         ext1_pin_mask |= (1ULL << BSP_PIN_RTC_INT);
     }
 
+    // Wait for user to release buttons before entering sleep so the current press doesn't instantly wake the MCU!
+    if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
+        while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_BOOT) == 0 ||
+               gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_POWER) == 0) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     if (cfg.wake_sources & BSP_WAKE_SRC_TIMER) {
         if (cfg.duration_sec > 0) {
             esp_sleep_enable_timer_wakeup((uint64_t)cfg.duration_sec * 1000000ULL);
@@ -349,7 +362,11 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
             esp_sleep_enable_gpio_wakeup();
         }
 
-        ESP_LOGI(TAG, "Entering Light Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
+        if (cfg.duration_sec > 0) {
+            ESP_LOGI(TAG, "Entering Light Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
+        } else {
+            ESP_LOGI(TAG, "Entering Light Sleep (Indefinite / External Wakeup Triggers)...");
+        }
         fflush(stdout);
         vTaskDelay(pdMS_TO_TICKS(50));
 
@@ -361,6 +378,8 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
         }
         if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
             gpio_wakeup_disable((gpio_num_t)BSP_PIN_RTC_INT);
+            bsp_rtc_clear_countdown_timer();
+            bsp_rtc_get_and_clear_interrupts(NULL, NULL);
         }
         bsp_shtc3_wakeup();
         ESP_LOGI(TAG, "Resumed from Light Sleep");
@@ -369,13 +388,39 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
 
     // DEEP SLEEP
     if (ext1_pin_mask != 0) {
+        if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
+            gpio_pullup_en((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+            gpio_pulldown_dis((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+            gpio_hold_en((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+
+            gpio_pullup_en((gpio_num_t)BSP_PIN_BUTTON_POWER);
+            gpio_pulldown_dis((gpio_num_t)BSP_PIN_BUTTON_POWER);
+            gpio_hold_en((gpio_num_t)BSP_PIN_BUTTON_POWER);
+        }
+        if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
+            gpio_pullup_en((gpio_num_t)BSP_PIN_RTC_INT);
+            gpio_pulldown_dis((gpio_num_t)BSP_PIN_RTC_INT);
+            gpio_hold_en((gpio_num_t)BSP_PIN_RTC_INT);
+        }
         esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
     }
-    ESP_LOGI(TAG, "Entering Deep Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
+    if (cfg.duration_sec > 0) {
+        ESP_LOGI(TAG, "Entering Deep Sleep for %lu seconds...", (unsigned long)cfg.duration_sec);
+    } else {
+        ESP_LOGI(TAG, "Entering Deep Sleep (Indefinite / External Wakeup Triggers: Buttons & RTC INT)...");
+    }
 
     // Maintain EPD & Sensor 3.3V Power Rail
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0);
     gpio_hold_en((gpio_num_t)BSP_PIN_EPD_3V3_EN);
+
+    // Maintain EPD Control Lines (CS=HIGH, RST=HIGH, DC=HIGH) so SSD1681 does not see floating / reset state
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_RST, 1);
+    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_RST);
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_CS, 1);
+    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_CS);
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_DC, 1);
+    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_DC);
 
     // Maintain Audio Codec Rail to prevent I2C clamping
     gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 0);
@@ -390,30 +435,4 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
     vTaskDelay(pdMS_TO_TICKS(50));
     esp_deep_sleep_start();
     return ESP_OK;
-}
-
-esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec)
-{
-    bsp_sleep_config_t cfg = {
-        .mode           = BSP_SLEEP_MODE_DEEP,
-        .duration_sec   = duration_sec,
-#if defined(CONFIG_BSP_RTC_WAKEUP_EXTERNAL_PCF85063)
-        .wake_sources   = (bsp_wake_source_mask_t)(BSP_WAKE_SRC_EXTERNAL_RTC | BSP_WAKE_SRC_BUTTONS),
-#else
-        .wake_sources   = (bsp_wake_source_mask_t)(BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_BUTTONS),
-#endif
-        .next_init_mode = BSP_INIT_MODE_FAST,
-    };
-    return bsp_enter_sleep(&cfg);
-}
-
-esp_err_t bsp_power_enter_light_sleep(uint32_t duration_sec)
-{
-    bsp_sleep_config_t cfg = {
-        .mode           = BSP_SLEEP_MODE_LIGHT,
-        .duration_sec   = duration_sec,
-        .wake_sources   = (bsp_wake_source_mask_t)(BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_BUTTONS),
-        .next_init_mode = BSP_INIT_MODE_FAST,
-    };
-    return bsp_enter_sleep(&cfg);
 }

@@ -40,6 +40,7 @@
 #include "bsp/bsp_prov.h"
 #include "bsp/bsp_ota.h"
 #include "bsp/bsp_tb.h"
+#include "bsp/bsp_lifecycle.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,11 +91,10 @@ typedef struct {
 esp_err_t bsp_board_init(void);
 
 /**
- * @brief Dynamic Hardware Initialization by Mode (FULL, FAST, MIN)
+ * @brief Dynamic Hardware Initialization by Mode (FULL, FAST)
  * 
  * - BSP_INIT_MODE_FULL: Cold boot, full peripheral startup, display + LVGL.
- * - BSP_INIT_MODE_FAST: Wake boot, display ready without clear.
- * - BSP_INIT_MODE_MIN: Minimal telemetry burst (Power, I2C, Sensors, ADC, RTC only).
+ * - BSP_INIT_MODE_FAST: Wake boot, fast display ready without clear.
  * 
  * @param mode Target bsp_init_mode_t
  * @return esp_err_t ESP_OK on success

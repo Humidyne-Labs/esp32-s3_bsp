@@ -64,6 +64,14 @@ static uint32_t lvgl_tick_get_cb(void)
 
 static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
+    // If the active screen has 0 child widgets, the application has not yet built its UI.
+    // Drop the flush to protect s_frame_buffer and SSD1681 RAM from being corrupted by empty white canvas.
+    lv_obj_t *act_scr = lv_display_get_screen_active(disp);
+    if (act_scr != NULL && lv_obj_get_child_count(act_scr) == 0) {
+        lv_display_flush_ready(disp);
+        return;
+    }
+
     const uint8_t *src_buf = px_map + LVGL_I1_PALETTE_SIZE;
     uint8_t *dest_buf = bsp_display_get_buffer();
 
@@ -155,22 +163,32 @@ esp_err_t bsp_lvgl_init(void)
 
     lv_display_set_color_format(s_lv_display, LV_COLOR_FORMAT_I1);
 
-    // Allocate partial render buffer (40 lines)
+    // Allocate partial render buffer (40 lines) with zeroed memory
     uint32_t buffer_lines = 40;
     size_t buf_size = ((BSP_DISPLAY_WIDTH + 7) / 8) * buffer_lines + LVGL_I1_PALETTE_SIZE;
-    uint8_t *buf1 = (uint8_t *)heap_caps_malloc(buf_size, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+    uint8_t *buf1 = (uint8_t *)heap_caps_calloc(1, buf_size, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
     if (buf1 == NULL) {
-        buf1 = (uint8_t *)malloc(buf_size);
+        buf1 = (uint8_t *)calloc(1, buf_size);
     }
     assert(buf1 != NULL);
+
+    // Explicitly initialize 1-bit monochrome palette (Index 0 = Black, Index 1 = White)
+    lv_color32_t palette[2];
+    palette[0] = lv_color32_make(0x00, 0x00, 0x00, 0xFF);
+    palette[1] = lv_color32_make(0xFF, 0xFF, 0xFF, 0xFF);
+    memcpy(buf1, palette, LVGL_I1_PALETTE_SIZE);
+
+    // Initialize the pixel area of buf1 to clean white (1-bits)
+    memset(buf1 + LVGL_I1_PALETTE_SIZE, 0xFF, buf_size - LVGL_I1_PALETTE_SIZE);
 
     lv_display_set_buffers(s_lv_display, buf1, NULL, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(s_lv_display, lvgl_display_flush_cb);
 
     // If waking from deep/light sleep, default first flush to fast partial update to avoid full screen flash
-    if (bsp_get_recommended_init_mode() == BSP_INIT_MODE_FAST) {
+    bsp_init_mode_t rec_mode = bsp_get_recommended_init_mode();
+    if (rec_mode == BSP_INIT_MODE_FAST) {
         s_first_boot_flush = false;
-        ESP_LOGI(TAG, "Wake cycle detected: LVGL first flush configured for fast partial update");
+        ESP_LOGI(TAG, "Wake cycle detected (mode %d): LVGL first flush configured for fast partial update", (int)rec_mode);
     } else {
         s_first_boot_flush = true;
     }

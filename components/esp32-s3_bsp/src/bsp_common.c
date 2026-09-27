@@ -145,7 +145,13 @@ esp_err_t bsp_init_io(void)
     gpio_deep_sleep_hold_dis();
     gpio_hold_dis((gpio_num_t)BSP_PIN_POWER_HOLD);
     gpio_hold_dis((gpio_num_t)BSP_PIN_EPD_3V3_EN);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_EPD_RST);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_EPD_CS);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_EPD_DC);
     gpio_hold_dis((gpio_num_t)BSP_PIN_PA_EN);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_BUTTON_POWER);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_RTC_INT);
 
     // 2. Pre-set output latch register levels BEFORE configuring direction to prevent glitches
     gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1);  // Latch onboard LDO power ON (Active HIGH)
@@ -334,8 +340,8 @@ esp_err_t bsp_init_mode(bsp_init_mode_t mode)
 {
     bsp_rtc_mem_init();
 
-    // Configure first flush mode: fast and min wake boots use partial refresh without screen blanking
-    if (mode == BSP_INIT_MODE_FAST || mode == BSP_INIT_MODE_MIN) {
+    // Configure first flush mode: fast wake boots use partial refresh without screen blanking
+    if (mode == BSP_INIT_MODE_FAST) {
         bsp_lvgl_set_first_flush_mode(false);
     } else {
         bsp_lvgl_set_first_flush_mode(true);
@@ -361,8 +367,7 @@ esp_err_t bsp_init_mode(bsp_init_mode_t mode)
     }
 
     ESP_LOGI(TAG, "Executing Dynamic Init Profile: %s",
-             (mode == BSP_INIT_MODE_FULL) ? "FULL (Cold Boot)" :
-             (mode == BSP_INIT_MODE_FAST) ? "FAST (Wake Boot)" : "MIN (Lean Telemetry + Display)");
+             (mode == BSP_INIT_MODE_FULL) ? "FULL (Cold Boot)" : "FAST (Wake Boot)");
 
     return bsp_board_init_with_config(&cfg);
 }
@@ -398,7 +403,13 @@ void bsp_system_shutdown(void)
 
 void bsp_system_deep_sleep(uint32_t sleep_sec)
 {
-    bsp_power_enter_deep_sleep(sleep_sec);
+    bsp_sleep_config_t cfg = {
+        .mode           = BSP_SLEEP_MODE_DEEP,
+        .duration_sec   = sleep_sec,
+        .wake_sources   = BSP_WAKE_SRC_ALL,
+        .next_init_mode = BSP_INIT_MODE_FAST,
+    };
+    bsp_lifecycle_enter_sleep(&cfg);
 }
 
 esp_err_t bsp_get_device_id(char *buf, size_t max_len)

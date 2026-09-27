@@ -199,7 +199,7 @@ static void epd_load_custom_lut(const uint8_t *lut_buffer)
     epd_send_data(lut_buffer[158]);
 }
 
-static void epd_apply_core_registers(void)
+static void epd_apply_core_registers(bool is_wake_init)
 {
     epd_send_cmd (0x01);
     epd_send_data(( BSP_DISPLAY_HEIGHT - 1)       & 0xFF);
@@ -210,18 +210,24 @@ static void epd_apply_core_registers(void)
     epd_send_data(0x03); // Increment X, Increment Y
 
     epd_send_cmd (0x3C);
-    epd_send_data(0x05);
+    epd_send_data(0x05);  
 
     epd_send_cmd (0x18);
     epd_send_data(0x80);
 
-    epd_send_cmd (0x22);
-    epd_send_data(0xB1); // Load Temp & OTP Waveform
-    epd_send_cmd (0x20);
-    bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
-
     epd_set_windows(0, 0, (BSP_DISPLAY_WIDTH / 8) - 1, BSP_DISPLAY_HEIGHT - 1);
     epd_set_cursor (0, 0);
+
+    if (!is_wake_init) {
+        // Cold boot: Load Temp & OTP Waveform configuration via Master Activation
+        epd_send_cmd (0x22);
+        epd_send_data(0xB1);
+        epd_send_cmd (0x20); // Master Activation for Clock & Temp load
+        bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
+    } else {
+        // Wake boot: Load custom partial LUT directly without triggering master activation
+        epd_load_custom_lut(WF_PARTIAL_1IN54);
+    }
 }
 
 esp_err_t bsp_display_init(void)
@@ -238,12 +244,13 @@ esp_err_t bsp_display_init(void)
         if (s_prev_frame_buffer == NULL) return ESP_ERR_NO_MEM;
     }
 
-    if (bsp_rtc_mem_has_display_frame()) {
+    bool is_wake = bsp_rtc_mem_has_display_frame();
+    if (is_wake) {
         bsp_rtc_mem_load_display_frame(s_prev_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
         memcpy(s_frame_buffer, s_prev_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
         ESP_LOGI(TAG, "Restored previous EPD frame from RTC Slow Memory");
     } else {
-        memset(s_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
+        memset(s_frame_buffer,      0xFF, BSP_DISPLAY_BUFFER_SIZE);
         memset(s_prev_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
@@ -275,21 +282,43 @@ esp_err_t bsp_display_init(void)
         if (ret != ESP_OK) return ret;
     }
 
-    // Hardware Reset
-    epd_set_rst(1);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    epd_set_rst(0);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    epd_set_rst(1);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    if (is_wake) {
+        // Quick 20us pulse on RST to exit Deep Sleep Mode 1 without resetting silicon panel state
+        epd_set_rst(0);
+        esp_rom_delay_us(20);
+        epd_set_rst(1);
+        esp_rom_delay_us(50);
+        bsp_display_wait_busy(1000);
+    } else {
+        // Full hardware reset and SW reset on cold boot
+        epd_set_rst(1);
+        vTaskDelay(pdMS_TO_TICKS(10));
+        epd_set_rst(0);
+        vTaskDelay(pdMS_TO_TICKS(10));
+        epd_set_rst(1);
+        vTaskDelay(pdMS_TO_TICKS(10));
+        bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
 
-    bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
-    epd_send_cmd(0x12); // SW Reset
-    bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
+        epd_send_cmd(0x12); // SW Reset only on cold boot
+        bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
+    }
 
-    epd_apply_core_registers();
+    epd_apply_core_registers(is_wake);
 
-    ESP_LOGI(TAG, "SSD1681 1.54-inch EPD initialized successfully");
+    if (is_wake) {
+        // Pre-synchronize both SSD1681 RAM banks (0x24 New RAM and 0x26 Old RAM) with restored frame buffer
+        epd_set_windows(0, 0, (BSP_DISPLAY_WIDTH / 8) - 1, BSP_DISPLAY_HEIGHT - 1);
+
+        epd_set_cursor(0, 0);
+        epd_send_cmd(0x24);
+        epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+
+        epd_set_cursor(0, 0);
+        epd_send_cmd(0x26);
+        epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
+    }
+
+    ESP_LOGI(TAG, "SSD1681 1.54-inch EPD initialized successfully (%s mode)", is_wake ? "wake" : "cold");
     return ESP_OK;
 }
 
@@ -406,8 +435,8 @@ esp_err_t bsp_display_refresh(bool partial_mode)
 void bsp_display_deep_sleep(void)
 {
     bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
-    epd_send_cmd (0x3C);
-    epd_send_data(0x01);
+    //epd_send_cmd (0x3C);
+    //epd_send_data(0x01);
     epd_send_cmd (0x10);
     epd_send_data(0x01);
 }

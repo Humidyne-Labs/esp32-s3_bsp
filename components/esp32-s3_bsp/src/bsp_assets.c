@@ -140,13 +140,16 @@ static lv_result_t mmap_decoder_open_cb(lv_image_decoder_t *decoder, lv_image_de
     // Start offset after 12-byte header
     uint32_t header_offset = sizeof(lv_image_header_t);
 
-    // If indexed format (I1, I2, I4, I8), skip the palette table to reach raw pixel bits
+    // If indexed format (I1, I2, I4, I8), record palette pointer and advance past palette table to pixel bits
     if (LV_COLOR_FORMAT_IS_INDEXED(dsc->header.cf)) {
-        header_offset += LV_COLOR_INDEXED_PALETTE_SIZE(dsc->header.cf) * sizeof(lv_color32_t);
+        uint32_t pal_size = LV_COLOR_INDEXED_PALETTE_SIZE((lv_color_format_t)dsc->header.cf);
+        dsc->palette      = (const lv_color32_t *)(flash_ptr + header_offset);
+        dsc->palette_size = pal_size;
+        header_offset    += pal_size * sizeof(lv_color32_t);
     }
 
-    const uint8_t *pixel_data = flash_ptr + header_offset;
-    uint32_t       pixel_size = total_size - header_offset;
+    const uint8_t *payload_data = flash_ptr + header_offset;
+    uint32_t       payload_size = (total_size > header_offset) ? (total_size - header_offset) : 0;
 
     // Calculate stride for any bpp (1, 2, 4, 8, 16, 24, 32)
     uint32_t bpp    = lv_color_format_get_bpp((lv_color_format_t)dsc->header.cf);
@@ -158,12 +161,12 @@ static lv_result_t mmap_decoder_open_cb(lv_image_decoder_t *decoder, lv_image_de
         dsc->header.h,
         (lv_color_format_t)dsc->header.cf,
         stride,
-        (void *)pixel_data,
-        pixel_size
+        (void *)payload_data,
+        payload_size
     );
 
-    draw_buf->data           = (void *)pixel_data;
-    draw_buf->unaligned_data = (void *)pixel_data;
+    draw_buf->data           = (void *)payload_data;
+    draw_buf->unaligned_data = (void *)payload_data;
     draw_buf->header.stride  = stride;
     dsc->header.stride       = stride;
 

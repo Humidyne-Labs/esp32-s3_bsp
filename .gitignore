@@ -4,3 +4,4 @@
 examples/Unified_BSP_Demo/sdkconfig.old
 *.lock
 
+/_run_logs

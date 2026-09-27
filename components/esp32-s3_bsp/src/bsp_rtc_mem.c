@@ -19,6 +19,7 @@ static const char *TAG = "bsp_rtc_mem";
 RTC_DATA_ATTR static bsp_rtc_state_t s_rtc_state;
 RTC_DATA_ATTR static uint8_t         s_rtc_frame_buffer[5000];
 RTC_DATA_ATTR static bool            s_rtc_frame_valid = false;
+static bool                          s_boot_counted    = false;
 
 esp_err_t bsp_rtc_mem_init(void)
 {
@@ -26,8 +27,10 @@ esp_err_t bsp_rtc_mem_init(void)
         ESP_LOGI(TAG, "RTC Slow Memory uninitialized or invalid (magic 0x%08lX); re-initializing", 
                  (unsigned long)s_rtc_state.magic);
         bsp_rtc_mem_reset();
-    } else {
+        s_boot_counted = true;
+    } else if (!s_boot_counted) {
         s_rtc_state.boot_count++;
+        s_boot_counted = true;
         ESP_LOGI(TAG, "RTC Slow Memory valid (Boot count: %lu, Deep sleep count: %lu)",
                  (unsigned long)s_rtc_state.boot_count, (unsigned long)s_rtc_state.deep_sleep_count);
     }

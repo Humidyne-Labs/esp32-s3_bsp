@@ -19,6 +19,7 @@ idf_component_register(
         "src/bsp_prov.c"
         "src/bsp_ota.c"
         "src/bsp_tb.c"
+        "src/bsp_lifecycle.c"
     INCLUDE_DIRS 
         "include"
     REQUIRES 

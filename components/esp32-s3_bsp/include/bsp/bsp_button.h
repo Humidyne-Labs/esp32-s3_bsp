@@ -93,6 +93,15 @@ esp_err_t bsp_button_unregister_cb(bsp_button_t button, bsp_button_event_t event
 bool bsp_button_is_pressed(bsp_button_t button);
 
 /**
+ * @brief Synchronously block and wait for a button click (press + release)
+ * 
+ * @param button Target button (BOOT or POWER)
+ * @param timeout_ms Maximum time to wait in milliseconds (0 for indefinite blocking)
+ * @return esp_err_t ESP_OK on click, ESP_ERR_TIMEOUT on timeout, ESP_ERR_INVALID_ARG on bad button
+ */
+esp_err_t bsp_button_wait_for_click(bsp_button_t button, uint32_t timeout_ms);
+
+/**
  * @brief Register system shutdown callback hook
  * 
  * @param cb Callback invoked before power latch drops

@@ -136,28 +136,15 @@ uint8_t bsp_battery_get_percentage(void);
 bool bsp_battery_is_low(uint8_t threshold_pct);
 
 /**
- * @brief Enter Configurable Sleep Mode (Light or Deep Sleep)
+ * @brief Low-Level Sleep Execution Driver (Light or Deep Sleep)
+ * 
+ * Configures hardware wake sources, enables RTC GPIO hold, and executes esp_light_sleep_start()
+ * or esp_deep_sleep_start(). Applications should call bsp_lifecycle_enter_sleep() instead.
  * 
  * @param config Sleep configuration parameters
  * @return esp_err_t ESP_OK (returns upon wake if Light Sleep)
  */
 esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config);
-
-/**
- * @brief Enter Ultra-Low Power Deep Sleep Mode (Convenience wrapper)
- * 
- * @param duration_sec Sleep duration in seconds (0 for indefinite wakeup by button)
- * @return esp_err_t ESP_OK
- */
-esp_err_t bsp_power_enter_deep_sleep(uint32_t duration_sec);
-
-/**
- * @brief Enter Light Sleep Mode (Convenience wrapper)
- * 
- * @param duration_sec Sleep duration in seconds (0 for indefinite wakeup by button)
- * @return esp_err_t ESP_OK upon wakeup
- */
-esp_err_t bsp_power_enter_light_sleep(uint32_t duration_sec);
 
 /**
  * @brief Get the system reset reason reported by ESP-IDF

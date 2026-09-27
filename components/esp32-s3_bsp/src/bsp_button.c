@@ -296,3 +296,40 @@ bool bsp_button_is_pressed(bsp_button_t button)
     }
     return gpio_get_level(s_buttons[button].gpio) == 0;
 }
+
+esp_err_t bsp_button_wait_for_click(bsp_button_t button, uint32_t timeout_ms)
+{
+    if (button >= BSP_BUTTON_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    gpio_num_t gpio = (button == BSP_BUTTON_BOOT) ? 
+                      (gpio_num_t)BSP_PIN_BUTTON_BOOT : 
+                      (gpio_num_t)BSP_PIN_BUTTON_POWER;
+
+    int64_t start_us   = esp_timer_get_time();
+    int64_t timeout_us = (timeout_ms > 0) ? ((int64_t)timeout_ms * 1000LL) : -1LL;
+
+    // 1. Wait for button press (Active Low -> level 0)
+    while (gpio_get_level(gpio) != 0) {
+        if (timeout_us > 0 && (esp_timer_get_time() - start_us) > timeout_us) {
+            return ESP_ERR_TIMEOUT;
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+
+    // Debounce press
+    vTaskDelay(pdMS_TO_TICKS(30));
+
+    // 2. Wait for button release (Active Low -> level 1)
+    while (gpio_get_level(gpio) == 0) {
+        if (timeout_us > 0 && (esp_timer_get_time() - start_us) > timeout_us) {
+            return ESP_ERR_TIMEOUT;
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+
+    // Debounce release
+    vTaskDelay(pdMS_TO_TICKS(30));
+    return ESP_OK;
+}
