@@ -53,8 +53,8 @@ static void handle_rpc_message(const char *topic, const char *data, int data_len
         cJSON *method_item = cJSON_GetObjectItem(root, "method");
         cJSON *params_item = cJSON_GetObjectItem(root, "params");
 
-        const char *method = method_item ? method_item->valuestring : "unknown";
-        char *params_str = params_item ? cJSON_PrintUnformatted(params_item) : NULL;
+        const char *method     = method_item ? method_item->valuestring            : "unknown";
+        char       *params_str = params_item ? cJSON_PrintUnformatted(params_item) : NULL;
 
         ESP_LOGI(TAG, "Incoming RPC [%s] Method: %s", request_id, method);
 

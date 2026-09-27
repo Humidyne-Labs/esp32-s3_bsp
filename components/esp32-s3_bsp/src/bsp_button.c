@@ -89,7 +89,7 @@ static void button_timer_cb(void *arg)
 
             case STATE_IDLE:
                 if (is_down) {
-                    s_buttons[btn].state = STATE_DEBOUNCE_PRESS;
+                    s_buttons[btn].state              = STATE_DEBOUNCE_PRESS;
                     s_buttons[btn].stable_state_ticks = now;
                 }
                 break;
@@ -100,7 +100,7 @@ static void button_timer_cb(void *arg)
                         s_buttons[btn].state = STATE_PRESSED;
                         s_buttons[btn].press_start_tick = now;
                         s_buttons[btn].long_press_fired = false;
-                        fire_event(btn, BSP_BUTTON_EVENT_PRESS_DOWN);
+                        fire_event(btn, BSP_BUTTON_EVENT_PRESS_DOWN); //<- "that happened to me once!"
                     }
                 } else {
                     s_buttons[btn].state = STATE_IDLE;
@@ -115,7 +115,7 @@ static void button_timer_cb(void *arg)
                         fire_event(btn, BSP_BUTTON_EVENT_LONG_PRESS);
                     }
                 } else {
-                    s_buttons[btn].state = STATE_DEBOUNCE_RELEASE;
+                    s_buttons[btn].state              = STATE_DEBOUNCE_RELEASE;
                     s_buttons[btn].stable_state_ticks = now;
                 }
                 break;
@@ -128,7 +128,7 @@ static void button_timer_cb(void *arg)
                         if (s_buttons[btn].long_press_fired) {
                             s_buttons[btn].state = STATE_IDLE;
                         } else {
-                            s_buttons[btn].state = STATE_WAIT_DOUBLE_CLICK;
+                            s_buttons[btn].state        = STATE_WAIT_DOUBLE_CLICK;
                             s_buttons[btn].release_tick = now;
                         }
                     }
@@ -139,7 +139,7 @@ static void button_timer_cb(void *arg)
 
             case STATE_WAIT_DOUBLE_CLICK:
                 if (is_down) {
-                    s_buttons[btn].state = STATE_DEBOUNCE_PRESS;
+                    s_buttons[btn].state              = STATE_DEBOUNCE_PRESS;
                     s_buttons[btn].stable_state_ticks = now;
                     fire_event(btn, BSP_BUTTON_EVENT_DOUBLE_CLICK);
                 } else if ((now - s_buttons[btn].release_tick) >= s_cfg.click_timeout_ms) {
@@ -188,7 +188,7 @@ void bsp_power_off(void)
     bsp_audio_stop();
     bsp_audio_power_enable(false);
     gpio_set_level((gpio_num_t)BSP_PIN_PA_CTRL, 0);
-    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 1);
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN,   1);
 
     // 6. Turn off status LED
     bsp_led_set(false);
@@ -279,7 +279,7 @@ esp_err_t bsp_button_register_cb(bsp_button_t button, bsp_button_event_t event, 
     if (button >= BSP_BUTTON_COUNT || event >= BSP_BUTTON_EVENT_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
-    s_buttons[button].callbacks[event].cb = cb;
+    s_buttons[button].callbacks[event].cb        = cb;
     s_buttons[button].callbacks[event].user_data = user_data;
     return ESP_OK;
 }

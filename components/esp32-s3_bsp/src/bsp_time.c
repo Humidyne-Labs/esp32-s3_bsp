@@ -21,6 +21,7 @@
 #include "bsp/bsp_wifi.h"
 
 static const char *TAG = "bsp_time";
+
 static esp_timer_handle_t s_periodic_sync_timer = NULL;
 
 esp_err_t bsp_time_set_timezone(const char *tz_str)

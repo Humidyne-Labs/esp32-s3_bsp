@@ -25,9 +25,9 @@
 
 static const char *TAG = "bsp_prov";
 
-static bool                 s_prov_running   = false;
-static bsp_prov_event_cb_t  s_prov_cb        = NULL;
-static void                *s_prov_user_data = NULL;
+static bool                 s_prov_running         = false;
+static bsp_prov_event_cb_t  s_prov_cb              = NULL;
+static void                 *s_prov_user_data      = NULL;
 static char                 s_active_serv_name[48] = {0};
 
 static void prov_event_handler(void *user_data, esp_event_base_t event_base,
@@ -90,9 +90,9 @@ esp_err_t bsp_prov_start(const char *custom_service_name, const char *pop, bsp_p
     }
 
     network_prov_mgr_config_t config = {
-        .scheme = network_prov_scheme_ble,
+        .scheme               = network_prov_scheme_ble,
         .scheme_event_handler = NETWORK_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
-        .app_event_handler = NETWORK_PROV_EVENT_HANDLER_NONE,
+        .app_event_handler    = NETWORK_PROV_EVENT_HANDLER_NONE,
     };
 
     ret = network_prov_mgr_init(config);

@@ -92,26 +92,26 @@ static void epd_send_byte(uint8_t data)
 {
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
-    t.flags     = SPI_TRANS_USE_TXDATA;
-    t.length    = 8;
-    t.tx_data[0]= data;
+    t.flags      = SPI_TRANS_USE_TXDATA;
+    t.length     = 8;
+    t.tx_data[0] = data;
     spi_device_polling_transmit(s_spi_handle, &t);
 }
 
 static void epd_send_cmd(uint8_t cmd)
 {
-    epd_set_dc(0);
-    epd_set_cs(0);
+    epd_set_dc   (0);
+    epd_set_cs   (0);
     epd_send_byte(cmd);
-    epd_set_cs(1);
+    epd_set_cs   (1);
 }
 
 static void epd_send_data(uint8_t data)
 {
-    epd_set_dc(1);
-    epd_set_cs(0);
+    epd_set_dc   (1);
+    epd_set_cs   (0);
     epd_send_byte(data);
-    epd_set_cs(1);
+    epd_set_cs   (1);
 }
 
 static void epd_write_bytes(const uint8_t *data, size_t len)
@@ -146,7 +146,7 @@ static void epd_write_bytes(const uint8_t *data, size_t len)
                     epd_send_byte(ptr[i]);
                 }
             }
-            ptr += chunk;
+            ptr       += chunk;
             remaining -= chunk;
         }
     }
@@ -157,13 +157,13 @@ static void epd_set_windows(uint16_t x_start_byte, uint16_t y_start, uint16_t x_
 {
     epd_send_cmd(0x44);
     epd_send_data(x_start_byte & 0xFF);
-    epd_send_data(x_end_byte & 0xFF);
+    epd_send_data(x_end_byte   & 0xFF);
 
     epd_send_cmd(0x45);
-    epd_send_data(y_start & 0xFF);
+    epd_send_data( y_start       & 0xFF);
     epd_send_data((y_start >> 8) & 0xFF);
-    epd_send_data(y_end & 0xFF);
-    epd_send_data((y_end >> 8) & 0xFF);
+    epd_send_data( y_end         & 0xFF);
+    epd_send_data((y_end >> 8)   & 0xFF);
 }
 
 static void epd_set_cursor(uint16_t x_start_byte, uint16_t y_start)
@@ -172,7 +172,7 @@ static void epd_set_cursor(uint16_t x_start_byte, uint16_t y_start)
     epd_send_data(x_start_byte & 0xFF);
 
     epd_send_cmd(0x4F);
-    epd_send_data(y_start & 0xFF);
+    epd_send_data( y_start       & 0xFF);
     epd_send_data((y_start >> 8) & 0xFF);
 }
 
@@ -200,27 +200,27 @@ static void epd_load_custom_lut(const uint8_t *lut_buffer)
 
 static void epd_apply_core_registers(void)
 {
-    epd_send_cmd(0x01);
-    epd_send_data((BSP_DISPLAY_HEIGHT - 1) & 0xFF);
+    epd_send_cmd (0x01);
+    epd_send_data(( BSP_DISPLAY_HEIGHT - 1)       & 0xFF);
     epd_send_data(((BSP_DISPLAY_HEIGHT - 1) >> 8) & 0xFF);
     epd_send_data(0x00);
 
-    epd_send_cmd(0x11);
+    epd_send_cmd (0x11);
     epd_send_data(0x03); // Increment X, Increment Y
 
-    epd_send_cmd(0x3C);
+    epd_send_cmd (0x3C);
     epd_send_data(0x05);
 
-    epd_send_cmd(0x18);
+    epd_send_cmd (0x18);
     epd_send_data(0x80);
 
-    epd_send_cmd(0x22);
+    epd_send_cmd (0x22);
     epd_send_data(0xB1); // Load Temp & OTP Waveform
-    epd_send_cmd(0x20);
+    epd_send_cmd (0x20);
     bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
 
     epd_set_windows(0, 0, (BSP_DISPLAY_WIDTH / 8) - 1, BSP_DISPLAY_HEIGHT - 1);
-    epd_set_cursor(0, 0);
+    epd_set_cursor (0, 0);
 }
 
 esp_err_t bsp_display_init(void)
@@ -299,16 +299,16 @@ void bsp_display_flush(void)
     epd_set_windows(0, 0, (BSP_DISPLAY_WIDTH / 8) - 1, BSP_DISPLAY_HEIGHT - 1);
 
     epd_set_cursor(0, 0);
-    epd_send_cmd(0x24);
+    epd_send_cmd  (0x24);
     epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
 
     epd_set_cursor(0, 0);
-    epd_send_cmd(0x26);
+    epd_send_cmd  (0x26);
     epd_write_bytes(s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
 
-    epd_send_cmd(0x22);
+    epd_send_cmd (0x22);
     epd_send_data(0xC7);
-    epd_send_cmd(0x20);
+    epd_send_cmd (0x20);
     bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
 
     memcpy(s_prev_frame_buffer, s_frame_buffer, BSP_DISPLAY_BUFFER_SIZE);
@@ -324,8 +324,8 @@ void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t
 {
     if (s_frame_buffer == NULL || s_prev_frame_buffer == NULL) return;
 
-    x_start = std::min<uint16_t>(x_start, BSP_DISPLAY_WIDTH - 1);
-    x_end   = std::min<uint16_t>(x_end,   BSP_DISPLAY_WIDTH - 1);
+    x_start = std::min<uint16_t>(x_start, BSP_DISPLAY_WIDTH  - 1);
+    x_end   = std::min<uint16_t>(x_end,   BSP_DISPLAY_WIDTH  - 1);
     y_start = std::min<uint16_t>(y_start, BSP_DISPLAY_HEIGHT - 1);
     y_end   = std::min<uint16_t>(y_end,   BSP_DISPLAY_HEIGHT - 1);
 
@@ -333,7 +333,7 @@ void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t
     if (y_start > y_end) std::swap(y_start, y_end);
 
     uint16_t x_s_byte = x_start / 8;
-    uint16_t x_e_byte = x_end / 8;
+    uint16_t x_e_byte = x_end   / 8;
     uint16_t bytes_per_line = (x_e_byte - x_s_byte) + 1;
 
     epd_set_windows(x_s_byte, y_start, x_e_byte, y_end);
@@ -358,9 +358,9 @@ void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t
     epd_load_custom_lut(WF_PARTIAL_1IN54);
 
     // 4. Trigger Display Update (Mode 1 Display Execution)
-    epd_send_cmd(0x22);
+    epd_send_cmd (0x22);
     epd_send_data(0xC7);
-    epd_send_cmd(0x20);
+    epd_send_cmd (0x20);
     bsp_display_wait_busy(EPD_PARTIAL_REFRESH_TIMEOUT_MS);
 
     // 5. Synchronize local frame buffer
@@ -396,9 +396,9 @@ esp_err_t bsp_display_refresh(bool partial_mode)
 void bsp_display_deep_sleep(void)
 {
     bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
-    epd_send_cmd(0x3C);
+    epd_send_cmd (0x3C);
     epd_send_data(0x01);
-    epd_send_cmd(0x10);
+    epd_send_cmd (0x10);
     epd_send_data(0x01);
 }
 

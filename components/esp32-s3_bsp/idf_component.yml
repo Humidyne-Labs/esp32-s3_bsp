@@ -1,9 +1,9 @@
 ## Component metadata
-version: "0.1.0"
+version:     "0.1.0"
 description: "Unified Board Support Package for the Waveshare ESP32-S3 ePaper 1.54 V2 (ESP32-S3-PICO-1-N8R8)."
-url: "https://github.com/Humidyne-Labs/esp32-s3_bsp"
-repository: "https://github.com/Humidyne-Labs/esp32-s3_bsp.git"
-license: "MIT"
+url:         "https://github.com/Humidyne-Labs/esp32-s3_bsp"
+repository:  "https://github.com/Humidyne-Labs/esp32-s3_bsp.git"
+license:     "MIT"
 tags:
   - bsp
   - display
@@ -16,14 +16,14 @@ tags:
 
 ## Required dependencies
 dependencies:
-  idf:                        ">=5.1"
-  lvgl/lvgl:                  "==9.6.0"
-  espressif/esp_codec_dev:    "^1.6.2"
-  espressif/esp_mmap_assets:  "^2.0.1"
-  espressif/esp_lv_fs:        "^1.0.1"
-  espressif/mqtt:             "^1.0.0"
+  idf:                            ">=5.1"
+  lvgl/lvgl:                      "==9.6.0"
+  espressif/esp_codec_dev:        "^1.6.2"
+  espressif/esp_mmap_assets:      "^2.0.1"
+  espressif/esp_lv_fs:            "^1.0.1"
+  espressif/mqtt:                 "^1.0.0"
   espressif/network_provisioning: "^1.2.5"
-  espressif/cjson:            "^1.7.19"
+  espressif/cjson:                "^1.7.19"
 
 ## File inclusion/exclusion rules (for registry packaging)
 files:

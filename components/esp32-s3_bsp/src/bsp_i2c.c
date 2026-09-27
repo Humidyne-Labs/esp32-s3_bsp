@@ -88,7 +88,7 @@ esp_err_t bsp_i2c_init(void)
     bsp_init_io();
     gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1); // Main LDO power latch ON
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0); // EPD, Sensor & I2C Pullup 3.3V ON (Active LOW)
-    vTaskDelay(pdMS_TO_TICKS(15));                      // Allow 3.3V rail & sensor power-on-reset to settle
+    vTaskDelay(pdMS_TO_TICKS(15));                     // Allow 3.3V rail & sensor power-on-reset to settle
 
     if (s_i2c_mutex == NULL) {
         s_i2c_mutex = xSemaphoreCreateRecursiveMutex();
@@ -130,11 +130,11 @@ esp_err_t bsp_i2c_init(void)
     gpio_reset_pin((gpio_num_t)BSP_PIN_I2C_SCL);
 
     i2c_master_bus_config_t bus_config = {
-        .i2c_port                    = I2C_NUM_0,
-        .sda_io_num                  = (gpio_num_t)BSP_PIN_I2C_SDA,
-        .scl_io_num                  = (gpio_num_t)BSP_PIN_I2C_SCL,
-        .clk_source                  = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt           = 7,
+        .i2c_port                     = I2C_NUM_0,
+        .sda_io_num                   = (gpio_num_t)BSP_PIN_I2C_SDA,
+        .scl_io_num                   = (gpio_num_t)BSP_PIN_I2C_SCL,
+        .clk_source                   = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt            = 7,
         .flags.enable_internal_pullup = true,
     };
 

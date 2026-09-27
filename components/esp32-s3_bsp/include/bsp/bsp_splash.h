@@ -43,12 +43,12 @@ typedef enum {
  * @brief Audio Chime / Signal Event Types
  */
 typedef enum {
-    BSP_CHIME_BOOT   = 0, /*!< Bootup melodic chime */
-    BSP_CHIME_SLEEP  = 1, /*!< Sleep / stand-down tone */
+    BSP_CHIME_BOOT     = 0, /*!< Bootup melodic chime */
+    BSP_CHIME_SLEEP    = 1, /*!< Sleep / stand-down tone */
     BSP_CHIME_SHUTDOWN = 2, /*!< Power off tone */
-    BSP_CHIME_ALARM  = 3, /*!< Critical telemetry / threshold alarm */
-    BSP_CHIME_NOTIFY = 4, /*!< General notification chirp */
-    BSP_CHIME_MAX    = 5
+    BSP_CHIME_ALARM    = 3, /*!< Critical telemetry / threshold alarm */
+    BSP_CHIME_NOTIFY   = 4, /*!< General notification chirp */
+    BSP_CHIME_MAX      = 5
 } bsp_chime_type_t;
 
 /**

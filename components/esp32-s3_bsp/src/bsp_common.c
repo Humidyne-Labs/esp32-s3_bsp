@@ -61,7 +61,7 @@ const char *bsp_get_chip_revision_str(void)
 const char *bsp_err_to_name(esp_err_t err)
 {
     switch (err) {
-        case ESP_OK:                      return "BSP_OK / ESP_OK";
+        case ESP_OK:                       return "BSP_OK / ESP_OK";
         case BSP_ERR_NOT_INITIALIZED:      return "BSP_ERR_NOT_INITIALIZED";
         case BSP_ERR_I2C_BUS_LOCKED:       return "BSP_ERR_I2C_BUS_LOCKED";
         case BSP_ERR_SENSOR_CRC_FAIL:      return "BSP_ERR_SENSOR_CRC_FAIL";
@@ -70,7 +70,7 @@ const char *bsp_err_to_name(esp_err_t err)
         case BSP_ERR_SD_CARD_MOUNT:        return "BSP_ERR_SD_CARD_MOUNT";
         case BSP_ERR_WIFI_DISCONNECTED:    return "BSP_ERR_WIFI_DISCONNECTED";
         case BSP_ERR_OTA_VALIDATION:       return "BSP_ERR_OTA_VALIDATION";
-        default:                          return esp_err_to_name(err);
+        default:                           return esp_err_to_name(err);
     }
 }
 
@@ -92,8 +92,10 @@ esp_err_t bsp_get_diagnostics(bsp_diag_info_t *diag)
     diag->min_free_internal_heap = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     diag->free_psram_heap        = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     diag->uptime_seconds         = (uint32_t)(esp_timer_get_time() / 1000000ULL);
-    uint32_t batt_mv = 0;
-    bsp_battery_get_voltage(&batt_mv, NULL);
+    uint32_t batt_mv             = 0;
+    
+	bsp_battery_get_voltage(&batt_mv, NULL);
+	
     diag->battery_mv             = batt_mv;
     diag->battery_percentage     = (int8_t)bsp_battery_get_percentage();
     diag->power_rail_good        = (gpio_get_level((gpio_num_t)BSP_PIN_POWER_HOLD) == 1);
@@ -101,7 +103,7 @@ esp_err_t bsp_get_diagnostics(bsp_diag_info_t *diag)
     diag->display_ready          = (bsp_display_get_buffer() != NULL);
     diag->wifi_connected         = bsp_wifi_is_connected();
 
-    int rssi = 0;
+    int rssi                     = 0;
     bsp_wifi_get_rssi(&rssi);
     diag->wifi_rssi              = (int8_t)rssi;
 

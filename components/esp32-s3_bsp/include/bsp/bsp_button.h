@@ -31,10 +31,10 @@ extern "C" {
 #endif
 
 typedef enum {
-    BSP_BUTTON_BOOT = 0,    /*!< GPIO 0 User / Boot Button */
-    BSP_BUTTON_POWER = 1,   /*!< GPIO 18 Power / Battery Key */
+    BSP_BUTTON_BOOT  = 0,    /*!< GPIO  0 User  / Boot Button */
+    BSP_BUTTON_POWER = 1,    /*!< GPIO 18 Power / Battery Key */
     BSP_BUTTON_COUNT,
-    BSP_BUTTON_MAX = BSP_BUTTON_COUNT,
+    BSP_BUTTON_MAX   = BSP_BUTTON_COUNT,
 } bsp_button_t;
 
 typedef enum {

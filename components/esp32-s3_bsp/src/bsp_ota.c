@@ -18,6 +18,7 @@
 #include "bsp/bsp_ota.h"
 
 static const char *TAG = "bsp_ota";
+
 static const esp_partition_t *s_update_partition = NULL;
 
 esp_err_t bsp_ota_begin(size_t image_size, esp_ota_handle_t *out_handle)
@@ -109,7 +110,7 @@ esp_err_t bsp_ota_from_url(const char *url, bsp_ota_progress_cb_t cb, void *user
     if (cb) cb(BSP_OTA_STATUS_DOWNLOADING, 0, "Downloading firmware binary...", user_data);
 
     int total_bytes = esp_https_ota_get_image_size(https_ota_handle);
-    int read_bytes = 0;
+    int read_bytes  = 0;
 
     while (1) {
         ret = esp_https_ota_perform(https_ota_handle);
