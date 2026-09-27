@@ -1,0 +1,17 @@
+{
+    "idf.currentSetup": "C:\\esp\\v6.1\\esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ],
+    "idf.customExtraVars": {
+        "IDF_TARGET": "esp32s3"
+    },
+    "clangd.path": "C:\\Espressif\\tools\\esp-clangd\\esp-21.1.3_20260408\\esp-clangd\\bin\\clangd.exe",
+    "clangd.arguments": [
+      "--background-index",
+      "--query-driver=**",
+      "--compile-commands-dir=c:\\Users\\Matt\\Documents\\GitHub\\esp32-s3_bsp\\examples\\Peripherals_Test_Suite\\build"
+    ],
+    "idf.flashType": "JTAG",
+    "idf.port": "COM3"
+}
