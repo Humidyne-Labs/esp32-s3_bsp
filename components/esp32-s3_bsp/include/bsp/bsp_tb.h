@@ -67,10 +67,10 @@ typedef void (*bsp_tb_alarm_cb_t)(const char *alarm_json, void *user_data);
  */
 typedef enum {
     BSP_TB_VAL_INT = 0,    /*!< 64-bit Signed Integer (int64_t) */
-    BSP_TB_VAL_FLOAT,      /*!< Single-Precision Float */
-    BSP_TB_VAL_DOUBLE,     /*!< Double-Precision Float */
-    BSP_TB_VAL_BOOL,       /*!< Boolean (true/false) */
-    BSP_TB_VAL_STRING,     /*!< Null-terminated String */
+    BSP_TB_VAL_FLOAT,      /*!< Single-Precision Float          */
+    BSP_TB_VAL_DOUBLE,     /*!< Double-Precision Float          */
+    BSP_TB_VAL_BOOL,       /*!< Boolean (true/false)            */
+    BSP_TB_VAL_STRING,     /*!< Null-terminated String          */
 } bsp_tb_val_type_t;
 
 /**
@@ -78,7 +78,7 @@ typedef enum {
  */
 typedef struct {
     const char        *key;     /*!< Attribute/Telemetry key name */
-    bsp_tb_val_type_t  type;    /*!< Value type */
+    bsp_tb_val_type_t  type;    /*!< Value type                   */
     union {
         int64_t     i_val;
         float       f_val;
@@ -92,14 +92,14 @@ typedef struct {
  * @brief ThingsBoard Client Configuration Struct
  */
 typedef struct {
-    const char            *broker_uri;     /*!< MQTTS Broker URI (e.g. "mqtts://thingsboard.cloud:8883") */
-    const char            *access_token;   /*!< Device access token (or NULL if using client claiming) */
+    const char            *broker_uri;     /*!< MQTTS Broker URI (e.g. "mqtts://thingsboard.cloud:8883")      */
+    const char            *access_token;   /*!< Device access token (or NULL if using client claiming)        */
     const char            *ca_cert_pem;    /*!< Optional custom CA certificate (NULL uses system cert bundle) */
-    bsp_tb_rpc_cb_t       rpc_cb;          /*!< RPC command handler callback */
-    bsp_tb_attr_cb_t      attr_cb;         /*!< Shared attributes update callback */
-    bsp_tb_alarm_cb_t     alarm_cb;        /*!< Alarm / notification callback */
-    bsp_ota_progress_cb_t ota_cb;          /*!< OTA progress callback */
-    void                  *user_data;      /*!< User context pointer */
+    bsp_tb_rpc_cb_t       rpc_cb;          /*!< RPC command handler callback                                  */
+    bsp_tb_attr_cb_t      attr_cb;         /*!< Shared attributes update callback                             */
+    bsp_tb_alarm_cb_t     alarm_cb;        /*!< Alarm / notification callback                                 */
+    bsp_ota_progress_cb_t ota_cb;          /*!< OTA progress callback                                         */
+    void                  *user_data;      /*!< User context pointer                                          */
 } bsp_tb_config_t;
 
 /**

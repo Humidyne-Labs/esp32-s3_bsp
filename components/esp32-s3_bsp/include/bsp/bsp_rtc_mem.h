@@ -33,7 +33,7 @@ extern "C" {
  * @brief Initialization Modes for Dynamic Hardware Configuration
  */
 typedef enum {
-    BSP_INIT_MODE_FULL = 0, /*!< Cold boot / all subsystems & LVGL initialized */
+    BSP_INIT_MODE_FULL = 0, /*!< Cold boot / all subsystems & LVGL initialized  */
     BSP_INIT_MODE_FAST = 1, /*!< Wake boot / fast display refresh (no clearing) */
 } bsp_init_mode_t;
 
@@ -41,7 +41,7 @@ typedef enum {
  * @brief Sleep Execution Modes
  */
 typedef enum {
-    BSP_SLEEP_MODE_LIGHT = 0, /*!< Light sleep (RAM preserved, clock gated) */
+    BSP_SLEEP_MODE_LIGHT = 0, /*!< Light sleep (RAM preserved, clock gated)           */
     BSP_SLEEP_MODE_DEEP  = 1, /*!< Deep sleep (Power down, RTC slow memory preserved) */
 } bsp_sleep_mode_t;
 
@@ -49,16 +49,16 @@ typedef enum {
  * @brief Persistent RTC State Struct (Stored in RTC Slow Memory)
  */
 typedef struct {
-    uint32_t magic;                    /*!< Validation magic token */
-    uint32_t boot_count;               /*!< Total system boot counter */
-    uint32_t deep_sleep_count;         /*!< Total deep sleep cycles */
-    uint32_t light_sleep_count;        /*!< Total light sleep cycles */
-    uint8_t  last_init_mode;           /*!< Last executed bsp_init_mode_t */
-    uint8_t  next_init_mode;           /*!< Planned next bsp_init_mode_t on wake */
-    uint8_t  last_sleep_mode;          /*!< Last executed bsp_sleep_mode_t */
-    uint8_t  flags;                    /*!< System runtime status flags */
-    uint32_t last_sleep_duration_sec;  /*!< Duration of previous sleep period */
-    uint32_t last_wake_epoch;          /*!< Epoch timestamp of previous wake event */
+    uint32_t magic;                    /*!< Validation magic token                      */
+    uint32_t boot_count;               /*!< Total system boot counter                   */
+    uint32_t deep_sleep_count;         /*!< Total deep sleep cycles                     */
+    uint32_t light_sleep_count;        /*!< Total light sleep cycles                    */
+    uint8_t  last_init_mode;           /*!< Last executed bsp_init_mode_t               */
+    uint8_t  next_init_mode;           /*!< Planned next bsp_init_mode_t on wake        */
+    uint8_t  last_sleep_mode;          /*!< Last executed bsp_sleep_mode_t              */
+    uint8_t  flags;                    /*!< System runtime status flags                 */
+    uint32_t last_sleep_duration_sec;  /*!< Duration of previous sleep period           */
+    uint32_t last_wake_epoch;          /*!< Epoch timestamp of previous wake event      */
     uint8_t  scratchpad[32];           /*!< Application telemetry / scratch data buffer */
 } bsp_rtc_state_t;
 

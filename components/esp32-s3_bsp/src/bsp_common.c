@@ -195,8 +195,8 @@ esp_err_t bsp_init_io(void)
     gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_PA_EN);
     gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_I2C_SDA);
     gpio_sleep_sel_dis((gpio_num_t)BSP_PIN_I2C_SCL);
-    gpio_sleep_sel_dis((gpio_num_t)GPIO_NUM_43); // Console UART TX
-    gpio_sleep_sel_dis((gpio_num_t)GPIO_NUM_44); // Console UART RX
+    gpio_sleep_sel_dis((gpio_num_t)GPIO_NUM_43);         // Console UART TX
+    gpio_sleep_sel_dis((gpio_num_t)GPIO_NUM_44);         // Console UART RX
 
     // 4. Configure all INPUT pins (RTC INT) with pullups enabled
     gpio_config_t in_pullup_cfg = {
@@ -354,7 +354,7 @@ esp_err_t bsp_init_mode(bsp_init_mode_t mode)
         .init_rtc     = true,
         .init_buttons = true,
         .init_audio   = (mode == BSP_INIT_MODE_FULL),
-        .audio_volume = 80.0f,
+        .audio_volume = 00.0f,
         .init_sdcard  = false,
         .init_display = true,
         .init_nvs     = true,

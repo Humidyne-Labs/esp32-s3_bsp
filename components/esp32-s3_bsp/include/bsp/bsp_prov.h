@@ -34,11 +34,11 @@ extern "C" {
  * @brief Provisioning Event Types
  */
 typedef enum {
-    BSP_PROV_EVENT_STARTED        = 0, /*!< BLE advertising started */
+    BSP_PROV_EVENT_STARTED        = 0, /*!< BLE advertising started                    */
     BSP_PROV_EVENT_CRED_RECEIVED  = 1, /*!< Wi-Fi SSID / Password received from client */
-    BSP_PROV_EVENT_CRED_SUCCESS   = 2, /*!< Station successfully associated */
-    BSP_PROV_EVENT_CRED_FAILED    = 3, /*!< Station association failed */
-    BSP_PROV_EVENT_FINISHED       = 4, /*!< Provisioning ended, BLE de-initialized */
+    BSP_PROV_EVENT_CRED_SUCCESS   = 2, /*!< Station successfully associated            */
+    BSP_PROV_EVENT_CRED_FAILED    = 3, /*!< Station association failed                 */
+    BSP_PROV_EVENT_FINISHED       = 4, /*!< Provisioning ended, BLE de-initialized     */
 } bsp_prov_event_t;
 
 /**

@@ -156,11 +156,11 @@ static void epd_write_bytes(const uint8_t *data, size_t len)
 
 static void epd_set_windows(uint16_t x_start_byte, uint16_t y_start, uint16_t x_end_byte, uint16_t y_end)
 {
-    epd_send_cmd(0x44);
-    epd_send_data(x_start_byte & 0xFF);
-    epd_send_data(x_end_byte   & 0xFF);
+    epd_send_cmd (0x44);
+    epd_send_data(x_start_byte   & 0xFF);
+    epd_send_data(x_end_byte     & 0xFF);
 
-    epd_send_cmd(0x45);
+    epd_send_cmd (0x45);
     epd_send_data( y_start       & 0xFF);
     epd_send_data((y_start >> 8) & 0xFF);
     epd_send_data( y_end         & 0xFF);
@@ -169,10 +169,10 @@ static void epd_set_windows(uint16_t x_start_byte, uint16_t y_start, uint16_t x_
 
 static void epd_set_cursor(uint16_t x_start_byte, uint16_t y_start)
 {
-    epd_send_cmd(0x4E);
+    epd_send_cmd (0x4E);
     epd_send_data(x_start_byte & 0xFF);
 
-    epd_send_cmd(0x4F);
+    epd_send_cmd (0x4F);
     epd_send_data( y_start       & 0xFF);
     epd_send_data((y_start >> 8) & 0xFF);
 }
@@ -181,21 +181,21 @@ static void epd_load_custom_lut(const uint8_t *lut_buffer)
 {
     if (lut_buffer == NULL) return;
 
-    epd_send_cmd(0x32);
+    epd_send_cmd   (0x32);
     epd_write_bytes(lut_buffer, 153);
 
-    epd_send_cmd(0x3F);
+    epd_send_cmd (0x3F);
     epd_send_data(lut_buffer[153]);
 
-    epd_send_cmd(0x03);
+    epd_send_cmd (0x03);
     epd_send_data(lut_buffer[154]);
 
-    epd_send_cmd(0x04);
+    epd_send_cmd (0x04);
     epd_send_data(lut_buffer[155]);
     epd_send_data(lut_buffer[156]);
     epd_send_data(lut_buffer[157]);
 
-    epd_send_cmd(0x2C);
+    epd_send_cmd (0x2C);
     epd_send_data(lut_buffer[158]);
 }
 
@@ -435,8 +435,6 @@ esp_err_t bsp_display_refresh(bool partial_mode)
 void bsp_display_deep_sleep(void)
 {
     bsp_display_wait_busy(EPD_FULL_REFRESH_TIMEOUT_MS);
-    //epd_send_cmd (0x3C);
-    //epd_send_data(0x01);
     epd_send_cmd (0x10);
     epd_send_data(0x01);
 }
@@ -451,7 +449,7 @@ void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color)
 {
     if (x >= BSP_DISPLAY_WIDTH || y >= BSP_DISPLAY_HEIGHT || s_frame_buffer == NULL) return;
     uint32_t index = y * (BSP_DISPLAY_WIDTH / 8) + (x >> 3);
-    uint8_t bit = 7 - (x & 0x07);
+    uint8_t  bit = 7 - (x & 0x07);
 
     if (color == BSP_DISPLAY_COLOR_WHITE) {
         s_frame_buffer[index] |= (1 << bit);

@@ -87,7 +87,7 @@ esp_err_t bsp_lifecycle_enter_sleep(const bsp_sleep_config_t *config)
 
     // Trigger visual/audio stand-down cues if registered
     bsp_trigger_splash(BSP_SPLASH_SLEEP);
-    bsp_trigger_chime(BSP_CHIME_SLEEP);
+    bsp_trigger_chime (BSP_CHIME_SLEEP);
 
     if (s_active_lifecycle.on_before_sleep != NULL) {
         ESP_LOGD(TAG, "Invoking registered on_before_sleep lifecycle hook...");
@@ -170,7 +170,7 @@ esp_err_t bsp_app_start(const bsp_app_lifecycle_t *lifecycle)
     } else {
         // Cold boot: trigger boot splash & chime hooks if registered
         bsp_trigger_splash(BSP_SPLASH_BOOT);
-        bsp_trigger_chime(BSP_CHIME_BOOT);
+        bsp_trigger_chime (BSP_CHIME_BOOT);
 
         if (s_active_lifecycle.on_cold_boot != NULL) {
             s_active_lifecycle.on_cold_boot(s_active_lifecycle.user_data);

@@ -45,8 +45,8 @@ esp_err_t bsp_sdcard_mount(void)
     slot_config.clk   = BSP_PIN_SD_CLK;
     slot_config.cmd   = BSP_PIN_SD_MOSI;
     slot_config.d0    = BSP_PIN_SD_MISO;
-    slot_config.cd    = SDMMC_SLOT_NO_CD; // No hardware Card Detect pin connected
-    slot_config.wp    = SDMMC_SLOT_NO_WP;
+    slot_config.cd    = SDMMC_SLOT_NO_CD; // No hardware Card Detect pin connected, shame on waveshare
+    slot_config.wp    = SDMMC_SLOT_NO_WP; // more shame, shame.... shame shame....... shame!
 
     // Temporarily reduce logging from sdmmc stack so missing cards don't dump error traces
     esp_log_level_t prev_sdmmc_log = esp_log_level_get("sdmmc_common");

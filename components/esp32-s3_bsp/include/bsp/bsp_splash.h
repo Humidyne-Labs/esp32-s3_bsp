@@ -33,8 +33,8 @@ extern "C" {
  * @brief UI Splash Screen Types
  */
 typedef enum {
-    BSP_SPLASH_BOOT     = 0, /*!< Rendered upon system cold boot */
-    BSP_SPLASH_SLEEP    = 1, /*!< Rendered prior to entering deep/light sleep */
+    BSP_SPLASH_BOOT     = 0, /*!< Rendered upon system cold boot                      */
+    BSP_SPLASH_SLEEP    = 1, /*!< Rendered prior to entering deep/light sleep         */
     BSP_SPLASH_SHUTDOWN = 2, /*!< Rendered prior to system power off (e.g. Space Cat) */
     BSP_SPLASH_MAX      = 3
 } bsp_splash_type_t;
@@ -43,11 +43,11 @@ typedef enum {
  * @brief Audio Chime / Signal Event Types
  */
 typedef enum {
-    BSP_CHIME_BOOT     = 0, /*!< Bootup melodic chime */
-    BSP_CHIME_SLEEP    = 1, /*!< Sleep / stand-down tone */
-    BSP_CHIME_SHUTDOWN = 2, /*!< Power off tone */
+    BSP_CHIME_BOOT     = 0, /*!< Bootup melodic chime                 */
+    BSP_CHIME_SLEEP    = 1, /*!< Sleep / stand-down tone              */
+    BSP_CHIME_SHUTDOWN = 2, /*!< Power off tone                       */
     BSP_CHIME_ALARM    = 3, /*!< Critical telemetry / threshold alarm */
-    BSP_CHIME_NOTIFY   = 4, /*!< General notification chirp */
+    BSP_CHIME_NOTIFY   = 4, /*!< General notification chirp           */
     BSP_CHIME_MAX      = 5
 } bsp_chime_type_t;
 

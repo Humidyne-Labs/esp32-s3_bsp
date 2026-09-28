@@ -11,9 +11,9 @@
  *  - Automatic bidirectional sync between POSIX system time and PCF85063A
  *  - POSIX Timezone Configuration (e.g., "EST5EDT,M3.2.0,M11.1.0")
  *  - 4 Standardized Formatted Time String Generators:
- *      1. 24-Hour with Seconds ("HH:MM:SS")
- *      2. 24-Hour without Seconds ("HH:MM")
- *      3. 12-Hour with Seconds & AM/PM ("hh:mm:ss AM/PM")
+ *      1. 24-Hour with    Seconds         ("HH:MM:SS")
+ *      2. 24-Hour without Seconds         ("HH:MM")
+ *      3. 12-Hour with    Seconds & AM/PM ("hh:mm:ss AM/PM")
  *      4. 12-Hour without Seconds & AM/PM ("hh:mm AM/PM")
  *  - Formatted Date String Generator: "MM/DD/YY DayOfWeek"
  * 
@@ -39,18 +39,18 @@ extern "C" {
  * @brief Formatted Time Representation Modes
  */
 typedef enum {
-    BSP_TIME_FMT_24H_SEC = 0, /*!< "14:35:08" */
-    BSP_TIME_FMT_24H_MIN = 1, /*!< "14:35" */
+    BSP_TIME_FMT_24H_SEC = 0, /*!< "14:35:08"    */
+    BSP_TIME_FMT_24H_MIN = 1, /*!< "14:35"       */
     BSP_TIME_FMT_12H_SEC = 2, /*!< "02:35:08 PM" */
-    BSP_TIME_FMT_12H_MIN = 3, /*!< "02:35 PM" */
+    BSP_TIME_FMT_12H_MIN = 3, /*!< "02:35 PM"    */
 } bsp_time_format_t;
 
 /**
  * @brief Formatted Date Representation Modes
  */
 typedef enum {
-    BSP_DATE_FMT_MM_DD_YY     = 0, /*!< "09/26/26" */
-    BSP_DATE_FMT_DOW          = 1, /*!< "Saturday" */
+    BSP_DATE_FMT_MM_DD_YY     = 0, /*!< "09/26/26"          */
+    BSP_DATE_FMT_DOW          = 1, /*!< "Saturday"          */
     BSP_DATE_FMT_MM_DD_YY_DOW = 2, /*!< "09/26/26 Saturday" */
 } bsp_date_format_t;
 

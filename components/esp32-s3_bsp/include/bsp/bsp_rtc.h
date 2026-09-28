@@ -32,13 +32,13 @@ extern "C" {
 #endif
 
 typedef struct {
-    uint16_t year;    /*!< Year (2000 - 2099) */
-    uint8_t  month;   /*!< Month (1 - 12) */
-    uint8_t  day;     /*!< Day of month (1 - 31) */
+    uint16_t year;    /*!< Year (2000 - 2099)                                     */
+    uint8_t  month;   /*!< Month (1 - 12)                                         */
+    uint8_t  day;     /*!< Day of month (1 - 31)                                  */
     uint8_t  weekday; /*!< Day of week (0 = Sunday, 1 = Monday, ... 6 = Saturday) */
-    uint8_t  hour;    /*!< Hour (0 - 23, 24-hour mode) */
-    uint8_t  minute;  /*!< Minute (0 - 59) */
-    uint8_t  second;  /*!< Second (0 - 59) */
+    uint8_t  hour;    /*!< Hour (0 - 23, 24-hour mode)                            */
+    uint8_t  minute;  /*!< Minute (0 - 59)                                        */
+    uint8_t  second;  /*!< Second (0 - 59)                                        */
 } bsp_rtc_datetime_t;
 
 typedef struct {
@@ -50,7 +50,7 @@ typedef struct {
 } bsp_rtc_alarm_t;
 
 typedef enum {
-    BSP_RTC_OFFSET_MODE_2_HOURS  = 0, /*!< 4.340 ppm/step (Low power) */
+    BSP_RTC_OFFSET_MODE_2_HOURS  = 0, /*!< 4.340 ppm/step (Low power)       */
     BSP_RTC_OFFSET_MODE_4_MIN    = 1  /*!< 4.069 ppm/step (Fast correction) */
 } bsp_rtc_offset_mode_t;
 

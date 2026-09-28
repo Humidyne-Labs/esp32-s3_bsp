@@ -135,7 +135,7 @@ esp_err_t bsp_i2c_init(void)
         .scl_io_num                   = (gpio_num_t)BSP_PIN_I2C_SCL,
         .clk_source                   = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt            = 7,
-        .flags.enable_internal_pullup = true,
+        .flags.enable_internal_pullup = false, //uses external pullup pair, 4.7k
     };
 
     esp_err_t ret = i2c_new_master_bus(&bus_config, &s_i2c_bus_handle);

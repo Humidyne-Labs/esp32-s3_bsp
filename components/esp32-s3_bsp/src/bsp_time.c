@@ -77,7 +77,7 @@ esp_err_t bsp_time_sync_rtc_to_system(void)
         .tm_hour  = rtc_dt.hour,
         .tm_mday  = rtc_dt.day,
         .tm_mon   = rtc_dt.month - 1,
-        .tm_year  = rtc_dt.year - 1900,
+        .tm_year  = rtc_dt.year  - 1900,
         .tm_wday  = rtc_dt.weekday,
         .tm_isdst = -1,
     };

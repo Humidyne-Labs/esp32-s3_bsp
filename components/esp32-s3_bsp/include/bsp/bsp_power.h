@@ -38,8 +38,8 @@ extern "C" {
  * @brief Wakeup Source Selection Flags
  */
 typedef enum {
-    BSP_WAKE_SRC_TIMER        = (1 << 0), /*!< ESP32-S3 Internal RTC Sleep Timer */
-    BSP_WAKE_SRC_EXTERNAL_RTC = (1 << 1), /*!< External PCF85063A RTC INT on GPIO 5 */
+    BSP_WAKE_SRC_TIMER        = (1 << 0), /*!< ESP32-S3 Internal RTC Sleep Timer                */
+    BSP_WAKE_SRC_EXTERNAL_RTC = (1 << 1), /*!< External PCF85063A RTC INT on GPIO 5             */
     BSP_WAKE_SRC_BUTTONS      = (1 << 2), /*!< Hardware BOOT0 (GPIO 0) and POWER (GPIO 18) keys */
     BSP_WAKE_SRC_ALL          = (BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_EXTERNAL_RTC | BSP_WAKE_SRC_BUTTONS),
 } bsp_wake_source_mask_t;
@@ -48,9 +48,9 @@ typedef enum {
  * @brief Unified Sleep Configuration
  */
 typedef struct {
-    bsp_sleep_mode_t       mode;           /*!< Target sleep mode (Light or Deep) */
+    bsp_sleep_mode_t       mode;           /*!< Target sleep mode (Light or Deep)                          */
     uint32_t               duration_sec;   /*!< Sleep duration in seconds (0 for indefinite / button only) */
-    bsp_wake_source_mask_t wake_sources;   /*!< Bitmask of enabled wake triggers */
+    bsp_wake_source_mask_t wake_sources;   /*!< Bitmask of enabled wake triggers                           */
     bsp_init_mode_t        next_init_mode; /*!< Hardware initialization mode to perform on wake */
 } bsp_sleep_config_t;
 

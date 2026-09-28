@@ -34,9 +34,9 @@ extern "C" {
  * @brief SHTC3 Environmental Sensor Telemetry Data
  */
 typedef struct {
-    float temperature_k;      /*!< Temperature in native Kelvin (K) (e.g. 297.35 K = 24.2 °C = 75.6 °F) */
-    float humidity_percent;   /*!< Relative Humidity in percent (% RH) (0.0 to 100.0) */
-    bool  valid;              /*!< True if sensor CRC-8 checksum verification succeeded */
+    float temperature_k;      /*!< Temperature in native Kelvin (K)    (e.g. 297.35 K = 24.2 °C = 75.6 °F) */
+    float humidity_percent;   /*!< Relative Humidity in percent (% RH) (0.0 to 100.0)                      */
+    bool  valid;              /*!< True if sensor CRC-8 checksum verification succeeded                    */
 } bsp_shtc3_data_t;
 
 /**

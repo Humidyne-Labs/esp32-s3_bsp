@@ -208,13 +208,7 @@ void bsp_power_off(void)
     gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 0);
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // 10. If still powered (e.g. USB cable attached), enter deep sleep with wake on POWER or BOOT
-    //ESP_LOGI(TAG, "External power (USB) detected. Entering deep sleep with wakeup on POWER (GPIO %d) & BOOT (GPIO %d)...",
-    //         BSP_PIN_BUTTON_POWER, BSP_PIN_BUTTON_BOOT);
-    //esp_sleep_enable_ext1_wakeup_io((1ULL << BSP_PIN_BUTTON_POWER) | (1ULL << BSP_PIN_BUTTON_BOOT), ESP_EXT1_WAKEUP_ANY_LOW);
-    //vTaskDelay(pdMS_TO_TICKS(50));
-    //esp_deep_sleep_start();
-
+	ESP_LOGI(TAG, "External power (USB) detected.");
     esp_restart(); // Restart, don't sleep if powered by VBUS.
 }
 

@@ -118,7 +118,8 @@ esp_err_t bsp_shtc3_read(bsp_shtc3_data_t *out_data)
     }
 
     // 2. Trigger Normal Measurement (Temp First, Clock Stretching Disabled)
-    uint8_t meas_cmd[2] = { (uint8_t)(SHTC3_CMD_MEAS_NORMAL_T_FIRST >> 8), (uint8_t)(SHTC3_CMD_MEAS_NORMAL_T_FIRST & 0xFF) };
+    uint8_t meas_cmd[2] = { (uint8_t)(SHTC3_CMD_MEAS_NORMAL_T_FIRST >> 8), 
+							(uint8_t)(SHTC3_CMD_MEAS_NORMAL_T_FIRST & 0xFF) };
     err = bsp_i2c_write(BSP_I2C_ADDR_SHTC3, meas_cmd, sizeof(meas_cmd));
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to issue measurement command");

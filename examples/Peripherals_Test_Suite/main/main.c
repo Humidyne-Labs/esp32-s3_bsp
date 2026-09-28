@@ -54,11 +54,11 @@ static const char *TAG = "test_suite";
 
 #pragma pack(push, 1)
 typedef struct {
-    uint8_t magic[4];       /*!< Magic number: "MMAP" */
-    uint32_t version;       /*!< Version number (0x00010000 for v1.0.0) */
-    uint32_t name_len;      /*!< Length of the asset name in table (including \0) */
-    uint32_t files;         /*!< Total number of assets */
-    uint32_t checksum;      /*!< Checksum of the table data */
+    uint8_t magic[4];       /*!< Magic number: "MMAP"                                */
+    uint32_t version;       /*!< Version number (0x00010000 for v1.0.0)              */
+    uint32_t name_len;      /*!< Length of the asset name in table (including \0)    */
+    uint32_t files;         /*!< Total number of assets                              */
+    uint32_t checksum;      /*!< Checksum of the table data                          */
     uint32_t payload_len;   /*!< Total length of combined Asset Table + Payload Data */
     uint32_t reserved[2];
 } bsp_mmap_bin_header_t;
@@ -68,14 +68,14 @@ typedef struct {
  * @brief Sleep Test State Tracker (Stored in RTC Slow Memory Scratchpad)
  */
 typedef enum {
-    STAGE_COLD_BOOT        = 0, /*!< Initial cold boot / run all static peripheral tests */
-    STAGE_READY_LS1        = 1, /*!< Static tests passed -> Waiting for BOOT click to run LS-1 */
-    STAGE_READY_LS2        = 2, /*!< LS-1 passed -> Waiting for BOOT click to run LS-2 */
-    STAGE_READY_DS1        = 3, /*!< LS-2 passed -> Waiting for BOOT click to run DS-1 */
-    STAGE_WAKE_DS1         = 4, /*!< In Deep Sleep 1 (Timer 4s) */
+    STAGE_COLD_BOOT        = 0, /*!< Initial cold boot / run all static peripheral tests        */
+    STAGE_READY_LS1        = 1, /*!< Static tests passed -> Waiting for BOOT click to run LS-1  */
+    STAGE_READY_LS2        = 2, /*!< LS-1 passed -> Waiting for BOOT click to run LS-2          */
+    STAGE_READY_DS1        = 3, /*!< LS-2 passed -> Waiting for BOOT click to run DS-1          */
+    STAGE_WAKE_DS1         = 4, /*!< In Deep Sleep 1 (Timer 4s)                                 */
     STAGE_READY_DS2        = 5, /*!< DS-1 woke & verified -> Waiting for BOOT click to run DS-2 */
-    STAGE_WAKE_DS2         = 6, /*!< In Deep Sleep 2 (PCF85063A Ext RTC 4s) */
-    STAGE_TESTS_COMPLETED  = 7, /*!< All tests passed 100% -> Heartbeat active */
+    STAGE_WAKE_DS2         = 6, /*!< In Deep Sleep 2 (PCF85063A Ext RTC 4s)                     */
+    STAGE_TESTS_COMPLETED  = 7, /*!< All tests passed 100% -> Heartbeat active                  */
 } sleep_test_stage_t;
 
 static volatile sleep_test_stage_t s_current_stage = STAGE_COLD_BOOT;
@@ -165,18 +165,18 @@ static void run_audio_chirps_test(void)
  */
 static esp_err_t build_test_mmap_asset(uint32_t *part_checksum)
 {
-    const uint32_t img_w = 48;
-    const uint32_t img_h = 48;
-    const uint32_t img_stride = (img_w + 7) / 8; // 6 bytes per row
-    const uint32_t palette_size = 8;             // 2 colors (Black & White)
-    const uint32_t pixel_bytes = img_stride * img_h; // 288 bytes
+    const uint32_t img_w          = 48;
+    const uint32_t img_h          = 48;
+    const uint32_t img_stride     = (img_w + 7) / 8;                                        // 6 bytes per row
+    const uint32_t palette_size   = 8;                                                      // 2 colors (Black & White)
+    const uint32_t pixel_bytes    = img_stride * img_h;                                     // 288 bytes
     const uint32_t raw_image_size = sizeof(lv_image_header_t) + palette_size + pixel_bytes; // 308 bytes
 
-    const uint32_t mmap_name_len = 32;
-    const uint32_t table_stride = mmap_name_len + 12; // 44 bytes
-    const uint32_t sub_asset_size = 2 + raw_image_size; // 310 bytes (2B magic + 308B payload)
-    const uint32_t total_payload_len = table_stride + sub_asset_size; // 354 bytes
-    const uint32_t total_mmap_size = sizeof(bsp_mmap_bin_header_t) + total_payload_len; // 386 bytes
+    const uint32_t mmap_name_len     = 32;
+    const uint32_t table_stride      = mmap_name_len + 12;                                // 44 bytes
+    const uint32_t sub_asset_size    = 2 + raw_image_size;                                // 310 bytes (2B magic + 308B payload)
+    const uint32_t total_payload_len = table_stride + sub_asset_size;                     // 354 bytes
+    const uint32_t total_mmap_size   = sizeof(bsp_mmap_bin_header_t) + total_payload_len; // 386 bytes
 
     uint8_t *mmap_blob = (uint8_t *)calloc(1, total_mmap_size);
     if (!mmap_blob) {
@@ -195,10 +195,10 @@ static esp_err_t build_test_mmap_asset(uint32_t *part_checksum)
     // 2. Table Entry at offset 32
     uint8_t *entry = mmap_blob + sizeof(bsp_mmap_bin_header_t);
     strncpy((char *)entry, "test_badge.bin", mmap_name_len - 1);
-    *(uint32_t *)(entry + mmap_name_len)     = sub_asset_size;
-    *(uint32_t *)(entry + mmap_name_len + 4) = 0; // offset relative to data block
-    *(uint16_t *)(entry + mmap_name_len + 8) = (uint16_t)img_w;
-    *(uint16_t *)(entry + mmap_name_len + 10)= (uint16_t)img_h;
+    *(uint32_t *)(entry + mmap_name_len)      = sub_asset_size;
+    *(uint32_t *)(entry + mmap_name_len + 4)  = 0; // offset relative to data block
+    *(uint16_t *)(entry + mmap_name_len + 8)  = (uint16_t)img_w;
+    *(uint16_t *)(entry + mmap_name_len + 10) = (uint16_t)img_h;
 
     // 3. Data Block at offset 32 + 44 = 76
     uint8_t *data_block = entry + table_stride;
@@ -470,7 +470,7 @@ static void setup_test_buttons(bool enable_long_press)
 static void app_on_wake(const bsp_wake_context_t *ctx, void *user_data)
 {
     sleep_test_stage_t stage = (sleep_test_stage_t)ctx->app_stage;
-    s_current_stage = stage;
+    s_current_stage          = stage;
 
     ESP_LOGI(TAG, ">>> [LIFECYCLE WAKE] Processing Stage %d (Wake Cause: %d, Mode: %d, Boot Count: %lu) <<<",
              (int)stage, (int)ctx->wake_cause, (int)ctx->init_mode, (unsigned long)ctx->boot_count);
@@ -685,9 +685,9 @@ static void app_on_cold_boot(void *user_data)
     bsp_time_get_formatted(BSP_TIME_FMT_12H_SEC, time_12h_s, sizeof(time_12h_s));
     bsp_time_get_formatted(BSP_TIME_FMT_12H_MIN, time_12h_m, sizeof(time_12h_m));
 
-    bsp_time_get_date_str(date_mm_dd_yy, sizeof(date_mm_dd_yy));
-    bsp_time_get_dow_str(date_dow, sizeof(date_dow));
-    bsp_time_get_date_dow_str(date_full, sizeof(date_full));
+    bsp_time_get_date_str    (date_mm_dd_yy, sizeof(date_mm_dd_yy));
+    bsp_time_get_dow_str     (date_dow,      sizeof(date_dow));
+    bsp_time_get_date_dow_str(date_full,     sizeof(date_full));
 
     ESP_LOGI(TAG, "[PASS 9/15] Time Formats: 24h=[%s, %s], 12h=[%s, %s]",
              time_24h_s, time_24h_m, time_12h_s, time_12h_m);
@@ -711,7 +711,7 @@ static void app_on_cold_boot(void *user_data)
     // ----------------------------------------------------
     char pop_key[16]   = {0};
     char claim_key[16] = {0};
-    bsp_generate_unambiguous_key(pop_key, 8, NULL);
+    bsp_generate_unambiguous_key(pop_key,   8, NULL);
     bsp_generate_unambiguous_key(claim_key, 6, NULL);
     ESP_LOGI(TAG, "[PASS 11/15] Unambiguous Keys Generated: 8-char PoP='%s', 6-char Claim='%s'",
              pop_key, claim_key);
@@ -785,7 +785,7 @@ static void app_on_cold_boot(void *user_data)
     ret = bsp_wifi_init();
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "Starting passive Wi-Fi scan...");
-        uint16_t ap_count = 0;
+        uint16_t  ap_count = 0;
         esp_err_t scan_err = bsp_wifi_scan(NULL, &ap_count, 0);
         if (scan_err == ESP_OK) {
             ESP_LOGI(TAG, "[PASS 15/15] Wi-Fi Subsystem Operational. Found %u Access Points in scan", ap_count);
@@ -808,8 +808,8 @@ static void app_on_cold_boot(void *user_data)
 
     ESP_LOGI(TAG, "Rendering Fullscreen 180x180 px BLE Provisioning QR Code...");
     bsp_lvgl_lock();
-    s_lbl_status = NULL;
-    s_lbl_sub    = NULL;
+    s_lbl_status  = NULL;
+    s_lbl_sub     = NULL;
     lv_obj_t *scr = lv_screen_active();
     lv_obj_clean(scr);
     lv_obj_set_style_bg_color(scr, lv_color_white(), 0);
@@ -840,7 +840,7 @@ static void app_on_cold_boot(void *user_data)
 void app_main(void)
 {
     ESP_LOGI(TAG, "==================================================");
-    ESP_LOGI(TAG, "  ESP32-S3 ePaper BSP Staged Verification Suite    ");
+    ESP_LOGI(TAG, "  ESP32-S3 ePaper BSP Staged Verification Suite   ");
     ESP_LOGI(TAG, "==================================================");
 
     bsp_app_lifecycle_t lifecycle = {

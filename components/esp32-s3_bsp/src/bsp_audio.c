@@ -26,6 +26,43 @@
 
 static const char *TAG = "bsp_audio";
 
+// 256-point 16-bit sine wave stored in flash. Peak amplitude = 16000.
+// Consumes exactly 512 bytes of Flash, 0 bytes of RAM.
+static const int16_t SINE_LUT_256[256] = {
+        0,    392,   784,    1176,   1567,   1958,   2348,   2737,
+     3125,   3511,  3896,    4279,   4660,   5038,   5414,   5787,
+     6157,   6523,  6886,    7245,   7600,   7951,   8297,   8638,
+     8974,   9304,  9628,    9946,  10258,  10563,  10861,  11152,
+    11435,  11710, 11977,   12235,  12484,  12724,  12954,  13175,
+    13386,  13586, 13776,   13955,  14123,  14280,  14426,  14560,
+    14683,  14794, 14893,   14980,  15055,  15118,  15168,  15206,
+    15232,  15245, 15246,   15234,  15210,  15173,  15124,  15063,
+    14989,  14903, 14805,   14695,  14573,  14439,  14293,  14136,
+    13967,  13786, 13594,   13391,  13176,  12950,  12713,  12465,
+    12206,  11936, 11656,   11365,  11064,  10752,  10430,  10098,
+     9757,   9406,  9045,    8676,   8297,   7910,   7514,   7110,
+     6698,   6278,  5852,    5418,   4978,   4532,   4080,   3622,
+     3160,   2692,  2221,    1746,   1268,    788,    307,   -174,
+     -656,  -1137, -1617,   -2094,  -2569,  -3040,  -3507,  -3970,
+    -4427,  -4878, -5323,   -5760,  -6189,  -6609,  -7020,  -7421,
+    -7811,  -8191, -8558,   -8914,  -9257,  -9587,  -9903, -10205,
+   -10493, -10766, -11023, -11265, -11491, -11700, -11893, -12068,
+   -12226, -12367, -12489, -12594, -12681, -12749, -12799, -12830,
+   -12842, -12835, -12810, -12765, -12702, -12620, -12520, -12401,
+   -12264, -12108, -11935, -11744, -11535, -11308, -11065, -10804,
+   -10527, -10233,  -9923,  -9598,  -9257,  -8902,  -8532,  -8149,
+    -7751,  -7341,  -6918,  -6483,  -6037,  -5580,  -5113,  -4636,
+    -4151,  -3658,  -3157,  -2650,  -2137,  -1619,  -1098,   -573,
+      -46,    481,   1008,   1534,   2057,   2577,   3092,   3601,
+     4103,   4596,   5080,   5553,   6014,   6463,   6898,   7318,
+     7722,   8110,   8480,   8832,   9165,   9478,   9771,  10042,
+    10292,  10519,  10723,  10904,  11062,  11195,  11304,  11388,
+    11448,  11482,  11491,  11475,  11434,  11367,  11276,  11159,
+    11018,  10852,  10662,  10447,  10209,   9947,   9662,   9354,
+     9024,   8673,   8300,   7907,   7494,   7062,   6612,   6144,
+     5659,   5159,   4643,   4113,   3570,   3015,   2449,   1874
+};
+
 static i2s_chan_handle_t      s_tx_chan      = NULL;
 static esp_codec_dev_handle_t s_codec        = NULL;
 static bool                   s_audio_inited = false;
@@ -145,7 +182,7 @@ esp_err_t bsp_audio_init(void)
     }
 
     /* Keep DAC output muted on startup to prevent pop / phantom beeps */
-    esp_codec_dev_set_out_vol(s_codec, 0.0f);
+    esp_codec_dev_set_out_vol (s_codec, 0.0f);
     esp_codec_dev_set_out_mute(s_codec, true);
 
     s_audio_inited = true;
@@ -180,28 +217,13 @@ esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written)
         esp_err_t ret = bsp_audio_init();
         if (ret != ESP_OK) return ret;
     }
-
-    const uint8_t *cursor = (const uint8_t *)data;
-    size_t remaining     = len;
-    size_t total_written = 0;
-    while (remaining > 0) {
-        size_t chunk_len = remaining > 256 ? 256 : remaining;
-        esp_err_t ret = esp_codec_dev_write(s_codec, (void *)cursor, chunk_len);
-        if (ret != ESP_OK) {
-            if (bytes_written != NULL) {
-                *bytes_written = total_written;
-            }
-            return ret;
-        }
-        cursor        += chunk_len;
-        remaining     -= chunk_len;
-        total_written += chunk_len;
-    }
-
-    if (bytes_written != NULL) {
-        *bytes_written = total_written;
-    }
-    return ESP_OK;
+	
+	/* Disabled Chunking Mech */
+	esp_err_t ret = esp_codec_dev_write(s_codec, (void *)data, (int)len);
+	if(ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed To Send Data Buffer to Codec!");
+	}
+	return ret;
 }
 
 esp_err_t bsp_audio_stop(void)
@@ -230,44 +252,59 @@ esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volu
     bsp_audio_set_volume(volume_pct);
     esp_codec_dev_set_out_mute(s_codec, false);
 
-    const uint32_t sample_rate = 16000;
-    size_t total_samples = (sample_rate * duration_ms) / 1000;
-    size_t ramp_samples = (sample_rate * 5) / 1000; // 5ms attack & decay ramp
+    const uint32_t sample_rate   = 16000;
+    const size_t   total_samples = (sample_rate * duration_ms) / 1000;
+    
+    // 5ms attack/decay ramp to eliminate audio clicking
+    size_t ramp_samples = (sample_rate * 5) / 1000;
     if (ramp_samples > total_samples / 2) {
         ramp_samples = total_samples / 2;
     }
 
-    int16_t sample_buffer[256];
-    size_t samples_generated = 0;
-    float phase = 0.0f;
-    float phase_increment = (2.0f * 3.14159265f * (float)freq_hz) / (float)sample_rate;
+    // DDS phase step: (freq_hz * 2^32) / sample_rate
+    const uint32_t phase_step = (uint32_t)(((uint64_t)freq_hz << 32) / sample_rate);
+    uint32_t            phase = 0;
+
+    // Small, static streaming buffer (512 samples = 1 KB). 
+    // Zero heap allocation, no stack bloat, infinite duration headroom.
+    int16_t buffer[512];
+    size_t  samples_generated = 0;
 
     while (samples_generated < total_samples) {
-        size_t chunk = (total_samples - samples_generated > 256) ? 256 : (total_samples - samples_generated);
+        size_t           chunk = total_samples - samples_generated;
+        if (chunk > 512) chunk = 512;
+
         for (size_t i = 0; i < chunk; i++) {
             size_t idx = samples_generated + i;
-            float gain = 1.0f;
-            if (idx < ramp_samples && ramp_samples > 0) {
-                gain = (float)idx / (float)ramp_samples;
-            } else if (idx >= total_samples - ramp_samples && ramp_samples > 0) {
-                gain = (float)(total_samples - idx) / (float)ramp_samples;
+            
+            // Top 8 bits map 32-bit phase space into the 256-entry table
+            uint8_t lut_idx = (uint8_t)(phase >> 24);
+            int32_t sample  = SINE_LUT_256[lut_idx];
+
+            // Apply amplitude envelope
+            if (ramp_samples > 0) {
+                if (idx < ramp_samples) {
+                    sample = (sample * (int32_t)idx) / (int32_t)ramp_samples;
+                } else if (idx >= total_samples - ramp_samples) {
+                    sample = (sample * (int32_t)(total_samples - idx)) / (int32_t)ramp_samples;
+                }
             }
-            sample_buffer[i] = (int16_t)(sinf(phase) * 16000.0f * gain);
-            phase += phase_increment;
-            if (phase >= 2.0f * 3.14159265f) phase -= 2.0f * 3.14159265f;
+
+            buffer[i] = (int16_t)sample;
+            phase += phase_step; // Natural overflow wraps around 2*pi
         }
-        bsp_audio_play(sample_buffer, chunk * sizeof(int16_t), NULL);
+
+        // DMA handles queuing; blocks efficiently without burning CPU
+        bsp_audio_play(buffer, chunk * sizeof(int16_t), NULL);
         samples_generated += chunk;
     }
 
-    // Flush DMA pipeline with silence samples to prevent cutting off trailing waveform
-    memset(sample_buffer, 0, sizeof(sample_buffer));
-    bsp_audio_play(sample_buffer, sizeof(sample_buffer), NULL);
-    bsp_audio_play(sample_buffer, sizeof(sample_buffer), NULL);
+    // Flush trailing DMA pipelines with silence
+    memset(buffer, 0, sizeof(buffer));
+    bsp_audio_play(buffer, sizeof(buffer), NULL);
 
-    // Allow hardware DMA to finish playing silence before muting
     vTaskDelay(pdMS_TO_TICKS(35));
-
     bsp_audio_stop();
+
     return ESP_OK;
 }

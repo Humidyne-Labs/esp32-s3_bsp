@@ -169,9 +169,9 @@ esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw)
     }
 
     // Multisample ADC for noise rejection (16 samples)
-    const int SAMPLES = 16;
-    int raw_accum = 0;
-    int raw_val = 0;
+    const int SAMPLES   = 16;
+    int       raw_accum = 0;
+    int       raw_val   = 0;
 
     for (int i = 0; i < SAMPLES; i++) {
         esp_err_t err = adc_oneshot_read(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &raw_val);
@@ -337,7 +337,7 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
 
     // Wait for user to release buttons before entering sleep so the current press doesn't instantly wake the MCU!
     if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
-        while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_BOOT) == 0 ||
+        while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_BOOT)  == 0 ||
                gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_POWER) == 0) {
             vTaskDelay(pdMS_TO_TICKS(50));
         }
@@ -352,7 +352,7 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
 
     if (cfg.mode == BSP_SLEEP_MODE_LIGHT) {
         if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
-            gpio_wakeup_enable((gpio_num_t)BSP_PIN_BUTTON_BOOT, GPIO_INTR_LOW_LEVEL);
+            gpio_wakeup_enable((gpio_num_t)BSP_PIN_BUTTON_BOOT,  GPIO_INTR_LOW_LEVEL);
             gpio_wakeup_enable((gpio_num_t)BSP_PIN_BUTTON_POWER, GPIO_INTR_LOW_LEVEL);
         }
         if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
@@ -389,18 +389,18 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
     // DEEP SLEEP
     if (ext1_pin_mask != 0) {
         if (cfg.wake_sources & BSP_WAKE_SRC_BUTTONS) {
-            gpio_pullup_en((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+            gpio_pullup_en   ((gpio_num_t)BSP_PIN_BUTTON_BOOT);
             gpio_pulldown_dis((gpio_num_t)BSP_PIN_BUTTON_BOOT);
-            gpio_hold_en((gpio_num_t)BSP_PIN_BUTTON_BOOT);
+            gpio_hold_en     ((gpio_num_t)BSP_PIN_BUTTON_BOOT);
 
-            gpio_pullup_en((gpio_num_t)BSP_PIN_BUTTON_POWER);
+            gpio_pullup_en   ((gpio_num_t)BSP_PIN_BUTTON_POWER);
             gpio_pulldown_dis((gpio_num_t)BSP_PIN_BUTTON_POWER);
-            gpio_hold_en((gpio_num_t)BSP_PIN_BUTTON_POWER);
+            gpio_hold_en     ((gpio_num_t)BSP_PIN_BUTTON_POWER);
         }
         if (cfg.wake_sources & BSP_WAKE_SRC_EXTERNAL_RTC) {
-            gpio_pullup_en((gpio_num_t)BSP_PIN_RTC_INT);
+            gpio_pullup_en   ((gpio_num_t)BSP_PIN_RTC_INT);
             gpio_pulldown_dis((gpio_num_t)BSP_PIN_RTC_INT);
-            gpio_hold_en((gpio_num_t)BSP_PIN_RTC_INT);
+            gpio_hold_en     ((gpio_num_t)BSP_PIN_RTC_INT);
         }
         esp_sleep_enable_ext1_wakeup_io(ext1_pin_mask, ESP_EXT1_WAKEUP_ANY_LOW);
     }
@@ -412,23 +412,23 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
 
     // Maintain EPD & Sensor 3.3V Power Rail
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0);
-    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_3V3_EN);
+    gpio_hold_en  ((gpio_num_t)BSP_PIN_EPD_3V3_EN);
 
     // Maintain EPD Control Lines (CS=HIGH, RST=HIGH, DC=HIGH) so SSD1681 does not see floating / reset state
     gpio_set_level((gpio_num_t)BSP_PIN_EPD_RST, 1);
-    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_RST);
-    gpio_set_level((gpio_num_t)BSP_PIN_EPD_CS, 1);
-    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_CS);
-    gpio_set_level((gpio_num_t)BSP_PIN_EPD_DC, 1);
-    gpio_hold_en((gpio_num_t)BSP_PIN_EPD_DC);
+    gpio_hold_en  ((gpio_num_t)BSP_PIN_EPD_RST);
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_CS,  1);
+    gpio_hold_en  ((gpio_num_t)BSP_PIN_EPD_CS);
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_DC,  1);
+    gpio_hold_en  ((gpio_num_t)BSP_PIN_EPD_DC);
 
     // Maintain Audio Codec Rail to prevent I2C clamping
     gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 0);
-    gpio_hold_en((gpio_num_t)BSP_PIN_PA_EN);
+    gpio_hold_en  ((gpio_num_t)BSP_PIN_PA_EN);
 
     // Hold Battery LDO Power Latch
     gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1);
-    gpio_hold_en((gpio_num_t)BSP_PIN_POWER_HOLD);
+    gpio_hold_en  ((gpio_num_t)BSP_PIN_POWER_HOLD);
     gpio_deep_sleep_hold_en();
 
     fflush(stdout);

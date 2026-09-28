@@ -124,8 +124,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         xEventGroupSetBits(s_mqtt_events, MQTT_CONNECTED_BIT);
 
         // Subscribe to Server RPC Commands & Shared Attributes
-        esp_mqtt_client_subscribe(s_mqtt_client, "v1/devices/me/rpc/request/+", 1);
-        esp_mqtt_client_subscribe(s_mqtt_client, "v1/devices/me/attributes", 1);
+        esp_mqtt_client_subscribe(s_mqtt_client, "v1/devices/me/rpc/request/+"        , 1);
+        esp_mqtt_client_subscribe(s_mqtt_client, "v1/devices/me/attributes"           , 1);
         esp_mqtt_client_subscribe(s_mqtt_client, "v1/devices/me/attributes/response/+", 1);
         break;
 
@@ -299,10 +299,10 @@ esp_err_t bsp_tb_send_telemetry_entries(const bsp_tb_entry_t *entries, size_t co
 esp_err_t bsp_tb_send_telemetry(float temp_k, float rh_pct, uint8_t battery_pct, int rssi_dbm)
 {
     bsp_tb_entry_t entries[] = {
-        { .key = "temp",    .type = BSP_TB_VAL_FLOAT, .val.f_val = temp_k },
-        { .key = "rh",      .type = BSP_TB_VAL_FLOAT, .val.f_val = rh_pct },
+        { .key = "temp",    .type = BSP_TB_VAL_FLOAT, .val.f_val = temp_k      },
+        { .key = "rh",      .type = BSP_TB_VAL_FLOAT, .val.f_val = rh_pct      },
         { .key = "battery", .type = BSP_TB_VAL_INT,   .val.i_val = battery_pct },
-        { .key = "rssi",    .type = BSP_TB_VAL_INT,   .val.i_val = rssi_dbm },
+        { .key = "rssi",    .type = BSP_TB_VAL_INT,   .val.i_val = rssi_dbm    },
     };
     return bsp_tb_send_telemetry_entries(entries, 4, false, 0);
 }
@@ -348,9 +348,9 @@ esp_err_t bsp_tb_report_client_attributes(void)
 
     bsp_tb_entry_t entries[] = {
         { .key = "bsp_ver",   .type = BSP_TB_VAL_STRING, .val.s_val = bsp_get_version() },
-        { .key = "device_id", .type = BSP_TB_VAL_STRING, .val.s_val = dev_id },
-        { .key = "ip",        .type = BSP_TB_VAL_STRING, .val.s_val = ip_str },
-        { .key = "vbat_mv",   .type = BSP_TB_VAL_INT,    .val.i_val = vbat_mv },
+        { .key = "device_id", .type = BSP_TB_VAL_STRING, .val.s_val = dev_id            },
+        { .key = "ip",        .type = BSP_TB_VAL_STRING, .val.s_val = ip_str            },
+        { .key = "vbat_mv",   .type = BSP_TB_VAL_INT,    .val.i_val = vbat_mv           },
     };
     return bsp_tb_report_client_attributes_entries(entries, 4);
 }

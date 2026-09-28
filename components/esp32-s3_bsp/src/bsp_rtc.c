@@ -116,6 +116,7 @@ esp_err_t bsp_rtc_init(void)
     }
 
     // 3. Fast probe test (3 retries with short 20ms delays)
+	/*
     bool ready = false;
     uint8_t test_reg = 0;
     for (int retry = 0; retry < 3; retry++) {
@@ -125,8 +126,10 @@ esp_err_t bsp_rtc_init(void)
         }
         vTaskDelay(pdMS_TO_TICKS(20));
     }
+	*/
 
-    if (!ready) {
+	uint8_t test_reg = 0x00;
+    if (bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, &test_reg, 1) != ESP_OK) {
         ESP_LOGW(TAG, "PCF85063A not responding on I2C address 0x%02X", BSP_I2C_ADDR_PCF85063);
         return ESP_ERR_NOT_FOUND;
     }
@@ -220,7 +223,7 @@ esp_err_t bsp_rtc_set_datetime(const bsp_rtc_datetime_t *datetime)
 
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "RTC Set Time -> %04d-%02d-%02d %02d:%02d:%02d (Day: %d)",
-                 datetime->year, datetime->month, datetime->day,
+                 datetime->year, datetime->month,  datetime->day,
                  datetime->hour, datetime->minute, datetime->second, datetime->weekday);
     }
     return ret;

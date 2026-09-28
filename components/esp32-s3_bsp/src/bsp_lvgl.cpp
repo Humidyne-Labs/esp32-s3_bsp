@@ -72,30 +72,30 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
         return;
     }
 
-    const uint8_t *src_buf = px_map + LVGL_I1_PALETTE_SIZE;
-    uint8_t *dest_buf = bsp_display_get_buffer();
+    const uint8_t *src_buf  = px_map + LVGL_I1_PALETTE_SIZE;
+    uint8_t       *dest_buf = bsp_display_get_buffer();
 
-    uint16_t area_w = (area->x2 - area->x1 + 1);
-    uint16_t area_h = (area->y2 - area->y1 + 1);
+    uint16_t area_w     = (area->x2 - area->x1 + 1);
+    uint16_t area_h     = (area->y2 - area->y1 + 1);
     uint32_t src_stride = lv_draw_buf_width_to_stride(area_w, LV_COLOR_FORMAT_I1);
 
     // Optimized Direct Monochrome Bit Blit
     // If area is byte-aligned (multiple of 8), perform fast-path copy
     if ((area->x1 % 8 == 0) && (area_w % 8 == 0) && (dest_buf != NULL)) {
-        uint16_t bytes_per_line = area_w / 8;
-        uint16_t start_byte_x = area->x1 / 8;
+        uint16_t bytes_per_line = area_w   / 8;
+        uint16_t start_byte_x   = area->x1 / 8;
 
         for (uint16_t y = 0; y < area_h; y++) {
-            uint16_t dst_y = area->y1 + y;
-            uint32_t dst_offset = (dst_y * (BSP_DISPLAY_WIDTH / 8)) + start_byte_x;
-            const uint8_t *src_line = src_buf + (y * src_stride);
+            uint16_t      dst_y      = area->y1 + y;
+            uint32_t      dst_offset = (dst_y * (BSP_DISPLAY_WIDTH / 8)) + start_byte_x;
+            const uint8_t *src_line  = src_buf + (y * src_stride);
             memcpy(&dest_buf[dst_offset], src_line, bytes_per_line);
         }
     } else {
         // Pixel fallback for unaligned fractional bounding boxes
         for (uint16_t y = 0; y < area_h; y++) {
             const uint8_t *src_line = src_buf + (y * src_stride);
-            uint16_t dst_y = area->y1 + y;
+            uint16_t      dst_y     = area->y1 + y;
 
             for (uint16_t x = 0; x < area_w; x++) {
                 uint8_t bit_val = (src_line[x >> 3] >> (7 - (x & 0x07))) & 0x01;
@@ -119,7 +119,7 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
         if (s_first_boot_flush) {
             bsp_display_flush(); // Full OTP update on boot
             s_first_boot_flush = false;
-            s_flush_counter = 0;
+            s_flush_counter    = 0;
         } else {
             s_flush_counter++;
             if (s_flush_counter >= PARTIAL_REFRESH_LIMIT) {
@@ -165,8 +165,8 @@ esp_err_t bsp_lvgl_init(void)
 
     // Allocate partial render buffer (40 lines) with zeroed memory
     uint32_t buffer_lines = 40;
-    size_t buf_size = ((BSP_DISPLAY_WIDTH + 7) / 8) * buffer_lines + LVGL_I1_PALETTE_SIZE;
-    uint8_t *buf1 = (uint8_t *)heap_caps_calloc(1, buf_size, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+    size_t       buf_size = ((BSP_DISPLAY_WIDTH + 7) / 8) * buffer_lines + LVGL_I1_PALETTE_SIZE;
+    uint8_t         *buf1 = (uint8_t *)heap_caps_calloc(1, buf_size, MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
     if (buf1 == NULL) {
         buf1 = (uint8_t *)calloc(1, buf_size);
     }

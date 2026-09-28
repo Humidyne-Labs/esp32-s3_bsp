@@ -38,22 +38,22 @@ extern "C" {
  * @brief System Diagnostic Information Snapshot
  */
 typedef struct {
-    const char *bsp_version;            /*!< BSP SemVer version string */
-    const char *chip_model;             /*!< MCU Silicon Model (e.g. "ESP32-S3") */
-    const char *chip_revision_str;      /*!< MCU Silicon Revision string (e.g. "v0.2") */
-    uint16_t   chip_revision;           /*!< MCU Silicon Revision (major * 100 + minor) */
-    uint8_t    chip_cores;              /*!< MCU CPU Core count */
-    uint32_t   free_internal_heap;      /*!< Free internal SRAM heap in bytes */
+    const char *bsp_version;            /*!< BSP SemVer version string                      */
+    const char *chip_model;             /*!< MCU Silicon Model (e.g. "ESP32-S3")            */
+    const char *chip_revision_str;      /*!< MCU Silicon Revision string (e.g. "v0.2")      */
+    uint16_t   chip_revision;           /*!< MCU Silicon Revision (major * 100 + minor)     */
+    uint8_t    chip_cores;              /*!< MCU CPU Core count                             */
+    uint32_t   free_internal_heap;      /*!< Free internal SRAM heap in bytes               */
     uint32_t   min_free_internal_heap;  /*!< Minimum historical free internal SRAM in bytes */
-    uint32_t   free_psram_heap;         /*!< Free external PSRAM in bytes */
-    uint32_t   uptime_seconds;          /*!< Time elapsed since system boot in seconds */
-    uint32_t   battery_mv;              /*!< Measured battery voltage in millivolts */
-    int8_t     battery_percentage;      /*!< Calculated battery state of charge (0-100%) */
-    bool       power_rail_good;         /*!< Power latch active state */
-    bool       i2c_bus_healthy;         /*!< SHTC3 & RTC I2C response state */
-    bool       display_ready;           /*!< Display controller SPI initialization state */
-    bool       wifi_connected;          /*!< Wi-Fi station link state */
-    int8_t     wifi_rssi;               /*!< Wi-Fi RSSI signal strength (dBm) */
+    uint32_t   free_psram_heap;         /*!< Free external PSRAM in bytes                   */
+    uint32_t   uptime_seconds;          /*!< Time elapsed since system boot in seconds      */
+    uint32_t   battery_mv;              /*!< Measured battery voltage in millivolts         */
+    int8_t     battery_percentage;      /*!< Calculated battery state of charge (0-100%)    */
+    bool       power_rail_good;         /*!< Power latch active state                       */
+    bool       i2c_bus_healthy;         /*!< SHTC3 & RTC I2C response state                 */
+    bool       display_ready;           /*!< Display controller SPI initialization state    */
+    bool       wifi_connected;          /*!< Wi-Fi station link state                       */
+    int8_t     wifi_rssi;               /*!< Wi-Fi RSSI signal strength (dBm)               */
 } bsp_diag_info_t;
 
 /**

@@ -37,17 +37,17 @@ extern "C" {
  */
 typedef struct {
     esp_reset_reason_t       reset_reason;       /*!< Reset reason (e.g. ESP_RST_DEEPSLEEP, ESP_RST_POWERON) */
-    esp_sleep_wakeup_cause_t wake_cause;         /*!< Wakeup cause (e.g. EXT1, TIMER, GPIO) */
-    uint64_t                 ext1_wakeup_pins;   /*!< GPIO mask of pins that triggered EXT1 wakeup */
-    bool                     woke_from_button;   /*!< True if wake was triggered by BOOT or POWER button */
-    bsp_button_t             wake_button;        /*!< Which button triggered wakeup (if button wake) */
-    bsp_init_mode_t          init_mode;          /*!< Initialization profile executed (FULL, FAST, MIN) */
-    uint32_t                 sleep_duration_sec; /*!< Configured sleep duration from previous cycle */
-    uint32_t                 boot_count;         /*!< Monotonic system boot count */
-    uint32_t                 deep_sleep_count;   /*!< Total deep sleep cycles */
-    uint32_t                 light_sleep_count;  /*!< Total light sleep cycles */
-    uint8_t                  app_stage;          /*!< Persistent application stage code (from RTC memory) */
-    void                    *user_data;          /*!< User data pointer passed during lifecycle start */
+    esp_sleep_wakeup_cause_t wake_cause;         /*!< Wakeup cause (e.g. EXT1, TIMER, GPIO)                  */
+    uint64_t                 ext1_wakeup_pins;   /*!< GPIO mask of pins that triggered EXT1 wakeup           */
+    bool                     woke_from_button;   /*!< True if wake was triggered by BOOT or POWER button     */
+    bsp_button_t             wake_button;        /*!< Which button triggered wakeup (if button wake)         */
+    bsp_init_mode_t          init_mode;          /*!< Initialization profile executed (FULL, FAST, MIN)      */
+    uint32_t                 sleep_duration_sec; /*!< Configured sleep duration from previous cycle          */
+    uint32_t                 boot_count;         /*!< Monotonic system boot count                            */
+    uint32_t                 deep_sleep_count;   /*!< Total deep sleep cycles                                */
+    uint32_t                 light_sleep_count;  /*!< Total light sleep cycles                               */
+    uint8_t                  app_stage;          /*!< Persistent application stage code (from RTC memory)    */
+    void                     *user_data;         /*!< User data pointer passed during lifecycle start        */
 } bsp_wake_context_t;
 
 /**
@@ -69,10 +69,10 @@ typedef void (*bsp_before_sleep_cb_t)(bsp_sleep_mode_t mode, uint32_t duration_s
  * @brief Comprehensive Application Lifecycle Configuration
  */
 typedef struct {
-    bsp_cold_boot_cb_t    on_cold_boot;    /*!< Handler for initial cold boot */
-    bsp_wake_cb_t         on_wake;         /*!< Handler for sleep wake events */
+    bsp_cold_boot_cb_t    on_cold_boot;    /*!< Handler for initial cold boot                */
+    bsp_wake_cb_t         on_wake;         /*!< Handler for sleep wake events                */
     bsp_before_sleep_cb_t on_before_sleep; /*!< Hook called immediately prior to sleep entry */
-    void                 *user_data;       /*!< Custom application context pointer */
+    void                 *user_data;       /*!< Custom application context pointer           */
 } bsp_app_lifecycle_t;
 
 /**
