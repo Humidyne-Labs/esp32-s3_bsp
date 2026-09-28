@@ -299,6 +299,7 @@ esp_err_t bsp_board_init_with_config(const bsp_config_t *config)
     if (cfg.init_audio) {
         ret = bsp_audio_init();
         if (ret == ESP_OK) {
+            bsp_audio_register_default_chimes();
             bsp_audio_stop();
         } else {
             ESP_LOGW(TAG, "Audio codec init returned: %s", esp_err_to_name(ret));

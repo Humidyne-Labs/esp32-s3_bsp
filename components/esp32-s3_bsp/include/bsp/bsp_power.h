@@ -1,6 +1,6 @@
 /**
  * @file bsp_power.h
- * @brief Power Management, LDO Power Latch, Battery Monitor, and Dual Sleep Modes
+ * @brief Power Management, LDO Power Latch, Battery Monitor, Shutdown & Dual Sleep Modes
  * 
  * Hardware Description:
  *  - Power Hold Latch: GPIO 17 (BAT_CTRL) maintains LDO regulator power from battery.
@@ -11,6 +11,10 @@
  *  - Light Sleep: Preserves CPU/SRAM state, fast resume.
  *  - Deep Sleep: Powers down CPU/peripherals, preserves RTC Slow Memory and state flags.
  *  - Wake Sources: ESP32-S3 Internal Timer, PCF85063A External RTC INT (GPIO 5), BOOT/POWER Buttons.
+ * 
+ * Shutdown Architecture:
+ *  - Clean shutdown sequence triggers splash screen & chimes, executes lifecycle on_shutdown hooks,
+ *    stops background FreeRTOS tasks, powers down display/audio, and releases GPIO 17 latch.
  * 
  * @attribution
  * - Circuit Design: Waveshare Electronics
@@ -35,6 +39,11 @@ extern "C" {
 #endif
 
 /**
+ * @brief System shutdown / power-off callback function pointer
+ */
+typedef void (*bsp_power_off_cb_t)(void *user_data);
+
+/**
  * @brief Wakeup Source Selection Flags
  */
 typedef enum {
@@ -51,7 +60,7 @@ typedef struct {
     bsp_sleep_mode_t       mode;           /*!< Target sleep mode (Light or Deep)                          */
     uint32_t               duration_sec;   /*!< Sleep duration in seconds (0 for indefinite / button only) */
     bsp_wake_source_mask_t wake_sources;   /*!< Bitmask of enabled wake triggers                           */
-    bsp_init_mode_t        next_init_mode; /*!< Hardware initialization mode to perform on wake */
+    bsp_init_mode_t        next_init_mode; /*!< Hardware initialization mode to perform on wake            */
 } bsp_sleep_config_t;
 
 /**
@@ -89,9 +98,29 @@ esp_err_t bsp_power_hold(void);
 esp_err_t bsp_power_release(void);
 
 /**
+ * @brief Register custom shutdown callback hook
+ * 
+ * Invoked during bsp_power_off() before power latch drops.
+ * 
+ * @param cb Callback function
+ * @param user_data Custom user data pointer
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void *user_data);
+
+/**
+ * @brief Unregister shutdown callback hook
+ * 
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_power_unregister_shutdown_cb(void);
+
+/**
  * @brief Turn board completely off
  * 
- * Releases LDO power hold latch. If USB is not connected, board powers down immediately.
+ * Executes shutdown splash & chimes, lifecycle on_shutdown hooks, stops background tasks,
+ * isolates power rails, and drops the BAT_CTRL power hold latch. If external power (USB)
+ * is present, reboots cleanly.
  */
 void bsp_power_off(void);
 
@@ -114,7 +143,7 @@ void bsp_led_toggle(void);
  * 
  * @param[out] out_mv Calculated battery voltage in millivolts (e.g. 4150 mV = 4.15V)
  * @param[out] out_raw Optional pointer to receive raw ADC reading (can be NULL)
- * @return esp_err_t ESP_OK on success
+ * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG if out_mv is NULL
  */
 esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw);
 

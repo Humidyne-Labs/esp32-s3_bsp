@@ -25,11 +25,15 @@
 #include <stdbool.h>
 #include "esp_err.h"
 #include "bsp/pinout.h"
+#include "bsp/bsp_power.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/**
+ * @brief Hardware Button Identifiers
+ */
 typedef enum {
     BSP_BUTTON_BOOT  = 0,    /*!< GPIO  0 User  / Boot Button */
     BSP_BUTTON_POWER = 1,    /*!< GPIO 18 Power / Battery Key */
@@ -37,24 +41,36 @@ typedef enum {
     BSP_BUTTON_MAX   = BSP_BUTTON_COUNT,
 } bsp_button_t;
 
+/**
+ * @brief Button Event Types
+ */
 typedef enum {
-    BSP_BUTTON_EVENT_PRESS_DOWN = 0,
-    BSP_BUTTON_EVENT_PRESS_UP,
-    BSP_BUTTON_EVENT_SINGLE_CLICK,
-    BSP_BUTTON_EVENT_DOUBLE_CLICK,
-    BSP_BUTTON_EVENT_LONG_PRESS,
+    BSP_BUTTON_EVENT_PRESS_DOWN = 0, /*!< Button transitioned to pressed state              */
+    BSP_BUTTON_EVENT_PRESS_UP,       /*!< Button transitioned to released state             */
+    BSP_BUTTON_EVENT_SINGLE_CLICK,   /*!< Single click completed                            */
+    BSP_BUTTON_EVENT_DOUBLE_CLICK,   /*!< Double click detected within click timeout window */
+    BSP_BUTTON_EVENT_LONG_PRESS,     /*!< Button held down past long_press_ms threshold     */
     BSP_BUTTON_EVENT_MAX
 } bsp_button_event_t;
 
+/**
+ * @brief Button Timing & Feature Configuration
+ */
 typedef struct {
-    uint32_t debounce_ms;
-    uint32_t click_timeout_ms;
-    uint32_t long_press_ms;
-    bool     auto_power_off_on_hold;
+    uint32_t debounce_ms;            /*!< Debounce settling time in milliseconds (Default: 20 ms)      */
+    uint32_t click_timeout_ms;       /*!< Max delay between double clicks in ms (Default: 280 ms)       */
+    uint32_t long_press_ms;          /*!< Duration to trigger long press in ms (Default: 2500 ms)      */
+    bool     auto_power_off_on_hold; /*!< Auto power off system on POWER long press (Default: true)    */
 } bsp_button_config_t;
 
+/**
+ * @brief Button Event Callback Signature
+ * 
+ * @param btn Originating button (BOOT or POWER)
+ * @param evt Triggered event type
+ * @param user_data Custom user pointer passed during registration
+ */
 typedef void (*bsp_button_cb_t)(bsp_button_t btn, bsp_button_event_t evt, void *user_data);
-typedef void (*bsp_power_off_cb_t)(void *user_data);
 
 /**
  * @brief Initialize Hardware Button Interrupts and Debounce Timer
@@ -65,13 +81,20 @@ typedef void (*bsp_power_off_cb_t)(void *user_data);
 esp_err_t bsp_button_init(const bsp_button_config_t *config);
 
 /**
+ * @brief Stop Button Polling and Debounce Timer
+ * 
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t bsp_button_stop(void);
+
+/**
  * @brief Register Callback for Button Event
  * 
  * @param button Target button (BOOT or POWER)
  * @param event Target event type
  * @param cb Callback function
  * @param user_data Custom user pointer passed to callback
- * @return esp_err_t ESP_OK on success
+ * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid button/event
  */
 esp_err_t bsp_button_register_cb(bsp_button_t button, bsp_button_event_t event, bsp_button_cb_t cb, void *user_data);
 
@@ -80,7 +103,7 @@ esp_err_t bsp_button_register_cb(bsp_button_t button, bsp_button_event_t event, 
  * 
  * @param button Target button
  * @param event Target event type
- * @return esp_err_t ESP_OK on success
+ * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid button/event
  */
 esp_err_t bsp_button_unregister_cb(bsp_button_t button, bsp_button_event_t event);
 
@@ -88,7 +111,7 @@ esp_err_t bsp_button_unregister_cb(bsp_button_t button, bsp_button_event_t event
  * @brief Check if button is currently pressed down
  * 
  * @param button Target button
- * @return true if pressed, false otherwise
+ * @return true if pressed (GPIO level LOW), false otherwise
  */
 bool bsp_button_is_pressed(bsp_button_t button);
 
@@ -100,20 +123,6 @@ bool bsp_button_is_pressed(bsp_button_t button);
  * @return esp_err_t ESP_OK on click, ESP_ERR_TIMEOUT on timeout, ESP_ERR_INVALID_ARG on bad button
  */
 esp_err_t bsp_button_wait_for_click(bsp_button_t button, uint32_t timeout_ms);
-
-/**
- * @brief Register system shutdown callback hook
- * 
- * @param cb Callback invoked before power latch drops
- * @param user_data Custom user data pointer
- * @return esp_err_t ESP_OK
- */
-esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void *user_data);
-
-/**
- * @brief Execute Clean Hardware Shutdown (Drop BAT_CTRL latch)
- */
-void bsp_power_off(void);
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 /**
  * @file bsp_power.c
- * @brief Power Control Latch, Status LED, Battery ADC, and Dual Sleep Modes Implementation
+ * @brief Power Control Latch, Status LED, Battery ADC, Shutdown Sequence & Dual Sleep Modes Implementation
  * 
  * Circuit Architecture:
  *  - Power Latch: GPIO 17 (BAT_CTRL) is driven HIGH to turn on the onboard LDO gate and hold power.
@@ -36,6 +36,10 @@
 #include "bsp/bsp_sensors.h"
 #include "bsp/bsp_power.h"
 #include "bsp/bsp_rtc_mem.h"
+#include "bsp/bsp_splash.h"
+#include "bsp/bsp_lvgl.h"
+#include "bsp/bsp_button.h"
+#include "bsp/bsp_lifecycle.h"
 #include "bsp/bsp.h"
 #include "sdkconfig.h"
 
@@ -44,11 +48,13 @@ static const char *TAG = "bsp_power";
 // ADC Subsystem Handles (ESP32-S3 GPIO 4 = ADC1_CHANNEL_3)
 #define BSP_ADC_BATTERY_CHANNEL ADC_CHANNEL_3
 
-static adc_oneshot_unit_handle_t s_adc_handle   = NULL;
-static adc_cali_handle_t         s_cali_handle  = NULL;
-static bool                      s_calibrated   = false;
-static bool                      s_led_state    = false;
-static bool                      s_power_inited = false;
+static adc_oneshot_unit_handle_t s_adc_handle          = NULL;
+static adc_cali_handle_t         s_cali_handle         = NULL;
+static bool                      s_calibrated          = false;
+static bool                      s_led_state           = false;
+static bool                      s_power_inited        = false;
+static bsp_power_off_cb_t        s_shutdown_cb         = NULL;
+static void                      *s_shutdown_user_data = NULL;
 
 /* =========================================================================
  * Internal Calibration Helper
@@ -108,6 +114,80 @@ esp_err_t bsp_power_release(void)
     return gpio_set_level(BSP_PIN_POWER_HOLD, 0);
 }
 
+esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void *user_data)
+{
+    s_shutdown_cb        = cb;
+    s_shutdown_user_data = user_data;
+    return ESP_OK;
+}
+
+esp_err_t bsp_power_unregister_shutdown_cb(void)
+{
+    s_shutdown_cb        = NULL;
+    s_shutdown_user_data = NULL;
+    return ESP_OK;
+}
+
+void bsp_power_off(void)
+{
+    static bool s_shutting_down = false;
+    if (s_shutting_down) return;
+    s_shutting_down = true;
+
+    ESP_LOGI(TAG, "Executing complete system shutdown sequence...");
+
+    // 1. Trigger shutdown splash screen and acoustic chime if registered
+    bsp_trigger_splash(BSP_SPLASH_SHUTDOWN);
+    bsp_trigger_chime(BSP_CHIME_SHUTDOWN);
+
+    // 2. Run lifecycle on_shutdown callback if configured
+    bsp_lifecycle_invoke_shutdown();
+
+    // 3. Run user shutdown callback if registered
+    if (s_shutdown_cb != NULL) {
+        ESP_LOGI(TAG, "Invoking registered shutdown callback...");
+        s_shutdown_cb(s_shutdown_user_data);
+    }
+
+    // 4. Stop button timers/polling immediately so no further button events fire
+    bsp_button_stop();
+
+    // 5. Stop LVGL rendering background task
+    bsp_lvgl_stop();
+
+    // 6. Put display into deep sleep and disable display power rail
+    bsp_display_deep_sleep();
+    gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 1);
+
+    // 7. Mute and power off audio subsystem
+    bsp_audio_stop();
+    bsp_audio_power_enable(false);
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_CTRL, 0);
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN,   1);
+
+    // 8. Turn off status LED
+    bsp_led_set(false);
+
+    // 9. Disconnect Wi-Fi
+    bsp_wifi_disconnect();
+
+    // 10. Wait until user physically releases the power button so it doesn't immediately re-trigger
+    while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_POWER) == 0) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // 11. Drop power latch (GPIO 17 = 0) and release hardware hold
+    ESP_LOGI(TAG, "De-asserting BAT_CTRL power latch (GPIO %d)...", BSP_PIN_POWER_HOLD);
+    gpio_hold_dis((gpio_num_t)BSP_PIN_POWER_HOLD);
+    gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 0);
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // If external power (USB / VBUS) is present, the board stays powered -> perform clean restart
+    ESP_LOGI(TAG, "External power (USB) detected; restarting MCU");
+    esp_restart();
+}
+
 esp_err_t bsp_power_init(void)
 {
     if (s_power_inited) return ESP_OK;
@@ -138,7 +218,7 @@ esp_err_t bsp_power_init(void)
         return err;
     }
 
-    // 4. Initialize Factory Calibration Scheme
+    // 3. Initialize Factory Calibration Scheme
     s_calibrated   = init_adc_calibration(ADC_UNIT_1, BSP_ADC_BATTERY_CHANNEL, ADC_ATTEN_DB_12, &s_cali_handle);
     s_power_inited = true;
 

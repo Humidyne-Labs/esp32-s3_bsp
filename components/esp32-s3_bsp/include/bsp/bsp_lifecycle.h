@@ -1,10 +1,10 @@
 /**
  * @file bsp_lifecycle.h
- * @brief High-Level Application Lifecycle, Sleep/Wake Dispatcher & State Engine
+ * @brief High-Level Application Lifecycle, Sleep/Wake Dispatcher, Shutdown & State Engine
  * 
  * Provides an event-driven lifecycle framework for ESP32-S3 ePaper applications,
  * abstracting reset reason inspection, dynamic init mode selection, persistent
- * stage tracking, and wake dispatching into structured callbacks.
+ * stage tracking, wake dispatching, sleep stand-down, and clean shutdown hooks into structured callbacks.
  * 
  * Hardware Target:
  *  - Microcontroller: Espressif Systems ESP32-S3-PICO-1-N8R8
@@ -27,6 +27,7 @@
 #include "bsp/bsp_rtc_mem.h"
 #include "bsp/bsp_button.h"
 #include "bsp/bsp_power.h"
+#include "bsp/bsp_splash.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,12 +67,18 @@ typedef void (*bsp_wake_cb_t)(const bsp_wake_context_t *ctx, void *user_data);
 typedef void (*bsp_before_sleep_cb_t)(bsp_sleep_mode_t mode, uint32_t duration_sec, void *user_data);
 
 /**
+ * @brief Callback executed immediately prior to system power off / clean shutdown
+ */
+typedef void (*bsp_shutdown_cb_t)(void *user_data);
+
+/**
  * @brief Comprehensive Application Lifecycle Configuration
  */
 typedef struct {
     bsp_cold_boot_cb_t    on_cold_boot;    /*!< Handler for initial cold boot                */
     bsp_wake_cb_t         on_wake;         /*!< Handler for sleep wake events                */
     bsp_before_sleep_cb_t on_before_sleep; /*!< Hook called immediately prior to sleep entry */
+    bsp_shutdown_cb_t     on_shutdown;     /*!< Hook called immediately prior to power off   */
     void                 *user_data;       /*!< Custom application context pointer           */
 } bsp_app_lifecycle_t;
 
@@ -91,7 +98,7 @@ esp_err_t bsp_app_start(const bsp_app_lifecycle_t *lifecycle);
  * @brief Retrieve current wake context
  * 
  * @param[out] ctx Pointer to bsp_wake_context_t destination
- * @return esp_err_t ESP_OK on success
+ * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
  */
 esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t *ctx);
 
@@ -129,12 +136,24 @@ esp_err_t bsp_lifecycle_save_state(const void *data, size_t len);
 esp_err_t bsp_lifecycle_load_state(void *out_data, size_t len);
 
 /**
- * @brief Enter sleep with automatic before_sleep lifecycle hook execution
+ * @brief Enter sleep with automatic before_sleep lifecycle hook and splash/chime execution
  * 
  * @param config Sleep configuration (mode, duration, wake sources, next init mode)
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t bsp_lifecycle_enter_sleep(const bsp_sleep_config_t *config);
+
+/**
+ * @brief Perform clean hardware power off and system shutdown
+ * 
+ * Executes registered on_shutdown callback, drops BAT_CTRL power latch, and stops peripherals.
+ */
+void bsp_lifecycle_power_off(void);
+
+/**
+ * @brief Internal lifecycle dispatcher hook invoked by bsp_power_off()
+ */
+void bsp_lifecycle_invoke_shutdown(void);
 
 #ifdef __cplusplus
 }

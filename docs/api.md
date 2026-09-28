@@ -20,7 +20,7 @@
 | [`bsp_sleep_config_t`](#bsp_sleep_config_t) | Unified Sleep Configuration. |
 | [`bsp_wake_context_t`](#bsp_wake_context_t) | Structured Wake Context passed to application on_wake callback. |
 | [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t) | Comprehensive Application Lifecycle Configuration. |
-| [`bsp_button_config_t`](#bsp_button_config_t) |  |
+| [`bsp_button_config_t`](#bsp_button_config_t) | Button Timing & Feature Configuration. |
 | [`button_callback_entry_t`](#button_callback_entry_t) |  |
 
 ## Macros
@@ -1326,7 +1326,7 @@ Defined in bsp_wifi.c:54
 }
 ```
 
-Defined in bsp/bsp_power.h:60
+Defined in bsp/bsp_power.h:69
 
 Default Deep Sleep Configuration Macro.
 
@@ -1340,7 +1340,7 @@ Default Deep Sleep Configuration Macro.
 #define BSP_ADC_BATTERY_CHANNEL ADC_CHANNEL_3
 ```
 
-Defined in bsp_power.c:45
+Defined in bsp_power.c:49
 
 ---
 
@@ -1707,7 +1707,7 @@ Formatted Date Representation Modes.
 enum bsp_wake_source_mask_t
 ```
 
-Defined in bsp/bsp_power.h:40
+Defined in bsp/bsp_power.h:49
 
 Wakeup Source Selection Flags.
 
@@ -1728,7 +1728,9 @@ Wakeup Source Selection Flags.
 enum bsp_button_t
 ```
 
-Defined in bsp/bsp_button.h:33
+Defined in bsp/bsp_button.h:37
+
+Hardware Button Identifiers.
 
 | Value | Description |
 |-------|-------------|
@@ -1747,15 +1749,17 @@ Defined in bsp/bsp_button.h:33
 enum bsp_button_event_t
 ```
 
-Defined in bsp/bsp_button.h:40
+Defined in bsp/bsp_button.h:47
+
+Button Event Types.
 
 | Value | Description |
 |-------|-------------|
-| `BSP_BUTTON_EVENT_PRESS_DOWN` |  |
-| `BSP_BUTTON_EVENT_PRESS_UP` |  |
-| `BSP_BUTTON_EVENT_SINGLE_CLICK` |  |
-| `BSP_BUTTON_EVENT_DOUBLE_CLICK` |  |
-| `BSP_BUTTON_EVENT_LONG_PRESS` |  |
+| `BSP_BUTTON_EVENT_PRESS_DOWN` | Button transitioned to pressed state |
+| `BSP_BUTTON_EVENT_PRESS_UP` | Button transitioned to released state |
+| `BSP_BUTTON_EVENT_SINGLE_CLICK` | Single click completed |
+| `BSP_BUTTON_EVENT_DOUBLE_CLICK` | Double click detected within click timeout window |
+| `BSP_BUTTON_EVENT_LONG_PRESS` | Button held down past long_press_ms threshold |
 | `BSP_BUTTON_EVENT_MAX` |  |
 
 ---
@@ -1768,13 +1772,14 @@ Defined in bsp/bsp_button.h:40
 enum bsp_splash_type_t
 ```
 
-Defined in bsp/bsp_splash.h:35
+Defined in bsp/bsp_splash.h:36
 
 UI Splash Screen Types.
 
 | Value | Description |
 |-------|-------------|
 | `BSP_SPLASH_BOOT` | Rendered upon system cold boot |
+| `BSP_SPLASH_WAKE` | Rendered upon resuming from sleep |
 | `BSP_SPLASH_SLEEP` | Rendered prior to entering deep/light sleep |
 | `BSP_SPLASH_SHUTDOWN` | Rendered prior to system power off (e.g. Space Cat) |
 | `BSP_SPLASH_MAX` |  |
@@ -1789,17 +1794,19 @@ UI Splash Screen Types.
 enum bsp_chime_type_t
 ```
 
-Defined in bsp/bsp_splash.h:45
+Defined in bsp/bsp_splash.h:47
 
-Audio Chime / Signal Event Types.
+Audio Chime / Notification Event Types.
 
 | Value | Description |
 |-------|-------------|
 | `BSP_CHIME_BOOT` | Bootup melodic chime |
-| `BSP_CHIME_SLEEP` | Sleep / stand-down tone |
+| `BSP_CHIME_WAKE` | Wake from sleep acoustic cue |
+| `BSP_CHIME_SLEEP` | Sleep / stand-down descending tone |
 | `BSP_CHIME_SHUTDOWN` | Power off tone |
 | `BSP_CHIME_ALARM` | Critical telemetry / threshold alarm |
 | `BSP_CHIME_NOTIFY` | General notification chirp |
+| `BSP_CHIME_EVENT` | User action / UI event click tone |
 | `BSP_CHIME_MAX` |  |
 
 ---
@@ -1984,19 +1991,9 @@ Provisioning Status Callback.
 using bsp_audio_done_cb_t = void(*)
 ```
 
-Defined in bsp/bsp_audio.h:30
+Defined in bsp/bsp_audio.h:40
 
----
-
-{#bsp_button_cb_t}
-
-### bsp_button_cb_t
-
-```cpp
-using bsp_button_cb_t = void(*)
-```
-
-Defined in bsp/bsp_button.h:56
+Audio playback completion callback type.
 
 ---
 
@@ -2008,7 +2005,31 @@ Defined in bsp/bsp_button.h:56
 using bsp_power_off_cb_t = void(*)
 ```
 
-Defined in bsp/bsp_button.h:57
+Defined in bsp/bsp_power.h:44
+
+System shutdown / power-off callback function pointer.
+
+---
+
+{#bsp_button_cb_t}
+
+### bsp_button_cb_t
+
+```cpp
+using bsp_button_cb_t = void(*)
+```
+
+Defined in bsp/bsp_button.h:73
+
+Button Event Callback Signature.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `btn` |  | Originating button (BOOT or POWER) |
+| `evt` |  | Triggered event type |
+| `user_data` |  | Custom user pointer passed during registration |
 
 ---
 
@@ -2020,9 +2041,16 @@ Defined in bsp/bsp_button.h:57
 using bsp_splash_cb_t = void(*)
 ```
 
-Defined in bsp/bsp_splash.h:57
+Defined in bsp/bsp_splash.h:64
 
 UI Splash Screen Callback Signature.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` |  | Splash event type |
+| `user_data` |  | User context pointer passed during registration |
 
 ---
 
@@ -2034,9 +2062,16 @@ UI Splash Screen Callback Signature.
 using bsp_chime_cb_t = void(*)
 ```
 
-Defined in bsp/bsp_splash.h:62
+Defined in bsp/bsp_splash.h:72
 
 Audio Chime Callback Signature.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` |  | Chime event type |
+| `user_data` |  | User context pointer passed during registration |
 
 ---
 
@@ -2048,7 +2083,7 @@ Audio Chime Callback Signature.
 using bsp_cold_boot_cb_t = void(*)
 ```
 
-Defined in bsp/bsp_lifecycle.h:56
+Defined in bsp/bsp_lifecycle.h:57
 
 Callback executed on cold boot (Power-On Reset, Brownout, Software Restart, etc.).
 
@@ -2062,7 +2097,7 @@ Callback executed on cold boot (Power-On Reset, Brownout, Software Restart, etc.
 using bsp_wake_cb_t = void(*)
 ```
 
-Defined in bsp/bsp_lifecycle.h:61
+Defined in bsp/bsp_lifecycle.h:62
 
 Callback executed on resume from Deep Sleep or Light Sleep.
 
@@ -2076,9 +2111,23 @@ Callback executed on resume from Deep Sleep or Light Sleep.
 using bsp_before_sleep_cb_t = void(*)
 ```
 
-Defined in bsp/bsp_lifecycle.h:66
+Defined in bsp/bsp_lifecycle.h:67
 
 Callback executed right before entering Deep or Light Sleep (for app cleanup / display badge).
+
+---
+
+{#bsp_shutdown_cb_t}
+
+### bsp_shutdown_cb_t
+
+```cpp
+using bsp_shutdown_cb_t = void(*)
+```
+
+Defined in bsp/bsp_lifecycle.h:72
+
+Callback executed immediately prior to system power off / clean shutdown.
 
 ## Functions
 
@@ -6390,7 +6439,7 @@ Invalidate and Clear the RTC Fast Reconnect Session Cache.
 void bsp_audio_power_enable(bool enable)
 ```
 
-Defined in bsp/bsp_audio.h:37
+Defined in bsp/bsp_audio.h:47
 
 Control Power Rail for Audio Subsystem (GPIO 42).
 
@@ -6410,9 +6459,11 @@ Control Power Rail for Audio Subsystem (GPIO 42).
 esp_err_t bsp_audio_init(void)
 ```
 
-Defined in bsp/bsp_audio.h:44
+Defined in bsp/bsp_audio.h:57
 
 Initialize I2S Master Channel & ES8311 Audio Codec.
+
+Configures I2S0 master TX channel at 16 kHz 16-bit mono, initializes the ES8311 codec via the shared I2C bus, enables the NS4168 power amplifier, and starts in muted state.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -6427,7 +6478,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_audio_play(const void * data, size_t len, size_t * bytes_written)
 ```
 
-Defined in bsp/bsp_audio.h:54
+Defined in bsp/bsp_audio.h:67
 
 Play Raw PCM Audio Buffer.
 
@@ -6452,18 +6503,18 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_audio_set_volume(float volume)
 ```
 
-Defined in bsp/bsp_audio.h:62
+Defined in bsp/bsp_audio.h:75
 
 Set Software Audio Gain / Volume Scaling.
 
 #### Returns
-esp_err_t ESP_OK
+esp_err_t ESP_OK on success
 
 #### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `volume` | `float` | Volume from 0.0 (mute) to 100.0 (maximum) |
+| `volume` | `float` | Volume level from 0.0 (mute) to 100.0 (maximum) |
 
 ---
 
@@ -6475,9 +6526,11 @@ esp_err_t ESP_OK
 esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volume_pct)
 ```
 
-Defined in bsp/bsp_audio.h:72
+Defined in bsp/bsp_audio.h:88
 
 Play Synthesized Sine Tone.
+
+Generates a smooth sine wave tone using a 256-point lookup table with 5ms attack/decay envelope ramps to eliminate acoustic popping.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -6488,7 +6541,59 @@ esp_err_t ESP_OK on success
 |-----------|------|-------------|
 | `freq_hz` | `uint32_t` | Frequency in Hertz (e.g. 440, 523, 1046) |
 | `duration_ms` | `uint32_t` | Duration in milliseconds |
-| `volume_pct` | `float` | Volume from 0.0 (muted) to 100.0 (maximum) |
+| `volume_pct` | `float` | Volume percentage from 0.0 (muted) to 100.0 (maximum) |
+
+---
+
+{#bsp_audio_play_chime}
+
+### bsp_audio_play_chime
+
+```cpp
+esp_err_t bsp_audio_play_chime(bsp_chime_type_t type)
+```
+
+Defined in bsp/bsp_audio.h:105
+
+Play Built-in Synthesized Acoustic System Chime / Notification Sound.
+
+Synthesizes structured melodic tone sequences tailored for system events:
+
+* BSP_CHIME_BOOT: Ascending 4-tone melodic arpeggio (C5 -> E5 -> G5 -> C6)
+* BSP_CHIME_WAKE: Quick rising wake cue (G5 -> C6)
+* BSP_CHIME_SLEEP: Descending stand-down cadence (C6 -> G5 -> E5)
+* BSP_CHIME_SHUTDOWN: Warm descending shutdown tone (G5 -> E5 -> C5)
+* BSP_CHIME_ALARM: High-urgency alternating warning warble (1760 Hz / 880 Hz)
+* BSP_CHIME_NOTIFY: Dual-ping notification chirp (1046 Hz -> 1318 Hz)
+* BSP_CHIME_EVENT: Tactile click feedback blip (1200 Hz)
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on unknown chime type
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime event type |
+
+---
+
+{#bsp_audio_register_default_chimes}
+
+### bsp_audio_register_default_chimes
+
+```cpp
+esp_err_t bsp_audio_register_default_chimes(void)
+```
+
+Defined in bsp/bsp_audio.h:115
+
+Register Built-in Chimes with the System Notification Dispatcher.
+
+Automatically connects all [bsp_chime_type_t](#bsp_chime_type_t) event types to [bsp_audio_play_chime()](#bsp_audio_play_chime), enabling out-of-the-box acoustic feedback on boot, wake, sleep, shutdown, alarms, and UI clicks.
+
+#### Returns
+esp_err_t ESP_OK on success
 
 ---
 
@@ -6500,12 +6605,12 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_audio_stop(void)
 ```
 
-Defined in bsp/bsp_audio.h:79
+Defined in bsp/bsp_audio.h:122
 
-Stop Active Audio Playback.
+Stop Active Audio Playback and Mute Amplifier.
 
 #### Returns
-esp_err_t ESP_OK
+esp_err_t ESP_OK on success
 
 ---
 
@@ -6517,7 +6622,7 @@ esp_err_t ESP_OK
 esp_err_t bsp_power_init(void)
 ```
 
-Defined in bsp/bsp_power.h:75
+Defined in bsp/bsp_power.h:84
 
 Initialize Power Subsystem & Battery ADC Monitor.
 
@@ -6536,7 +6641,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_power_hold(void)
 ```
 
-Defined in bsp/bsp_power.h:82
+Defined in bsp/bsp_power.h:91
 
 Assert Power Latch (GPIO 17 HIGH) to keep LDO active.
 
@@ -6553,9 +6658,52 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_power_release(void)
 ```
 
-Defined in bsp/bsp_power.h:89
+Defined in bsp/bsp_power.h:98
 
 Release Power Latch (GPIO 17 LOW) to shut off battery power.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+---
+
+{#bsp_power_register_shutdown_cb}
+
+### bsp_power_register_shutdown_cb
+
+```cpp
+esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void * user_data)
+```
+
+Defined in bsp/bsp_power.h:109
+
+Register custom shutdown callback hook.
+
+Invoked during [bsp_power_off()](#bsp_power_off) before power latch drops.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `cb` | [`bsp_power_off_cb_t`](#bsp_power_off_cb_t) | Callback function |
+| `user_data` | `void *` | Custom user data pointer |
+
+---
+
+{#bsp_power_unregister_shutdown_cb}
+
+### bsp_power_unregister_shutdown_cb
+
+```cpp
+esp_err_t bsp_power_unregister_shutdown_cb(void)
+```
+
+Defined in bsp/bsp_power.h:116
+
+Unregister shutdown callback hook.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -6570,13 +6718,11 @@ esp_err_t ESP_OK on success
 void bsp_power_off(void)
 ```
 
-Defined in bsp/bsp_power.h:96
+Defined in bsp/bsp_power.h:125
 
 Turn board completely off.
 
-Execute Clean Hardware Shutdown (Drop BAT_CTRL latch).
-
-Releases LDO power hold latch. If USB is not connected, board powers down immediately.
+Executes shutdown splash & chimes, lifecycle on_shutdown hooks, stops background tasks, isolates power rails, and drops the BAT_CTRL power hold latch. If external power (USB) is present, reboots cleanly.
 
 ---
 
@@ -6588,7 +6734,7 @@ Releases LDO power hold latch. If USB is not connected, board powers down immedi
 void bsp_led_set(bool state)
 ```
 
-Defined in bsp/bsp_power.h:103
+Defined in bsp/bsp_power.h:132
 
 Set Status LED Output State.
 
@@ -6608,7 +6754,7 @@ Set Status LED Output State.
 void bsp_led_toggle(void)
 ```
 
-Defined in bsp/bsp_power.h:108
+Defined in bsp/bsp_power.h:137
 
 Toggle Status LED Output State.
 
@@ -6622,14 +6768,14 @@ Toggle Status LED Output State.
 esp_err_t bsp_battery_get_voltage(uint32_t * out_mv, uint32_t * out_raw)
 ```
 
-Defined in bsp/bsp_power.h:119
+Defined in bsp/bsp_power.h:148
 
 Read Raw and Calibrated Battery Terminal Voltage.
 
 Samples ADC1 CH3 (GPIO 4), applies calibration curve, and compensates for the 1:2 divider.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG if out_mv is NULL
 
 #### Parameters
 
@@ -6648,7 +6794,7 @@ esp_err_t ESP_OK on success
 uint8_t bsp_battery_get_percentage(void)
 ```
 
-Defined in bsp/bsp_power.h:128
+Defined in bsp/bsp_power.h:157
 
 Calculate Approximate Battery Remaining Percentage (0 - 100%).
 
@@ -6667,7 +6813,7 @@ uint8_t State of charge percentage (0 to 100)
 bool bsp_battery_is_low(uint8_t threshold_pct)
 ```
 
-Defined in bsp/bsp_power.h:136
+Defined in bsp/bsp_power.h:165
 
 Check if Battery is in Low Warning / Critical Condition.
 
@@ -6690,7 +6836,7 @@ true if battery percentage is less than or equal to threshold
 esp_err_t bsp_enter_sleep(const bsp_sleep_config_t * config)
 ```
 
-Defined in bsp/bsp_power.h:147
+Defined in bsp/bsp_power.h:176
 
 Low-Level Sleep Execution Driver (Light or Deep Sleep).
 
@@ -6715,7 +6861,7 @@ esp_err_t ESP_OK (returns upon wake if Light Sleep)
 esp_reset_reason_t bsp_get_reset_reason(void)
 ```
 
-Defined in bsp/bsp_power.h:154
+Defined in bsp/bsp_power.h:183
 
 Get the system reset reason reported by ESP-IDF.
 
@@ -6732,7 +6878,7 @@ esp_reset_reason_t Reset reason
 esp_sleep_wakeup_cause_t bsp_get_wakeup_cause(void)
 ```
 
-Defined in bsp/bsp_power.h:161
+Defined in bsp/bsp_power.h:190
 
 Get the sleep wakeup cause reported by ESP-IDF.
 
@@ -6749,7 +6895,7 @@ esp_sleep_wakeup_cause_t Wakeup cause
 bsp_init_mode_t bsp_get_recommended_init_mode(void)
 ```
 
-Defined in bsp/bsp_power.h:168
+Defined in bsp/bsp_power.h:197
 
 Determine the recommended hardware initialization mode based on reset & wake history.
 
@@ -6766,7 +6912,7 @@ Determine the recommended hardware initialization mode based on reset & wake his
 void bsp_audio_power_enable(bool enable)
 ```
 
-Defined in bsp_audio.c:70
+Defined in bsp_audio.c:72
 
 Control Power Rail for Audio Subsystem (GPIO 42).
 
@@ -6786,9 +6932,11 @@ Control Power Rail for Audio Subsystem (GPIO 42).
 esp_err_t bsp_audio_init(void)
 ```
 
-Defined in bsp_audio.c:76
+Defined in bsp_audio.c:78
 
 Initialize I2S Master Channel & ES8311 Audio Codec.
+
+Configures I2S0 master TX channel at 16 kHz 16-bit mono, initializes the ES8311 codec via the shared I2C bus, enables the NS4168 power amplifier, and starts in muted state.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -6803,18 +6951,18 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_audio_set_volume(float volume)
 ```
 
-Defined in bsp_audio.c:193
+Defined in bsp_audio.c:195
 
 Set Software Audio Gain / Volume Scaling.
 
 #### Returns
-esp_err_t ESP_OK
+esp_err_t ESP_OK on success
 
 #### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `volume` | `float` | Volume from 0.0 (mute) to 100.0 (maximum) |
+| `volume` | `float` | Volume level from 0.0 (mute) to 100.0 (maximum) |
 
 ---
 
@@ -6826,7 +6974,7 @@ esp_err_t ESP_OK
 esp_err_t bsp_audio_play(const void * data, size_t len, size_t * bytes_written)
 ```
 
-Defined in bsp_audio.c:210
+Defined in bsp_audio.c:212
 
 Play Raw PCM Audio Buffer.
 
@@ -6851,12 +6999,12 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_audio_stop(void)
 ```
 
-Defined in bsp_audio.c:229
+Defined in bsp_audio.c:233
 
-Stop Active Audio Playback.
+Stop Active Audio Playback and Mute Amplifier.
 
 #### Returns
-esp_err_t ESP_OK
+esp_err_t ESP_OK on success
 
 ---
 
@@ -6868,9 +7016,11 @@ esp_err_t ESP_OK
 esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volume_pct)
 ```
 
-Defined in bsp_audio.c:237
+Defined in bsp_audio.c:241
 
 Play Synthesized Sine Tone.
+
+Generates a smooth sine wave tone using a 256-point lookup table with 5ms attack/decay envelope ramps to eliminate acoustic popping.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -6881,7 +7031,73 @@ esp_err_t ESP_OK on success
 |-----------|------|-------------|
 | `freq_hz` | `uint32_t` | Frequency in Hertz (e.g. 440, 523, 1046) |
 | `duration_ms` | `uint32_t` | Duration in milliseconds |
-| `volume_pct` | `float` | Volume from 0.0 (muted) to 100.0 (maximum) |
+| `volume_pct` | `float` | Volume percentage from 0.0 (muted) to 100.0 (maximum) |
+
+---
+
+{#bsp_audio_play_chime-1}
+
+### bsp_audio_play_chime
+
+```cpp
+esp_err_t bsp_audio_play_chime(bsp_chime_type_t type)
+```
+
+Defined in bsp_audio.c:316
+
+Play Built-in Synthesized Acoustic System Chime / Notification Sound.
+
+Synthesizes structured melodic tone sequences tailored for system events:
+
+* BSP_CHIME_BOOT: Ascending 4-tone melodic arpeggio (C5 -> E5 -> G5 -> C6)
+* BSP_CHIME_WAKE: Quick rising wake cue (G5 -> C6)
+* BSP_CHIME_SLEEP: Descending stand-down cadence (C6 -> G5 -> E5)
+* BSP_CHIME_SHUTDOWN: Warm descending shutdown tone (G5 -> E5 -> C5)
+* BSP_CHIME_ALARM: High-urgency alternating warning warble (1760 Hz / 880 Hz)
+* BSP_CHIME_NOTIFY: Dual-ping notification chirp (1046 Hz -> 1318 Hz)
+* BSP_CHIME_EVENT: Tactile click feedback blip (1200 Hz)
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on unknown chime type
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime event type |
+
+---
+
+{#bsp_default_chime_dispatcher}
+
+### bsp_default_chime_dispatcher
+
+`static`
+
+```cpp
+static void bsp_default_chime_dispatcher(bsp_chime_type_t type, void * user_data)
+```
+
+Defined in bsp_audio.c:373
+
+---
+
+{#bsp_audio_register_default_chimes-1}
+
+### bsp_audio_register_default_chimes
+
+```cpp
+esp_err_t bsp_audio_register_default_chimes(void)
+```
+
+Defined in bsp_audio.c:379
+
+Register Built-in Chimes with the System Notification Dispatcher.
+
+Automatically connects all [bsp_chime_type_t](#bsp_chime_type_t) event types to [bsp_audio_play_chime()](#bsp_audio_play_chime), enabling out-of-the-box acoustic feedback on boot, wake, sleep, shutdown, alarms, and UI clicks.
+
+#### Returns
+esp_err_t ESP_OK on success
 
 ---
 
@@ -6895,7 +7111,7 @@ esp_err_t ESP_OK on success
 static bool init_adc_calibration(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t * out_handle)
 ```
 
-Defined in bsp_power.c:56
+Defined in bsp_power.c:62
 
 ---
 
@@ -6907,7 +7123,7 @@ Defined in bsp_power.c:56
 esp_err_t bsp_power_hold(void)
 ```
 
-Defined in bsp_power.c:100
+Defined in bsp_power.c:106
 
 Assert Power Latch (GPIO 17 HIGH) to keep LDO active.
 
@@ -6924,12 +7140,71 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_power_release(void)
 ```
 
-Defined in bsp_power.c:105
+Defined in bsp_power.c:111
 
 Release Power Latch (GPIO 17 LOW) to shut off battery power.
 
 #### Returns
 esp_err_t ESP_OK on success
+
+---
+
+{#bsp_power_register_shutdown_cb-1}
+
+### bsp_power_register_shutdown_cb
+
+```cpp
+esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void * user_data)
+```
+
+Defined in bsp_power.c:117
+
+Register custom shutdown callback hook.
+
+Invoked during [bsp_power_off()](#bsp_power_off) before power latch drops.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `cb` | [`bsp_power_off_cb_t`](#bsp_power_off_cb_t) | Callback function |
+| `user_data` | `void *` | Custom user data pointer |
+
+---
+
+{#bsp_power_unregister_shutdown_cb-1}
+
+### bsp_power_unregister_shutdown_cb
+
+```cpp
+esp_err_t bsp_power_unregister_shutdown_cb(void)
+```
+
+Defined in bsp_power.c:124
+
+Unregister shutdown callback hook.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+---
+
+{#bsp_power_off-1}
+
+### bsp_power_off
+
+```cpp
+void bsp_power_off(void)
+```
+
+Defined in bsp_power.c:131
+
+Turn board completely off.
+
+Executes shutdown splash & chimes, lifecycle on_shutdown hooks, stops background tasks, isolates power rails, and drops the BAT_CTRL power hold latch. If external power (USB) is present, reboots cleanly.
 
 ---
 
@@ -6941,7 +7216,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_power_init(void)
 ```
 
-Defined in bsp_power.c:111
+Defined in bsp_power.c:191
 
 Initialize Power Subsystem & Battery ADC Monitor.
 
@@ -6960,7 +7235,7 @@ esp_err_t ESP_OK on success
 void bsp_led_set(bool state)
 ```
 
-Defined in bsp_power.c:148
+Defined in bsp_power.c:228
 
 Set Status LED Output State.
 
@@ -6980,7 +7255,7 @@ Set Status LED Output State.
 void bsp_led_toggle(void)
 ```
 
-Defined in bsp_power.c:155
+Defined in bsp_power.c:235
 
 Toggle Status LED Output State.
 
@@ -6994,14 +7269,14 @@ Toggle Status LED Output State.
 esp_err_t bsp_battery_get_voltage(uint32_t * out_mv, uint32_t * out_raw)
 ```
 
-Defined in bsp_power.c:160
+Defined in bsp_power.c:240
 
 Read Raw and Calibrated Battery Terminal Voltage.
 
 Samples ADC1 CH3 (GPIO 4), applies calibration curve, and compensates for the 1:2 divider.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG if out_mv is NULL
 
 #### Parameters
 
@@ -7020,7 +7295,7 @@ esp_err_t ESP_OK on success
 uint8_t bsp_battery_get_percentage(void)
 ```
 
-Defined in bsp_power.c:203
+Defined in bsp_power.c:283
 
 Calculate Approximate Battery Remaining Percentage (0 - 100%).
 
@@ -7039,7 +7314,7 @@ uint8_t State of charge percentage (0 to 100)
 bool bsp_battery_is_low(uint8_t threshold_pct)
 ```
 
-Defined in bsp_power.c:229
+Defined in bsp_power.c:309
 
 Check if Battery is in Low Warning / Critical Condition.
 
@@ -7062,7 +7337,7 @@ true if battery percentage is less than or equal to threshold
 esp_reset_reason_t bsp_get_reset_reason(void)
 ```
 
-Defined in bsp_power.c:234
+Defined in bsp_power.c:314
 
 Get the system reset reason reported by ESP-IDF.
 
@@ -7079,7 +7354,7 @@ esp_reset_reason_t Reset reason
 esp_sleep_wakeup_cause_t bsp_get_wakeup_cause(void)
 ```
 
-Defined in bsp_power.c:239
+Defined in bsp_power.c:319
 
 Get the sleep wakeup cause reported by ESP-IDF.
 
@@ -7096,7 +7371,7 @@ esp_sleep_wakeup_cause_t Wakeup cause
 bsp_init_mode_t bsp_get_recommended_init_mode(void)
 ```
 
-Defined in bsp_power.c:247
+Defined in bsp_power.c:327
 
 Determine the recommended hardware initialization mode based on reset & wake history.
 
@@ -7113,7 +7388,7 @@ Determine the recommended hardware initialization mode based on reset & wake his
 esp_err_t bsp_enter_sleep(const bsp_sleep_config_t * config)
 ```
 
-Defined in bsp_power.c:262
+Defined in bsp_power.c:342
 
 Low-Level Sleep Execution Driver (Light or Deep Sleep).
 
@@ -7178,7 +7453,7 @@ Backward-compatible alias for bsp_assets_init.
 esp_err_t bsp_button_init(const bsp_button_config_t * config)
 ```
 
-Defined in bsp/bsp_button.h:65
+Defined in bsp/bsp_button.h:81
 
 Initialize Hardware Button Interrupts and Debounce Timer.
 
@@ -7193,6 +7468,23 @@ esp_err_t ESP_OK on success
 
 ---
 
+{#bsp_button_stop}
+
+### bsp_button_stop
+
+```cpp
+esp_err_t bsp_button_stop(void)
+```
+
+Defined in bsp/bsp_button.h:88
+
+Stop Button Polling and Debounce Timer.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+---
+
 {#bsp_button_register_cb}
 
 ### bsp_button_register_cb
@@ -7201,12 +7493,12 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_button_register_cb(bsp_button_t button, bsp_button_event_t event, bsp_button_cb_t cb, void * user_data)
 ```
 
-Defined in bsp/bsp_button.h:76
+Defined in bsp/bsp_button.h:99
 
 Register Callback for Button Event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid button/event
 
 #### Parameters
 
@@ -7227,12 +7519,12 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_button_unregister_cb(bsp_button_t button, bsp_button_event_t event)
 ```
 
-Defined in bsp/bsp_button.h:85
+Defined in bsp/bsp_button.h:108
 
 Unregister Callback for Button Event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid button/event
 
 #### Parameters
 
@@ -7251,12 +7543,12 @@ esp_err_t ESP_OK on success
 bool bsp_button_is_pressed(bsp_button_t button)
 ```
 
-Defined in bsp/bsp_button.h:93
+Defined in bsp/bsp_button.h:116
 
 Check if button is currently pressed down.
 
 #### Returns
-true if pressed, false otherwise
+true if pressed (GPIO level LOW), false otherwise
 
 #### Parameters
 
@@ -7274,7 +7566,7 @@ true if pressed, false otherwise
 esp_err_t bsp_button_wait_for_click(bsp_button_t button, uint32_t timeout_ms)
 ```
 
-Defined in bsp/bsp_button.h:102
+Defined in bsp/bsp_button.h:125
 
 Synchronously block and wait for a button click (press + release).
 
@@ -7287,44 +7579,6 @@ esp_err_t ESP_OK on click, ESP_ERR_TIMEOUT on timeout, ESP_ERR_INVALID_ARG on ba
 |-----------|------|-------------|
 | `button` | [`bsp_button_t`](#bsp_button_t) | Target button (BOOT or POWER) |
 | `timeout_ms` | `uint32_t` | Maximum time to wait in milliseconds (0 for indefinite blocking) |
-
----
-
-{#bsp_power_register_shutdown_cb}
-
-### bsp_power_register_shutdown_cb
-
-```cpp
-esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void * user_data)
-```
-
-Defined in bsp/bsp_button.h:111
-
-Register system shutdown callback hook.
-
-#### Returns
-esp_err_t ESP_OK
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `cb` | [`bsp_power_off_cb_t`](#bsp_power_off_cb_t) | Callback invoked before power latch drops |
-| `user_data` | `void *` | Custom user data pointer |
-
----
-
-{#bsp_power_off-1}
-
-### bsp_power_off
-
-```cpp
-void bsp_power_off(void)
-```
-
-Defined in bsp/bsp_button.h:116
-
-Execute Clean Hardware Shutdown (Drop BAT_CTRL latch).
 
 ---
 
@@ -7404,20 +7658,43 @@ float Capacity in GB
 esp_err_t bsp_register_splash_cb(bsp_splash_type_t type, bsp_splash_cb_t cb, void * user_data)
 ```
 
-Defined in bsp/bsp_splash.h:72
+Defined in bsp/bsp_splash.h:82
 
 Register a callback for a specific UI Splash event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
 
 #### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type (BOOT, SLEEP, SHUTDOWN) |
+| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type (BOOT, WAKE, SLEEP, SHUTDOWN) |
 | `cb` | [`bsp_splash_cb_t`](#bsp_splash_cb_t) | Callback function pointer |
 | `user_data` | `void *` | Optional user context pointer |
+
+---
+
+{#bsp_unregister_splash_cb}
+
+### bsp_unregister_splash_cb
+
+```cpp
+esp_err_t bsp_unregister_splash_cb(bsp_splash_type_t type)
+```
+
+Defined in bsp/bsp_splash.h:90
+
+Unregister a callback for a specific UI Splash event.
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type (BOOT, WAKE, SLEEP, SHUTDOWN) |
 
 ---
 
@@ -7429,20 +7706,89 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_register_chime_cb(bsp_chime_type_t type, bsp_chime_cb_t cb, void * user_data)
 ```
 
-Defined in bsp/bsp_splash.h:82
+Defined in bsp/bsp_splash.h:100
 
 Register a callback for a specific Audio Chime event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
 
 #### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type (BOOT, SLEEP, SHUTDOWN, ALARM, NOTIFY) |
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type (BOOT, WAKE, SLEEP, SHUTDOWN, ALARM, NOTIFY, EVENT) |
 | `cb` | [`bsp_chime_cb_t`](#bsp_chime_cb_t) | Callback function pointer |
 | `user_data` | `void *` | Optional user context pointer |
+
+---
+
+{#bsp_unregister_chime_cb}
+
+### bsp_unregister_chime_cb
+
+```cpp
+esp_err_t bsp_unregister_chime_cb(bsp_chime_type_t type)
+```
+
+Defined in bsp/bsp_splash.h:108
+
+Unregister a callback for a specific Audio Chime event.
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type (BOOT, WAKE, SLEEP, SHUTDOWN, ALARM, NOTIFY, EVENT) |
+
+---
+
+{#bsp_has_splash_cb}
+
+### bsp_has_splash_cb
+
+```cpp
+bool bsp_has_splash_cb(bsp_splash_type_t type)
+```
+
+Defined in bsp/bsp_splash.h:116
+
+Check if a UI Splash callback is registered for a given event type.
+
+#### Returns
+true if callback is registered, false otherwise
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type |
+
+---
+
+{#bsp_has_chime_cb}
+
+### bsp_has_chime_cb
+
+```cpp
+bool bsp_has_chime_cb(bsp_chime_type_t type)
+```
+
+Defined in bsp/bsp_splash.h:124
+
+Check if an Audio Chime callback is registered for a given event type.
+
+#### Returns
+true if callback is registered, false otherwise
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type |
 
 ---
 
@@ -7454,7 +7800,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_trigger_splash(bsp_splash_type_t type)
 ```
 
-Defined in bsp/bsp_splash.h:90
+Defined in bsp/bsp_splash.h:132
 
 Trigger the registered UI Splash callback.
 
@@ -7477,7 +7823,7 @@ esp_err_t ESP_OK if callback was executed, ESP_ERR_NOT_FOUND if no callback regi
 esp_err_t bsp_trigger_chime(bsp_chime_type_t type)
 ```
 
-Defined in bsp/bsp_splash.h:98
+Defined in bsp/bsp_splash.h:140
 
 Trigger the registered Audio Chime callback.
 
@@ -7642,7 +7988,7 @@ Backward-compatible alias for bsp_assets_init.
 static void fire_event(bsp_button_t btn, bsp_button_event_t event)
 ```
 
-Defined in bsp_button.c:62
+Defined in bsp_button.c:58
 
 ---
 
@@ -7656,45 +8002,24 @@ Defined in bsp_button.c:62
 static void button_timer_cb(void * arg)
 ```
 
-Defined in bsp_button.c:75
+Defined in bsp_button.c:71
 
 ---
 
-{#bsp_power_register_shutdown_cb-1}
+{#bsp_button_stop-1}
 
-### bsp_power_register_shutdown_cb
+### bsp_button_stop
 
 ```cpp
-esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void * user_data)
+esp_err_t bsp_button_stop(void)
 ```
 
-Defined in bsp_button.c:154
+Defined in bsp_button.c:150
 
-Register system shutdown callback hook.
+Stop Button Polling and Debounce Timer.
 
 #### Returns
-esp_err_t ESP_OK
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `cb` | [`bsp_power_off_cb_t`](#bsp_power_off_cb_t) | Callback invoked before power latch drops |
-| `user_data` | `void *` | Custom user data pointer |
-
----
-
-{#bsp_power_off-2}
-
-### bsp_power_off
-
-```cpp
-void bsp_power_off(void)
-```
-
-Defined in bsp_button.c:161
-
-Execute Clean Hardware Shutdown (Drop BAT_CTRL latch).
+esp_err_t ESP_OK on success
 
 ---
 
@@ -7706,7 +8031,7 @@ Execute Clean Hardware Shutdown (Drop BAT_CTRL latch).
 esp_err_t bsp_button_init(const bsp_button_config_t * config)
 ```
 
-Defined in bsp_button.c:215
+Defined in bsp_button.c:158
 
 Initialize Hardware Button Interrupts and Debounce Timer.
 
@@ -7729,12 +8054,12 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_button_register_cb(bsp_button_t button, bsp_button_event_t event, bsp_button_cb_t cb, void * user_data)
 ```
 
-Defined in bsp_button.c:271
+Defined in bsp_button.c:214
 
 Register Callback for Button Event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid button/event
 
 #### Parameters
 
@@ -7755,12 +8080,12 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_button_unregister_cb(bsp_button_t button, bsp_button_event_t event)
 ```
 
-Defined in bsp_button.c:281
+Defined in bsp_button.c:224
 
 Unregister Callback for Button Event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid button/event
 
 #### Parameters
 
@@ -7779,12 +8104,12 @@ esp_err_t ESP_OK on success
 bool bsp_button_is_pressed(bsp_button_t button)
 ```
 
-Defined in bsp_button.c:286
+Defined in bsp_button.c:229
 
 Check if button is currently pressed down.
 
 #### Returns
-true if pressed, false otherwise
+true if pressed (GPIO level LOW), false otherwise
 
 #### Parameters
 
@@ -7802,7 +8127,7 @@ true if pressed, false otherwise
 esp_err_t bsp_button_wait_for_click(bsp_button_t button, uint32_t timeout_ms)
 ```
 
-Defined in bsp_button.c:294
+Defined in bsp_button.c:237
 
 Synchronously block and wait for a button click (press + release).
 
@@ -8003,7 +8328,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_init_mode(bsp_init_mode_t mode)
 ```
 
-Defined in bsp_common.c:339
+Defined in bsp_common.c:340
 
 Dynamic Hardware Initialization by Mode (FULL, FAST).
 
@@ -8029,7 +8354,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_generate_unambiguous_key(char * buf, size_t len, const char * charset)
 ```
 
-Defined in bsp_common.c:375
+Defined in bsp_common.c:376
 
 Generate a cryptographically random, unambiguous key string (excluding 0, O, o, 1, l, I).
 
@@ -8054,7 +8379,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_board_init(void)
 ```
 
-Defined in bsp_common.c:390
+Defined in bsp_common.c:391
 
 Comprehensive Board Initialization.
 
@@ -8073,7 +8398,7 @@ esp_err_t ESP_OK on success
 void bsp_system_shutdown(void)
 ```
 
-Defined in bsp_common.c:397
+Defined in bsp_common.c:398
 
 Perform Clean System Shutdown.
 
@@ -8087,7 +8412,7 @@ Perform Clean System Shutdown.
 void bsp_system_deep_sleep(uint32_t sleep_sec)
 ```
 
-Defined in bsp_common.c:404
+Defined in bsp_common.c:405
 
 Enter Ultra-Low Power Deep Sleep Mode.
 
@@ -8107,7 +8432,7 @@ Enter Ultra-Low Power Deep Sleep Mode.
 esp_err_t bsp_get_device_id(char * buf, size_t max_len)
 ```
 
-Defined in bsp_common.c:415
+Defined in bsp_common.c:416
 
 Retrieve Unique Hardware Device ID string from MAC address (e.g.
 
@@ -8133,7 +8458,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_get_device_name(char * buf, size_t max_len)
 ```
 
-Defined in bsp_common.c:429
+Defined in bsp_common.c:430
 
 Retrieve Human-Readable Device Name string (e.g.
 
@@ -8387,15 +8712,38 @@ Defined in bsp_splash.c:31
 Register a callback for a specific UI Splash event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
 
 #### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type (BOOT, SLEEP, SHUTDOWN) |
+| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type (BOOT, WAKE, SLEEP, SHUTDOWN) |
 | `cb` | [`bsp_splash_cb_t`](#bsp_splash_cb_t) | Callback function pointer |
 | `user_data` | `void *` | Optional user context pointer |
+
+---
+
+{#bsp_unregister_splash_cb-1}
+
+### bsp_unregister_splash_cb
+
+```cpp
+esp_err_t bsp_unregister_splash_cb(bsp_splash_type_t type)
+```
+
+Defined in bsp_splash.c:42
+
+Unregister a callback for a specific UI Splash event.
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type (BOOT, WAKE, SLEEP, SHUTDOWN) |
 
 ---
 
@@ -8407,20 +8755,89 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_register_chime_cb(bsp_chime_type_t type, bsp_chime_cb_t cb, void * user_data)
 ```
 
-Defined in bsp_splash.c:42
+Defined in bsp_splash.c:52
 
 Register a callback for a specific Audio Chime event.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
 
 #### Parameters
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type (BOOT, SLEEP, SHUTDOWN, ALARM, NOTIFY) |
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type (BOOT, WAKE, SLEEP, SHUTDOWN, ALARM, NOTIFY, EVENT) |
 | `cb` | [`bsp_chime_cb_t`](#bsp_chime_cb_t) | Callback function pointer |
 | `user_data` | `void *` | Optional user context pointer |
+
+---
+
+{#bsp_unregister_chime_cb-1}
+
+### bsp_unregister_chime_cb
+
+```cpp
+esp_err_t bsp_unregister_chime_cb(bsp_chime_type_t type)
+```
+
+Defined in bsp_splash.c:63
+
+Unregister a callback for a specific Audio Chime event.
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on invalid type
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type (BOOT, WAKE, SLEEP, SHUTDOWN, ALARM, NOTIFY, EVENT) |
+
+---
+
+{#bsp_has_splash_cb-1}
+
+### bsp_has_splash_cb
+
+```cpp
+bool bsp_has_splash_cb(bsp_splash_type_t type)
+```
+
+Defined in bsp_splash.c:73
+
+Check if a UI Splash callback is registered for a given event type.
+
+#### Returns
+true if callback is registered, false otherwise
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_splash_type_t`](#bsp_splash_type_t) | Splash type |
+
+---
+
+{#bsp_has_chime_cb-1}
+
+### bsp_has_chime_cb
+
+```cpp
+bool bsp_has_chime_cb(bsp_chime_type_t type)
+```
+
+Defined in bsp_splash.c:81
+
+Check if an Audio Chime callback is registered for a given event type.
+
+#### Returns
+true if callback is registered, false otherwise
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | [`bsp_chime_type_t`](#bsp_chime_type_t) | Chime type |
 
 ---
 
@@ -8432,7 +8849,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_trigger_splash(bsp_splash_type_t type)
 ```
 
-Defined in bsp_splash.c:53
+Defined in bsp_splash.c:89
 
 Trigger the registered UI Splash callback.
 
@@ -8455,7 +8872,7 @@ esp_err_t ESP_OK if callback was executed, ESP_ERR_NOT_FOUND if no callback regi
 esp_err_t bsp_trigger_chime(bsp_chime_type_t type)
 ```
 
-Defined in bsp_splash.c:66
+Defined in bsp_splash.c:102
 
 Trigger the registered Audio Chime callback.
 
@@ -9360,7 +9777,7 @@ Reset RTC memory structure to defaults.
 esp_err_t bsp_app_start(const bsp_app_lifecycle_t * lifecycle)
 ```
 
-Defined in bsp/bsp_lifecycle.h:88
+Defined in bsp/bsp_lifecycle.h:95
 
 Start BSP Application Engine with Lifecycle Hooks.
 
@@ -9385,12 +9802,12 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t * ctx)
 ```
 
-Defined in bsp/bsp_lifecycle.h:96
+Defined in bsp/bsp_lifecycle.h:103
 
 Retrieve current wake context.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
 
 #### Parameters
 
@@ -9408,7 +9825,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_lifecycle_set_stage(uint8_t stage)
 ```
 
-Defined in bsp/bsp_lifecycle.h:104
+Defined in bsp/bsp_lifecycle.h:111
 
 Set application stage index in RTC Slow Memory.
 
@@ -9431,7 +9848,7 @@ esp_err_t ESP_OK on success
 uint8_t bsp_lifecycle_get_stage(void)
 ```
 
-Defined in bsp/bsp_lifecycle.h:111
+Defined in bsp/bsp_lifecycle.h:118
 
 Get application stage index from RTC Slow Memory.
 
@@ -9448,7 +9865,7 @@ uint8_t Current stage identifier
 esp_err_t bsp_lifecycle_save_state(const void * data, size_t len)
 ```
 
-Defined in bsp/bsp_lifecycle.h:120
+Defined in bsp/bsp_lifecycle.h:127
 
 Save custom application state struct to RTC Slow Memory scratchpad (max 31 bytes).
 
@@ -9472,7 +9889,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_lifecycle_load_state(void * out_data, size_t len)
 ```
 
-Defined in bsp/bsp_lifecycle.h:129
+Defined in bsp/bsp_lifecycle.h:136
 
 Load custom application state struct from RTC Slow Memory scratchpad.
 
@@ -9496,9 +9913,9 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_lifecycle_enter_sleep(const bsp_sleep_config_t * config)
 ```
 
-Defined in bsp/bsp_lifecycle.h:137
+Defined in bsp/bsp_lifecycle.h:144
 
-Enter sleep with automatic before_sleep lifecycle hook execution.
+Enter sleep with automatic before_sleep lifecycle hook and splash/chime execution.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -9508,6 +9925,36 @@ esp_err_t ESP_OK on success
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `config` | const [`bsp_sleep_config_t`](#bsp_sleep_config_t) * | Sleep configuration (mode, duration, wake sources, next init mode) |
+
+---
+
+{#bsp_lifecycle_power_off}
+
+### bsp_lifecycle_power_off
+
+```cpp
+void bsp_lifecycle_power_off(void)
+```
+
+Defined in bsp/bsp_lifecycle.h:151
+
+Perform clean hardware power off and system shutdown.
+
+Executes registered on_shutdown callback, drops BAT_CTRL power latch, and stops peripherals.
+
+---
+
+{#bsp_lifecycle_invoke_shutdown}
+
+### bsp_lifecycle_invoke_shutdown
+
+```cpp
+void bsp_lifecycle_invoke_shutdown(void)
+```
+
+Defined in bsp/bsp_lifecycle.h:156
+
+Internal lifecycle dispatcher hook invoked by [bsp_power_off()](#bsp_power_off).
 
 ---
 
@@ -9696,7 +10143,7 @@ Defined in bsp_display.cpp:202
 esp_err_t bsp_display_init(void)
 ```
 
-Defined in bsp_display.cpp:233
+Defined in bsp_display.cpp:234
 
 Initialize SSD1681 SPI Hardware Interface and Panel Controller.
 
@@ -9713,7 +10160,7 @@ esp_err_t ESP_OK on success
 void bsp_display_clear(void)
 ```
 
-Defined in bsp_display.cpp:325
+Defined in bsp_display.cpp:319
 
 Clear Entire In-Memory Framebuffer to Pure White.
 
@@ -9727,7 +10174,7 @@ Clear Entire In-Memory Framebuffer to Pure White.
 void bsp_display_flush(void)
 ```
 
-Defined in bsp_display.cpp:332
+Defined in bsp_display.cpp:326
 
 Full OTP Waveform Hardware Refresh of In-Memory Framebuffer to Screen.
 
@@ -9741,7 +10188,7 @@ Full OTP Waveform Hardware Refresh of In-Memory Framebuffer to Screen.
 void bsp_display_flush_partial(void)
 ```
 
-Defined in bsp_display.cpp:356
+Defined in bsp_display.cpp:350
 
 Fast Partial Waveform Refresh of Full Screen Area.
 
@@ -9755,7 +10202,7 @@ Fast Partial Waveform Refresh of Full Screen Area.
 void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end)
 ```
 
-Defined in bsp_display.cpp:361
+Defined in bsp_display.cpp:355
 
 Fast Partial Waveform Refresh of Specific Bounding Box Area.
 
@@ -9778,7 +10225,7 @@ Fast Partial Waveform Refresh of Specific Bounding Box Area.
 esp_err_t bsp_display_write_frame(const uint8_t * buffer)
 ```
 
-Defined in bsp_display.cpp:414
+Defined in bsp_display.cpp:408
 
 Transmit Arbitrary 1-bit Monochrome Framebuffer to SSD1681 Controller.
 
@@ -9801,7 +10248,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_display_refresh(bool partial_mode)
 ```
 
-Defined in bsp_display.cpp:425
+Defined in bsp_display.cpp:419
 
 Trigger Physical e-Paper Waveform Refresh Cycle.
 
@@ -9824,7 +10271,7 @@ esp_err_t ESP_OK on success
 void bsp_display_deep_sleep(void)
 ```
 
-Defined in bsp_display.cpp:435
+Defined in bsp_display.cpp:429
 
 Put SSD1681 Controller into Deep Sleep Mode (< 1 µA).
 
@@ -9838,7 +10285,7 @@ Put SSD1681 Controller into Deep Sleep Mode (< 1 µA).
 esp_err_t bsp_display_sleep(void)
 ```
 
-Defined in bsp_display.cpp:442
+Defined in bsp_display.cpp:436
 
 Alias for bsp_display_deep_sleep.
 
@@ -9852,7 +10299,7 @@ Alias for bsp_display_deep_sleep.
 void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color)
 ```
 
-Defined in bsp_display.cpp:448
+Defined in bsp_display.cpp:442
 
 Draw Single Pixel to Framebuffer.
 
@@ -9874,7 +10321,7 @@ Draw Single Pixel to Framebuffer.
 uint8_t * bsp_display_get_buffer(void)
 ```
 
-Defined in bsp_display.cpp:461
+Defined in bsp_display.cpp:455
 
 Retrieve Pointer to In-Memory Framebuffer (5000 bytes).
 
@@ -9891,12 +10338,12 @@ uint8_t* Buffer pointer
 esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t * ctx)
 ```
 
-Defined in bsp_lifecycle.c:29
+Defined in bsp_lifecycle.c:30
 
 Retrieve current wake context.
 
 #### Returns
-esp_err_t ESP_OK on success
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
 
 #### Parameters
 
@@ -9914,7 +10361,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_lifecycle_set_stage(uint8_t stage)
 ```
 
-Defined in bsp_lifecycle.c:38
+Defined in bsp_lifecycle.c:39
 
 Set application stage index in RTC Slow Memory.
 
@@ -9937,7 +10384,7 @@ esp_err_t ESP_OK on success
 uint8_t bsp_lifecycle_get_stage(void)
 ```
 
-Defined in bsp_lifecycle.c:49
+Defined in bsp_lifecycle.c:50
 
 Get application stage index from RTC Slow Memory.
 
@@ -9954,7 +10401,7 @@ uint8_t Current stage identifier
 esp_err_t bsp_lifecycle_save_state(const void * data, size_t len)
 ```
 
-Defined in bsp_lifecycle.c:58
+Defined in bsp_lifecycle.c:59
 
 Save custom application state struct to RTC Slow Memory scratchpad (max 31 bytes).
 
@@ -9978,7 +10425,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_lifecycle_load_state(void * out_data, size_t len)
 ```
 
-Defined in bsp_lifecycle.c:71
+Defined in bsp_lifecycle.c:72
 
 Load custom application state struct from RTC Slow Memory scratchpad.
 
@@ -10002,9 +10449,9 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_lifecycle_enter_sleep(const bsp_sleep_config_t * config)
 ```
 
-Defined in bsp_lifecycle.c:84
+Defined in bsp_lifecycle.c:85
 
-Enter sleep with automatic before_sleep lifecycle hook execution.
+Enter sleep with automatic before_sleep lifecycle hook and splash/chime execution.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -10017,6 +10464,36 @@ esp_err_t ESP_OK on success
 
 ---
 
+{#bsp_lifecycle_power_off-1}
+
+### bsp_lifecycle_power_off
+
+```cpp
+void bsp_lifecycle_power_off(void)
+```
+
+Defined in bsp_lifecycle.c:101
+
+Perform clean hardware power off and system shutdown.
+
+Executes registered on_shutdown callback, drops BAT_CTRL power latch, and stops peripherals.
+
+---
+
+{#bsp_lifecycle_invoke_shutdown-1}
+
+### bsp_lifecycle_invoke_shutdown
+
+```cpp
+void bsp_lifecycle_invoke_shutdown(void)
+```
+
+Defined in bsp_lifecycle.c:107
+
+Internal lifecycle dispatcher hook invoked by [bsp_power_off()](#bsp_power_off).
+
+---
+
 {#bsp_app_start-1}
 
 ### bsp_app_start
@@ -10025,7 +10502,7 @@ esp_err_t ESP_OK on success
 esp_err_t bsp_app_start(const bsp_app_lifecycle_t * lifecycle)
 ```
 
-Defined in bsp_lifecycle.c:100
+Defined in bsp_lifecycle.c:115
 
 Start BSP Application Engine with Lifecycle Hooks.
 
@@ -10452,7 +10929,7 @@ Defined in bsp_wifi.c:55
 const char * TAG = "bsp_audio"
 ```
 
-Defined in bsp_audio.c:27
+Defined in bsp_audio.c:29
 
 ---
 
@@ -10466,7 +10943,7 @@ Defined in bsp_audio.c:27
 const int16_t SINE_LUT_256[256]
 ```
 
-Defined in bsp_audio.c:31
+Defined in bsp_audio.c:33
 
 ---
 
@@ -10480,7 +10957,7 @@ Defined in bsp_audio.c:31
 i2s_chan_handle_t s_tx_chan = NULL
 ```
 
-Defined in bsp_audio.c:66
+Defined in bsp_audio.c:68
 
 ---
 
@@ -10494,7 +10971,7 @@ Defined in bsp_audio.c:66
 esp_codec_dev_handle_t s_codec = NULL
 ```
 
-Defined in bsp_audio.c:67
+Defined in bsp_audio.c:69
 
 ---
 
@@ -10508,7 +10985,7 @@ Defined in bsp_audio.c:67
 bool s_audio_inited = false
 ```
 
-Defined in bsp_audio.c:68
+Defined in bsp_audio.c:70
 
 ---
 
@@ -10522,7 +10999,7 @@ Defined in bsp_audio.c:68
 const char * TAG = "bsp_power"
 ```
 
-Defined in bsp_power.c:42
+Defined in bsp_power.c:46
 
 ---
 
@@ -10536,7 +11013,7 @@ Defined in bsp_power.c:42
 adc_oneshot_unit_handle_t s_adc_handle = NULL
 ```
 
-Defined in bsp_power.c:47
+Defined in bsp_power.c:51
 
 ---
 
@@ -10550,7 +11027,7 @@ Defined in bsp_power.c:47
 adc_cali_handle_t s_cali_handle = NULL
 ```
 
-Defined in bsp_power.c:48
+Defined in bsp_power.c:52
 
 ---
 
@@ -10564,7 +11041,7 @@ Defined in bsp_power.c:48
 bool s_calibrated = false
 ```
 
-Defined in bsp_power.c:49
+Defined in bsp_power.c:53
 
 ---
 
@@ -10578,7 +11055,7 @@ Defined in bsp_power.c:49
 bool s_led_state = false
 ```
 
-Defined in bsp_power.c:50
+Defined in bsp_power.c:54
 
 ---
 
@@ -10592,7 +11069,37 @@ Defined in bsp_power.c:50
 bool s_power_inited = false
 ```
 
-Defined in bsp_power.c:51
+Defined in bsp_power.c:55
+
+---
+
+{#s_shutdown_cb}
+
+### s_shutdown_cb
+
+`static`
+
+```cpp
+bsp_power_off_cb_t s_shutdown_cb = NULL
+```
+
+Type: [`bsp_power_off_cb_t`](#bsp_power_off_cb_t)
+
+Defined in bsp_power.c:56
+
+---
+
+{#s_shutdown_user_data}
+
+### s_shutdown_user_data
+
+`static`
+
+```cpp
+void * s_shutdown_user_data = NULL
+```
+
+Defined in bsp_power.c:57
 
 ---
 
@@ -10735,36 +11242,6 @@ bool s_inited = false
 ```
 
 Defined in bsp_button.c:56
-
----
-
-{#s_shutdown_cb}
-
-### s_shutdown_cb
-
-`static`
-
-```cpp
-bsp_power_off_cb_t s_shutdown_cb = NULL
-```
-
-Type: [`bsp_power_off_cb_t`](#bsp_power_off_cb_t)
-
-Defined in bsp_button.c:59
-
----
-
-{#s_shutdown_user_data}
-
-### s_shutdown_user_data
-
-`static`
-
-```cpp
-void * s_shutdown_user_data = NULL
-```
-
-Defined in bsp_button.c:60
 
 ---
 
@@ -11200,7 +11677,7 @@ Defined in bsp_display.cpp:90
 const char * TAG = "bsp_lifecycle"
 ```
 
-Defined in bsp_lifecycle.c:23
+Defined in bsp_lifecycle.c:24
 
 ---
 
@@ -11216,7 +11693,7 @@ bsp_app_lifecycle_t s_active_lifecycle = {0}
 
 Type: [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t)
 
-Defined in bsp_lifecycle.c:25
+Defined in bsp_lifecycle.c:26
 
 ---
 
@@ -11232,7 +11709,7 @@ bsp_wake_context_t s_current_context = {0}
 
 Type: [`bsp_wake_context_t`](#bsp_wake_context_t)
 
-Defined in bsp_lifecycle.c:26
+Defined in bsp_lifecycle.c:27
 
 ---
 
@@ -11246,7 +11723,7 @@ Defined in bsp_lifecycle.c:26
 bool s_context_valid = false
 ```
 
-Defined in bsp_lifecycle.c:27
+Defined in bsp_lifecycle.c:28
 
 {#bsp_config_t}
 
@@ -12776,7 +13253,7 @@ Second (0 - 59)
 struct bsp_sleep_config_t
 ```
 
-Defined in bsp/bsp_power.h:50
+Defined in bsp/bsp_power.h:59
 
 Unified Sleep Configuration.
 
@@ -12801,7 +13278,7 @@ bsp_sleep_mode_t mode
 
 Type: [`bsp_sleep_mode_t`](#bsp_sleep_mode_t)
 
-Defined in bsp/bsp_power.h:51
+Defined in bsp/bsp_power.h:60
 
 Target sleep mode (Light or Deep)
 
@@ -12815,7 +13292,7 @@ Target sleep mode (Light or Deep)
 uint32_t duration_sec
 ```
 
-Defined in bsp/bsp_power.h:52
+Defined in bsp/bsp_power.h:61
 
 Sleep duration in seconds (0 for indefinite / button only)
 
@@ -12831,7 +13308,7 @@ bsp_wake_source_mask_t wake_sources
 
 Type: [`bsp_wake_source_mask_t`](#bsp_wake_source_mask_t)
 
-Defined in bsp/bsp_power.h:53
+Defined in bsp/bsp_power.h:62
 
 Bitmask of enabled wake triggers
 
@@ -12847,7 +13324,7 @@ bsp_init_mode_t next_init_mode
 
 Type: [`bsp_init_mode_t`](#bsp_init_mode_t)
 
-Defined in bsp/bsp_power.h:54
+Defined in bsp/bsp_power.h:63
 
 Hardware initialization mode to perform on wake
 
@@ -12863,7 +13340,7 @@ Hardware initialization mode to perform on wake
 struct bsp_wake_context_t
 ```
 
-Defined in bsp/bsp_lifecycle.h:38
+Defined in bsp/bsp_lifecycle.h:39
 
 Structured Wake Context passed to application on_wake callback.
 
@@ -12894,7 +13371,7 @@ Structured Wake Context passed to application on_wake callback.
 esp_reset_reason_t reset_reason
 ```
 
-Defined in bsp/bsp_lifecycle.h:39
+Defined in bsp/bsp_lifecycle.h:40
 
 Reset reason (e.g. ESP_RST_DEEPSLEEP, ESP_RST_POWERON)
 
@@ -12908,7 +13385,7 @@ Reset reason (e.g. ESP_RST_DEEPSLEEP, ESP_RST_POWERON)
 esp_sleep_wakeup_cause_t wake_cause
 ```
 
-Defined in bsp/bsp_lifecycle.h:40
+Defined in bsp/bsp_lifecycle.h:41
 
 Wakeup cause (e.g. EXT1, TIMER, GPIO)
 
@@ -12922,7 +13399,7 @@ Wakeup cause (e.g. EXT1, TIMER, GPIO)
 uint64_t ext1_wakeup_pins
 ```
 
-Defined in bsp/bsp_lifecycle.h:41
+Defined in bsp/bsp_lifecycle.h:42
 
 GPIO mask of pins that triggered EXT1 wakeup
 
@@ -12936,7 +13413,7 @@ GPIO mask of pins that triggered EXT1 wakeup
 bool woke_from_button
 ```
 
-Defined in bsp/bsp_lifecycle.h:42
+Defined in bsp/bsp_lifecycle.h:43
 
 True if wake was triggered by BOOT or POWER button
 
@@ -12952,7 +13429,7 @@ bsp_button_t wake_button
 
 Type: [`bsp_button_t`](#bsp_button_t)
 
-Defined in bsp/bsp_lifecycle.h:43
+Defined in bsp/bsp_lifecycle.h:44
 
 Which button triggered wakeup (if button wake)
 
@@ -12968,7 +13445,7 @@ bsp_init_mode_t init_mode
 
 Type: [`bsp_init_mode_t`](#bsp_init_mode_t)
 
-Defined in bsp/bsp_lifecycle.h:44
+Defined in bsp/bsp_lifecycle.h:45
 
 Initialization profile executed (FULL, FAST, MIN)
 
@@ -12982,7 +13459,7 @@ Initialization profile executed (FULL, FAST, MIN)
 uint32_t sleep_duration_sec
 ```
 
-Defined in bsp/bsp_lifecycle.h:45
+Defined in bsp/bsp_lifecycle.h:46
 
 Configured sleep duration from previous cycle
 
@@ -12996,7 +13473,7 @@ Configured sleep duration from previous cycle
 uint32_t boot_count
 ```
 
-Defined in bsp/bsp_lifecycle.h:46
+Defined in bsp/bsp_lifecycle.h:47
 
 Monotonic system boot count
 
@@ -13010,7 +13487,7 @@ Monotonic system boot count
 uint32_t deep_sleep_count
 ```
 
-Defined in bsp/bsp_lifecycle.h:47
+Defined in bsp/bsp_lifecycle.h:48
 
 Total deep sleep cycles
 
@@ -13024,7 +13501,7 @@ Total deep sleep cycles
 uint32_t light_sleep_count
 ```
 
-Defined in bsp/bsp_lifecycle.h:48
+Defined in bsp/bsp_lifecycle.h:49
 
 Total light sleep cycles
 
@@ -13038,7 +13515,7 @@ Total light sleep cycles
 uint8_t app_stage
 ```
 
-Defined in bsp/bsp_lifecycle.h:49
+Defined in bsp/bsp_lifecycle.h:50
 
 Persistent application stage code (from RTC memory)
 
@@ -13052,7 +13529,7 @@ Persistent application stage code (from RTC memory)
 void * user_data
 ```
 
-Defined in bsp/bsp_lifecycle.h:50
+Defined in bsp/bsp_lifecycle.h:51
 
 User data pointer passed during lifecycle start
 
@@ -13068,7 +13545,7 @@ User data pointer passed during lifecycle start
 struct bsp_app_lifecycle_t
 ```
 
-Defined in bsp/bsp_lifecycle.h:71
+Defined in bsp/bsp_lifecycle.h:77
 
 Comprehensive Application Lifecycle Configuration.
 
@@ -13079,6 +13556,7 @@ Comprehensive Application Lifecycle Configuration.
 | [`bsp_cold_boot_cb_t`](#bsp_cold_boot_cb_t) | [`on_cold_boot`](#on_cold_boot)  | Handler for initial cold boot |
 | [`bsp_wake_cb_t`](#bsp_wake_cb_t) | [`on_wake`](#on_wake)  | Handler for sleep wake events |
 | [`bsp_before_sleep_cb_t`](#bsp_before_sleep_cb_t) | [`on_before_sleep`](#on_before_sleep)  | Hook called immediately prior to sleep entry |
+| [`bsp_shutdown_cb_t`](#bsp_shutdown_cb_t) | [`on_shutdown`](#on_shutdown)  | Hook called immediately prior to power off |
 | `void *` | [`user_data`](#user_data-4)  | Custom application context pointer |
 
 ---
@@ -13093,7 +13571,7 @@ bsp_cold_boot_cb_t on_cold_boot
 
 Type: [`bsp_cold_boot_cb_t`](#bsp_cold_boot_cb_t)
 
-Defined in bsp/bsp_lifecycle.h:72
+Defined in bsp/bsp_lifecycle.h:78
 
 Handler for initial cold boot
 
@@ -13109,7 +13587,7 @@ bsp_wake_cb_t on_wake
 
 Type: [`bsp_wake_cb_t`](#bsp_wake_cb_t)
 
-Defined in bsp/bsp_lifecycle.h:73
+Defined in bsp/bsp_lifecycle.h:79
 
 Handler for sleep wake events
 
@@ -13125,9 +13603,25 @@ bsp_before_sleep_cb_t on_before_sleep
 
 Type: [`bsp_before_sleep_cb_t`](#bsp_before_sleep_cb_t)
 
-Defined in bsp/bsp_lifecycle.h:74
+Defined in bsp/bsp_lifecycle.h:80
 
 Hook called immediately prior to sleep entry
+
+---
+
+{#on_shutdown}
+
+#### on_shutdown
+
+```cpp
+bsp_shutdown_cb_t on_shutdown
+```
+
+Type: [`bsp_shutdown_cb_t`](#bsp_shutdown_cb_t)
+
+Defined in bsp/bsp_lifecycle.h:81
+
+Hook called immediately prior to power off
 
 ---
 
@@ -13139,7 +13633,7 @@ Hook called immediately prior to sleep entry
 void * user_data
 ```
 
-Defined in bsp/bsp_lifecycle.h:75
+Defined in bsp/bsp_lifecycle.h:82
 
 Custom application context pointer
 
@@ -13155,16 +13649,18 @@ Custom application context pointer
 struct bsp_button_config_t
 ```
 
-Defined in bsp/bsp_button.h:49
+Defined in bsp/bsp_button.h:59
+
+Button Timing & Feature Configuration.
 
 ### Public Attributes
 
 | Return | Name | Description |
 |--------|------|-------------|
-| `uint32_t` | [`debounce_ms`](#debounce_ms)  |  |
-| `uint32_t` | [`click_timeout_ms`](#click_timeout_ms)  |  |
-| `uint32_t` | [`long_press_ms`](#long_press_ms)  |  |
-| `bool` | [`auto_power_off_on_hold`](#auto_power_off_on_hold)  |  |
+| `uint32_t` | [`debounce_ms`](#debounce_ms)  | Debounce settling time in milliseconds (Default: 20 ms) |
+| `uint32_t` | [`click_timeout_ms`](#click_timeout_ms)  | Max delay between double clicks in ms (Default: 280 ms) |
+| `uint32_t` | [`long_press_ms`](#long_press_ms)  | Duration to trigger long press in ms (Default: 2500 ms) |
+| `bool` | [`auto_power_off_on_hold`](#auto_power_off_on_hold)  | Auto power off system on POWER long press (Default: true) |
 
 ---
 
@@ -13176,7 +13672,9 @@ Defined in bsp/bsp_button.h:49
 uint32_t debounce_ms
 ```
 
-Defined in bsp/bsp_button.h:50
+Defined in bsp/bsp_button.h:60
+
+Debounce settling time in milliseconds (Default: 20 ms)
 
 ---
 
@@ -13188,7 +13686,9 @@ Defined in bsp/bsp_button.h:50
 uint32_t click_timeout_ms
 ```
 
-Defined in bsp/bsp_button.h:51
+Defined in bsp/bsp_button.h:61
+
+Max delay between double clicks in ms (Default: 280 ms)
 
 ---
 
@@ -13200,7 +13700,9 @@ Defined in bsp/bsp_button.h:51
 uint32_t long_press_ms
 ```
 
-Defined in bsp/bsp_button.h:52
+Defined in bsp/bsp_button.h:62
+
+Duration to trigger long press in ms (Default: 2500 ms)
 
 ---
 
@@ -13212,7 +13714,9 @@ Defined in bsp/bsp_button.h:52
 bool auto_power_off_on_hold
 ```
 
-Defined in bsp/bsp_button.h:53
+Defined in bsp/bsp_button.h:63
+
+Auto power off system on POWER long press (Default: true)
 
 {#button_callback_entry_t}
 

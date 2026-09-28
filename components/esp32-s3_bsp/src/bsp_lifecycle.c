@@ -1,6 +1,6 @@
 /**
  * @file bsp_lifecycle.c
- * @brief High-Level Application Lifecycle, Sleep/Wake Dispatcher & State Engine
+ * @brief High-Level Application Lifecycle, Sleep/Wake Dispatcher, Shutdown & State Engine Implementation
  * 
  * Hardware Target:
  *  - Microcontroller: Espressif Systems ESP32-S3-PICO-1-N8R8
@@ -18,6 +18,7 @@
 #include "esp_sleep.h"
 #include "bsp/pinout.h"
 #include "bsp/bsp.h"
+#include "bsp/bsp_splash.h"
 #include "bsp/bsp_lifecycle.h"
 
 static const char *TAG = "bsp_lifecycle";
@@ -97,6 +98,20 @@ esp_err_t bsp_lifecycle_enter_sleep(const bsp_sleep_config_t *config)
     return bsp_enter_sleep(&cfg);
 }
 
+void bsp_lifecycle_power_off(void)
+{
+    ESP_LOGI(TAG, "Initiating lifecycle power off sequence...");
+    bsp_power_off();
+}
+
+void bsp_lifecycle_invoke_shutdown(void)
+{
+    if (s_active_lifecycle.on_shutdown != NULL) {
+        ESP_LOGI(TAG, "Invoking registered on_shutdown lifecycle hook...");
+        s_active_lifecycle.on_shutdown(s_active_lifecycle.user_data);
+    }
+}
+
 esp_err_t bsp_app_start(const bsp_app_lifecycle_t *lifecycle)
 {
     if (lifecycle != NULL) {
@@ -156,11 +171,15 @@ esp_err_t bsp_app_start(const bsp_app_lifecycle_t *lifecycle)
         return ret;
     }
 
-    // 4. Dispatch to application lifecycle callbacks & splash
+    // 4. Dispatch to application lifecycle callbacks, splash & chimes
     if (reset_reason == ESP_RST_DEEPSLEEP) {
         // Automatically clear PCF85063A countdown timer and alarm flags in BSP
         bsp_rtc_clear_countdown_timer();
         bsp_rtc_get_and_clear_interrupts(NULL, NULL);
+
+        // Trigger wake splash & chime hooks if registered
+        bsp_trigger_splash(BSP_SPLASH_WAKE);
+        bsp_trigger_chime (BSP_CHIME_WAKE);
 
         if (s_active_lifecycle.on_wake != NULL) {
             s_active_lifecycle.on_wake(&s_current_context, s_active_lifecycle.user_data);

@@ -1,11 +1,11 @@
 /**
  * @file bsp_button.c
- * @brief Button driver state-machine with debounce, clicks, hold detection, and shutdown hooks.
+ * @brief Button driver state-machine with debounce, clicks, hold detection, and power off trigger.
  * 
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - BSP Unification: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
@@ -55,10 +55,6 @@ static bsp_button_config_t s_cfg;
 static esp_timer_handle_t  s_timer_handle = NULL;
 static bool                s_inited       = false;
 
-// Shutdown hook storage
-static bsp_power_off_cb_t s_shutdown_cb         = NULL;
-static void               *s_shutdown_user_data = NULL;
-
 static void fire_event(bsp_button_t btn, bsp_button_event_t event)
 {
     if (s_buttons[btn].callbacks[event].cb) {
@@ -100,7 +96,7 @@ static void button_timer_cb(void *arg)
                         s_buttons[btn].state = STATE_PRESSED;
                         s_buttons[btn].press_start_tick = now;
                         s_buttons[btn].long_press_fired = false;
-                        fire_event(btn, BSP_BUTTON_EVENT_PRESS_DOWN); //<- "that happened to me once!"
+                        fire_event(btn, BSP_BUTTON_EVENT_PRESS_DOWN);
                     }
                 } else {
                     s_buttons[btn].state = STATE_IDLE;
@@ -151,65 +147,12 @@ static void button_timer_cb(void *arg)
     }
 }
 
-esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void *user_data)
+esp_err_t bsp_button_stop(void)
 {
-    s_shutdown_cb        = cb;
-    s_shutdown_user_data = user_data;
-    return ESP_OK;
-}
-
-void bsp_power_off(void)
-{
-    static bool s_shutting_down = false;
-    if (s_shutting_down) return;
-    s_shutting_down = true;
-
-    ESP_LOGI(TAG, "Executing complete shutdown sequence...");
-
-    // 1. Stop button debounce timer immediately so no further button events fire
-    if (s_timer_handle) {
+    if (s_timer_handle != NULL) {
         esp_timer_stop(s_timer_handle);
     }
-
-    // 2. Run user shutdown callback if registered (e.g. terminate tasks & render Space Cat)
-    if (s_shutdown_cb) {
-        ESP_LOGI(TAG, "Calling user shutdown callback...");
-        s_shutdown_cb(s_shutdown_user_data);
-    }
-
-    // 3. Stop LVGL rendering background task
-    bsp_lvgl_stop();
-
-    // 4. Put display to deep sleep and cut display power rail
-    bsp_display_deep_sleep();
-    gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 1);
-    
-    // 5. Mute and power off audio amp
-    bsp_audio_stop();
-    bsp_audio_power_enable(false);
-    gpio_set_level((gpio_num_t)BSP_PIN_PA_CTRL, 0);
-    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN,   1);
-
-    // 6. Turn off status LED
-    bsp_led_set(false);
-
-    // 7. Disconnect Wi-Fi
-    bsp_wifi_disconnect();
-
-    // 8. Wait until the user physically releases the power button so it doesn't immediately re-trigger
-    while (gpio_get_level((gpio_num_t)BSP_PIN_BUTTON_POWER) == 0) {
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-    vTaskDelay(pdMS_TO_TICKS(100));
-
-    // 9. Drop power latch (GPIO 17 = 0) and release hardware hold
-    ESP_LOGI(TAG, "De-asserting BAT_CTRL power latch (GPIO %d)...", BSP_PIN_POWER_HOLD);
-    gpio_hold_dis((gpio_num_t)BSP_PIN_POWER_HOLD);
-    gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 0);
-    vTaskDelay(pdMS_TO_TICKS(100));
-
-	ESP_LOGI(TAG, "External power (USB) detected.");
-    esp_restart(); // Restart, don't sleep if powered by VBUS.
+    return ESP_OK;
 }
 
 esp_err_t bsp_button_init(const bsp_button_config_t *config)

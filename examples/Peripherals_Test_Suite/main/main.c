@@ -291,10 +291,12 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
             ESP_LOGI(TAG, ">>> Triggering Interactive Deep Sleep (Wake via BOOT button or Ext RTC INT)... <<<");
             test_ui_render_screen("Interactive Deep Sleep\nWake: BOOT / Ext RTC",
                                   "Indefinite Low Power\nPress BOOT (or RTC) to wake");
+            vTaskDelay(pdMS_TO_TICKS(1000));
             
             while (bsp_button_is_pressed(BSP_BUTTON_BOOT)) {
                 vTaskDelay(pdMS_TO_TICKS(50));
             }
+            vTaskDelay(pdMS_TO_TICKS(100));
 
             bsp_sleep_config_t cfg = {
                 .mode           = BSP_SLEEP_MODE_DEEP,
@@ -847,6 +849,7 @@ void app_main(void)
         .on_cold_boot    = app_on_cold_boot,
         .on_wake         = app_on_wake,
         .on_before_sleep = NULL,
+        .on_shutdown     = NULL,
         .user_data       = NULL,
     };
 

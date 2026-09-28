@@ -1,17 +1,18 @@
 /**
  * @file bsp_audio.c
- * @brief ES8311 I2S Audio Codec & NS4168 Class-D Mono Amplifier Driver Implementation
+ * @brief ES8311 I2S Audio Codec, NS4168 Class-D Mono Amplifier Driver & Synthesized Chimes Implementation
  * 
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
- * - BSP Unification: Humidyne Labs / Humiditron
+ * - BSP Unification: Humidyne Labs / Humiditron (2026)
  * 
  * SPDX-License-Identifier: MIT
  */
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -22,6 +23,7 @@
 #include "esp_codec_dev_defaults.h"
 #include "bsp/pinout.h"
 #include "bsp/bsp_i2c.h"
+#include "bsp/bsp_splash.h"
 #include "bsp/bsp_audio.h"
 
 static const char *TAG = "bsp_audio";
@@ -37,7 +39,7 @@ static const int16_t SINE_LUT_256[256] = {
     13386,  13586, 13776,   13955,  14123,  14280,  14426,  14560,
     14683,  14794, 14893,   14980,  15055,  15118,  15168,  15206,
     15232,  15245, 15246,   15234,  15210,  15173,  15124,  15063,
-    14989,  14903, 14805,   14695,  14573,  14439,  14293,  14136,
+    14989,  14903, 14805,   14965,  14573,  14439,  14293,  14136,
     13967,  13786, 13594,   13391,  13176,  12950,  12713,  12465,
     12206,  11936, 11656,   11365,  11064,  10752,  10430,  10098,
      9757,   9406,  9045,    8676,   8297,   7910,   7514,   7110,
@@ -148,7 +150,7 @@ esp_err_t bsp_audio_init(void)
         .codec_mode      = ESP_CODEC_DEV_WORK_MODE_DAC,
         .ctrl_if         = ctrl_if,
         .gpio_if         = gpio_if,
-        .pa_pin          = BSP_PIN_PA_CTRL, //configured by es8311_codec_new as output
+        .pa_pin          = BSP_PIN_PA_CTRL, // configured by es8311_codec_new as output
         .use_mclk        = true,
         .hw_gain.pa_gain = 6.0f,
     };
@@ -217,13 +219,15 @@ esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written)
         esp_err_t ret = bsp_audio_init();
         if (ret != ESP_OK) return ret;
     }
-	
-	/* Disabled Chunking Mech */
-	esp_err_t ret = esp_codec_dev_write(s_codec, (void *)data, (int)len);
-	if(ret != ESP_OK) {
-		ESP_LOGE(TAG, "Failed To Send Data Buffer to Codec!");
-	}
-	return ret;
+
+    esp_err_t ret = esp_codec_dev_write(s_codec, (void *)data, (int)len);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send audio buffer to codec: %s", esp_err_to_name(ret));
+    }
+    if (bytes_written) {
+        *bytes_written = (ret == ESP_OK) ? len : 0;
+    }
+    return ret;
 }
 
 esp_err_t bsp_audio_stop(void)
@@ -271,7 +275,7 @@ esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volu
     size_t  samples_generated = 0;
 
     while (samples_generated < total_samples) {
-        size_t           chunk = total_samples - samples_generated;
+        size_t chunk = total_samples - samples_generated;
         if (chunk > 512) chunk = 512;
 
         for (size_t i = 0; i < chunk; i++) {
@@ -306,5 +310,77 @@ esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volu
     vTaskDelay(pdMS_TO_TICKS(35));
     bsp_audio_stop();
 
+    return ESP_OK;
+}
+
+esp_err_t bsp_audio_play_chime(bsp_chime_type_t type)
+{
+    switch (type) {
+        case BSP_CHIME_BOOT:
+            // Ascending 4-tone arpeggio: C5 (523Hz) -> E5 (659Hz) -> G5 (784Hz) -> C6 (1046Hz)
+            bsp_audio_play_tone(523,  90, 70.0f);
+            bsp_audio_play_tone(659,  90, 75.0f);
+            bsp_audio_play_tone(784,  90, 80.0f);
+            bsp_audio_play_tone(1046, 200, 85.0f);
+            break;
+
+        case BSP_CHIME_WAKE:
+            // Quick rising acoustic cue: G5 (784Hz) -> C6 (1046Hz)
+            bsp_audio_play_tone(784,  80, 65.0f);
+            bsp_audio_play_tone(1046, 150, 75.0f);
+            break;
+
+        case BSP_CHIME_SLEEP:
+            // Descending stand-down tone: C6 (1046Hz) -> G5 (784Hz) -> E5 (659Hz)
+            bsp_audio_play_tone(1046, 120, 70.0f);
+            bsp_audio_play_tone(784,  120, 65.0f);
+            bsp_audio_play_tone(659,  220, 55.0f);
+            break;
+
+        case BSP_CHIME_SHUTDOWN:
+            // Warm descending cadence: G5 (784Hz) -> E5 (659Hz) -> C5 (523Hz)
+            bsp_audio_play_tone(784, 140, 70.0f);
+            bsp_audio_play_tone(659, 140, 65.0f);
+            bsp_audio_play_tone(523, 280, 60.0f);
+            break;
+
+        case BSP_CHIME_ALARM:
+            // Urgent alternating warble
+            for (int i = 0; i < 2; i++) {
+                bsp_audio_play_tone(1760, 100, 90.0f);
+                bsp_audio_play_tone(880,  100, 90.0f);
+            }
+            break;
+
+        case BSP_CHIME_NOTIFY:
+            // Crisp dual ping: C6 (1046Hz) -> E6 (1318Hz)
+            bsp_audio_play_tone(1046, 70, 70.0f);
+            bsp_audio_play_tone(1318, 120, 75.0f);
+            break;
+
+        case BSP_CHIME_EVENT:
+            // Short tactile click / blip
+            bsp_audio_play_tone(1200, 35, 60.0f);
+            break;
+
+        default:
+            return ESP_ERR_INVALID_ARG;
+    }
+
+    return ESP_OK;
+}
+
+static void bsp_default_chime_dispatcher(bsp_chime_type_t type, void *user_data)
+{
+    (void)user_data;
+    bsp_audio_play_chime(type);
+}
+
+esp_err_t bsp_audio_register_default_chimes(void)
+{
+    for (int i = 0; i < BSP_CHIME_MAX; i++) {
+        bsp_register_chime_cb((bsp_chime_type_t)i, bsp_default_chime_dispatcher, NULL);
+    }
+    ESP_LOGI(TAG, "Registered synthesized acoustic notification hooks for all system chimes");
     return ESP_OK;
 }

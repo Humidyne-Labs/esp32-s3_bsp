@@ -39,6 +39,16 @@ esp_err_t bsp_register_splash_cb(bsp_splash_type_t type, bsp_splash_cb_t cb, voi
     return ESP_OK;
 }
 
+esp_err_t bsp_unregister_splash_cb(bsp_splash_type_t type)
+{
+    if (type >= BSP_SPLASH_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_splash_table[type].cb        = NULL;
+    s_splash_table[type].user_data = NULL;
+    return ESP_OK;
+}
+
 esp_err_t bsp_register_chime_cb(bsp_chime_type_t type, bsp_chime_cb_t cb, void *user_data)
 {
     if (type >= BSP_CHIME_MAX) {
@@ -48,6 +58,32 @@ esp_err_t bsp_register_chime_cb(bsp_chime_type_t type, bsp_chime_cb_t cb, void *
     s_chime_table[type].user_data = user_data;
     ESP_LOGD(TAG, "Registered Chime Callback for type %d", (int)type);
     return ESP_OK;
+}
+
+esp_err_t bsp_unregister_chime_cb(bsp_chime_type_t type)
+{
+    if (type >= BSP_CHIME_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_chime_table[type].cb        = NULL;
+    s_chime_table[type].user_data = NULL;
+    return ESP_OK;
+}
+
+bool bsp_has_splash_cb(bsp_splash_type_t type)
+{
+    if (type >= BSP_SPLASH_MAX) {
+        return false;
+    }
+    return (s_splash_table[type].cb != NULL);
+}
+
+bool bsp_has_chime_cb(bsp_chime_type_t type)
+{
+    if (type >= BSP_CHIME_MAX) {
+        return false;
+    }
+    return (s_chime_table[type].cb != NULL);
 }
 
 esp_err_t bsp_trigger_splash(bsp_splash_type_t type)
