@@ -1,10 +1,10 @@
 /**
  * @file bsp_rtc_mem.c
  * @brief Internal ESP32-S3 RTC Slow Memory Persistent Storage Implementation
- * 
+ *
  * @attribution
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -24,7 +24,7 @@ static bool                          s_boot_counted    = false;
 esp_err_t bsp_rtc_mem_init(void)
 {
     if (s_rtc_state.magic != BSP_RTC_MEM_MAGIC) {
-        ESP_LOGI(TAG, "RTC Slow Memory uninitialized or invalid (magic 0x%08lX); re-initializing", 
+        ESP_LOGI(TAG, "RTC Slow Memory uninitialized or invalid (magic 0x%08lX); re-initializing",
                  (unsigned long)s_rtc_state.magic);
         bsp_rtc_mem_reset();
         s_boot_counted = true;

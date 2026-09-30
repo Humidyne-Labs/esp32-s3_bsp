@@ -58,7 +58,7 @@ To prevent network communications, TLS handshakes, and cryptographic hashing fro
 ├────────────────────────────────────────┬────────────────────────────────────────┤
 │          CORE 0: NETWORKING & CLOUD    │           CORE 1: UI & SENSORS         │
 ├────────────────────────────────────────┼────────────────────────────────────────┤
-│ • Wi-Fi Station (Fast RTC Cache <400ms)│ • LVGL v9 Display Port Task (Pri 5)    │
+│ • Wi-Fi Station (Fast RTC Cache less than 400ms)│ • LVGL v9 Display Port Task (Pri 5)    │
 │ • BLE GATT Provisioning (wifi_prov)    │ • SSD1681 1-bit Mono EPD Bit-Blit SPI │
 │ • SNTP Network Time Synchronization    │ • Tactile Button State Handlers        │
 │ • ThingsBoard Secure MQTTS (Port 8883) │ • SHTC3 Sensor I2C Acquisition         │
@@ -90,7 +90,7 @@ To prevent network communications, TLS handshakes, and cryptographic hashing fro
 | **MicroSD Storage** | `bsp/bsp_sdcard.h` | `bsp_sdcard.c` | FATFS file system mount/unmount manager over SDMMC / SPI. |
 | **Environmental** | `bsp/bsp_sensors.h` | `bsp_sensors.c` | SHTC3 sensor acquisition returning native Kelvin and RH%. |
 | **Flash MMAP Assets** | `bsp/bsp_assets.h` | `bsp_assets.c` | Zero-copy SPI flash asset mmap driver & LVGL v9 image decoder. |
-| **Wi-Fi Manager** | `bsp/bsp_wifi.h` | `bsp_wifi.c` | Station mode manager with RTC fast reconnect caching (<400ms). |
+| **Wi-Fi Manager** | `bsp/bsp_wifi.h` | `bsp_wifi.c` | Station mode manager with RTC fast reconnect caching (less than 400ms). |
 | **Time & SNTP** | `bsp/bsp_time.h` | `bsp_time.c` | SNTP sync, POSIX timezone support, 4 time formats, 3 date formats. |
 | **BLE Provisioning** | `bsp/bsp_prov.h` | `bsp_prov.c` | Unified BLE GATT provisioning with on-screen QR code and 8-char Base57 PoP. |
 | **Seamless OTA** | `bsp/bsp_ota.h` | `bsp_ota.c` | Dual-partition background HTTPS OTA with auto-rollback. |
@@ -231,7 +231,7 @@ bsp_power_off(); // Or bsp_lifecycle_power_off()
 1. Triggers `BSP_SPLASH_SHUTDOWN` and `BSP_CHIME_SHUTDOWN`.
 2. Executes registered `on_shutdown` lifecycle callback.
 3. Stops button timers and background FreeRTOS render tasks (`bsp_lvgl_stop()`).
-4. Puts SSD1681 e-Paper display into ultra-low-power deep sleep (<1 µA) and cuts display rail.
+4. Puts SSD1681 e-Paper display into ultra-low-power deep sleep (less than 1 µA) and cuts display rail.
 5. Mutes and powers down audio amplifier and codec.
 6. Disconnects Wi-Fi cleanly.
 7. Waits for user to release physical power button if held.

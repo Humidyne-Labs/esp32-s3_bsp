@@ -1,14 +1,14 @@
 /**
  * @file bsp_lifecycle.c
  * @brief High-Level Application Lifecycle, Sleep/Wake Dispatcher, Shutdown & State Engine Implementation
- * 
+ *
  * Hardware Target:
  *  - Microcontroller: Espressif Systems ESP32-S3-PICO-1-N8R8
  *  - Target Board: Waveshare ESP32-S3 ePaper 1.54 V2
- * 
+ *
  * @attribution
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

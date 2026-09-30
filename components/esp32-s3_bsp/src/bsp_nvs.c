@@ -1,11 +1,11 @@
 /**
  * @file bsp_nvs.c
  * @brief Non-Volatile Storage (NVS) Flash Helper & Persistent Configuration Store Implementation
- * 
+ *
  * @attribution
  * - Espressif Systems
  * - BSP Implementation: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

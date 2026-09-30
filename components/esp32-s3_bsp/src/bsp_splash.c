@@ -1,10 +1,10 @@
 /**
  * @file bsp_splash.c
  * @brief System UI Splash Screens & Audio Chime Callback Dispatcher Implementation
- * 
+ *
  * @attribution
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -16,13 +16,13 @@
 static const char *TAG = "bsp_splash";
 
 typedef struct {
-    bsp_splash_cb_t cb;
-    void            *user_data;
+    bsp_splash_cb_t cb; ///< cb value
+    void            *user_data; ///< user_data value
 } splash_entry_t;
 
 typedef struct {
-    bsp_chime_cb_t  cb;
-    void            *user_data;
+    bsp_chime_cb_t  cb; ///< cb value
+    void            *user_data; ///< user_data value
 } chime_entry_t;
 
 static splash_entry_t s_splash_table[BSP_SPLASH_MAX] = {0};

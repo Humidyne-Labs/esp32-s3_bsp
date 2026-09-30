@@ -1,12 +1,12 @@
 /**
  * @file bsp_rtc.c
  * @brief PCF85063A Real-Time Clock BSP Driver Implementation
- * 
+ *
  * Hardware Target:
  *  - Device: NXP Semiconductors PCF85063A (I2C Address: 0x51)
  *  - Quartz crystal: 32.768 kHz with 12.5pF internal load capacitance
  *  - Interrupt Line: GPIO 5 (BSP_PIN_RTC_INT, Active Low)
- * 
+ *
  * Register Map:
  *  - 0x00: Control_1
  *  - 0x01: Control_2
@@ -26,13 +26,13 @@
  *  - 0x0F: Alarm_weekdays
  *  - 0x10: Timer_value
  *  - 0x11: Timer_mode
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics
  * - Microcontroller: Espressif Systems ESP32-S3
  * - Original PCF85063A Component: Espressif / Waveshare (Apache-2.0)
  * - BSP Unification & Enhancements: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

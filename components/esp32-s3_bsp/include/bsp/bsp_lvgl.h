@@ -1,16 +1,16 @@
 /**
  * @file bsp_lvgl.h
  * @brief LVGL v9 FreeRTOS Integration Port & Thread-Safe Mutex Lock API
- * 
+ *
  * FreeRTOS Multithreading Model:
  *  - Spawns a dedicated FreeRTOS render task (`bsp_lvgl_port_task`) pinned to Core 1.
  *  - All external task accesses to LVGL API objects MUST be encapsulated between
  *    `bsp_lvgl_lock()` and `bsp_lvgl_unlock()` to avoid rendering collisions.
- * 
+ *
  * @attribution
  * - LVGL Community (https://lvgl.io)
  * - BSP Implementation: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -28,47 +28,53 @@ extern "C" {
 
 /**
  * @brief Initialize LVGL v9 Graphics Subsystem and Register Display Port
- * 
+ *
  * Allocates draw buffers and registers the SSD1681 1-bit monochrome flush callback.
- * 
+ *
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_lvgl_init(void);
 
 /**
  * @brief Start LVGL Background FreeRTOS Execution Task
- * 
- * @param priority Task priority (Default: 5)
- * @param core_id CPU Core affinity (Default: 1 - Core 1)
+ *
+ * @param[in] priority Task priority (Default: 5)
+ * @param[in] core_id CPU Core affinity (Default: 1 - Core 1)
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_lvgl_start(int priority, int core_id);
 
 /**
  * @brief Stop LVGL Background FreeRTOS Execution Task
- * 
+ *
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_lvgl_stop(void);
 
 /**
  * @brief Acquire LVGL Reentrant Mutex Lock
- * 
+ *
  * Must be called prior to modifying any UI widgets or invoking lvgl functions from external tasks.
- * 
+ *
  * @return true if mutex was successfully acquired
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: thread-safe guarantees.
  */
 bool bsp_lvgl_lock(void);
 
 /**
  * @brief Release LVGL Reentrant Mutex Lock
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: thread-safe guarantees.
  */
 void bsp_lvgl_unlock(void);
 
 /**
  * @brief Configure whether the next LVGL display flush performs a full OTP refresh or fast partial update
- * 
- * @param full_refresh true for full OTP clear/refresh (e.g. on cold boot), false for fast partial refresh (e.g. on wake)
+ *
+ * @param[in] full_refresh true for full OTP clear/refresh (e.g. on cold boot), false for fast partial refresh (e.g. on wake)
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 void bsp_lvgl_set_first_flush_mode(bool full_refresh);
 

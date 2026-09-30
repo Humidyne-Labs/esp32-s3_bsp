@@ -1,17 +1,17 @@
 /**
  * @file bsp_assets.c
  * @brief Zero-Copy Flash Assets & LVGL v9 Image Decoder Implementation
- * 
+ *
  * Performance Overview:
  *  - Maps asset binary files directly from SPI flash into CPU memory address space via MMU.
  *  - LVGL v9 image decoder streams images directly from MMU flash memory pointer
  *    without copying into RAM (Zero-Copy decoding for 1-bit monochrome bitmaps, icons, etc.).
- * 
+ *
  * @attribution
  * - Espressif Systems (esp_mmap_assets, esp_lv_fs)
  * - LVGL Community
  * - BSP Unification: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

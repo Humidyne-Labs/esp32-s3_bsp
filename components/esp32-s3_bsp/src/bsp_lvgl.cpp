@@ -1,12 +1,12 @@
 /**
  * @file bsp_lvgl.cpp
  * @brief LVGL v9 FreeRTOS Integration Port & Thread-Safe Mutex Lock Implementation
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Unification: Humidyne Labs / Humiditron
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -242,7 +242,7 @@ esp_err_t bsp_lvgl_start(int task_priority, int core_id)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "LVGL background task started (Priority %d, Core %d)", 
+    ESP_LOGI(TAG, "LVGL background task started (Priority %d, Core %d)",
              task_priority > 0 ? task_priority : 5, core_id);
     return ESP_OK;
 }

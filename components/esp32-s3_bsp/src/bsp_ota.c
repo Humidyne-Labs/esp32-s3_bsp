@@ -1,11 +1,11 @@
 /**
  * @file bsp_ota.c
  * @brief Generic Over-The-Air (OTA) Dual-Slot Firmware Update Implementation
- * 
+ *
  * @attribution
  * - Espressif Systems ESP-IDF esp_ota_ops / esp_https_ota
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

@@ -1,12 +1,12 @@
 /**
  * @file bsp_common.c
  * @brief Master Board Support Package Initialization, Diagnostics & System Control
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Implementation: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -93,9 +93,9 @@ esp_err_t bsp_get_diagnostics(bsp_diag_info_t *diag)
     diag->free_psram_heap        = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     diag->uptime_seconds         = (uint32_t)(esp_timer_get_time() / 1000000ULL);
     uint32_t batt_mv             = 0;
-    
+
 	bsp_battery_get_voltage(&batt_mv, NULL);
-	
+
     diag->battery_mv             = batt_mv;
     diag->battery_percentage     = (int8_t)bsp_battery_get_percentage();
     diag->power_rail_good        = (gpio_get_level((gpio_num_t)BSP_PIN_POWER_HOLD) == 1);
@@ -124,14 +124,14 @@ void bsp_diagnostics_dump(void)
     ESP_LOGI(TAG, "  BSP Version:          %s", diag.bsp_version);
     ESP_LOGI(TAG, "  Silicon Chip:         %s (%s, %d Cores)", diag.chip_model, diag.chip_revision_str, diag.chip_cores);
     ESP_LOGI(TAG, "  Uptime:               %lu s", (unsigned long)diag.uptime_seconds);
-    ESP_LOGI(TAG, "  Internal Heap Free:   %lu B (Min Free: %lu B)", 
+    ESP_LOGI(TAG, "  Internal Heap Free:   %lu B (Min Free: %lu B)",
              (unsigned long)diag.free_internal_heap, (unsigned long)diag.min_free_internal_heap);
     ESP_LOGI(TAG, "  PSRAM Free:           %lu B", (unsigned long)diag.free_psram_heap);
     ESP_LOGI(TAG, "  Battery:              %lu mV (%d%%)", (unsigned long)diag.battery_mv, diag.battery_percentage);
     ESP_LOGI(TAG, "  Power Rail Hold:      %s", diag.power_rail_good ? "ACTIVE (HIGH)" : "INACTIVE");
     ESP_LOGI(TAG, "  I2C Sensor Bus:       %s", diag.i2c_bus_healthy ? "HEALTHY" : "FAULT / UNRESPONSIVE");
     ESP_LOGI(TAG, "  Display Framebuffer:  %s", diag.display_ready ? "INITIALIZED" : "NOT INITIALIZED");
-    ESP_LOGI(TAG, "  Wi-Fi Station:        %s (RSSI: %d dBm)", 
+    ESP_LOGI(TAG, "  Wi-Fi Station:        %s (RSSI: %d dBm)",
              diag.wifi_connected ? "CONNECTED" : "DISCONNECTED", diag.wifi_rssi);
     ESP_LOGI(TAG, "==================================================");
 }

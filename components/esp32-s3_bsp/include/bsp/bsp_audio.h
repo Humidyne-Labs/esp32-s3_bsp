@@ -1,23 +1,23 @@
 /**
  * @file bsp_audio.h
  * @brief ES8311 I2S Audio Codec, NS4168 Class-D Mono Amplifier Driver & Synthesized Chimes
- * 
+ *
  * Hardware Target:
  *  - Codec: Everest Semi ES8311 (I2C Address: 0x18)
  *  - Power Amplifier: NS4168 (Power enable GPIO 42, Control GPIO 46)
  *  - I2S Pins: MCLK (GPIO 14), SCLK (GPIO 15), ASDOUT (GPIO 16), LRCK (GPIO 38), DSDIN (GPIO 45)
  *  - Sample Rates: 8 kHz to 48 kHz (16-bit Mono PCM, 16 kHz default)
- * 
+ *
  * Features:
  *  - Zero-heap Direct Digital Synthesis (DDS) sine wave tone generator
  *  - Built-in multi-tone acoustic notification chimes for system events
  *  - Automated callback hook registration for boot, wake, sleep, shutdown, and alarms
  *  - Power-domain management and amplifier mute controls to prevent I2C bus clamping
- * 
+ *
  * @attribution
  * - Everest Semiconductor / Waveshare Electronics
  * - BSP Implementation: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -41,55 +41,60 @@ typedef void (*bsp_audio_done_cb_t)(void *arg);
 
 /**
  * @brief Control Power Rail for Audio Subsystem (GPIO 42)
- * 
- * @param enable true to power on audio domain (sets GPIO 42 LOW), false to power off (GPIO 42 HIGH)
+ *
+ * @param[in] enable true to power on audio domain (sets GPIO 42 LOW), false to power off (GPIO 42 HIGH)
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 void bsp_audio_power_enable(bool enable);
 
 /**
  * @brief Initialize I2S Master Channel & ES8311 Audio Codec
- * 
+ *
  * Configures I2S0 master TX channel at 16 kHz 16-bit mono, initializes the ES8311 codec
  * via the shared I2C bus, enables the NS4168 power amplifier, and starts in muted state.
- * 
+ *
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_audio_init(void);
 
 /**
  * @brief Play Raw PCM Audio Buffer
- * 
- * @param data Pointer to 16-bit PCM audio samples
- * @param len Size of data buffer in bytes
+ *
+ * @param[in] data Pointer to 16-bit PCM audio samples
+ * @param[in] len Size of data buffer in bytes
  * @param[out] bytes_written Optional pointer to receive actual bytes transmitted
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_audio_play(const void *data, size_t len, size_t *bytes_written);
 
 /**
  * @brief Set Software Audio Gain / Volume Scaling
- * 
- * @param volume Volume level from 0.0 (mute) to 100.0 (maximum)
+ *
+ * @param[in] volume Volume level from 0.0 (mute) to 100.0 (maximum)
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_audio_set_volume(float volume);
 
 /**
  * @brief Play Synthesized Sine Tone
- * 
+ *
  * Generates a smooth sine wave tone using a 256-point lookup table with 5ms attack/decay
  * envelope ramps to eliminate acoustic popping.
- * 
- * @param freq_hz Frequency in Hertz (e.g. 440, 523, 1046)
- * @param duration_ms Duration in milliseconds
- * @param volume_pct Volume percentage from 0.0 (muted) to 100.0 (maximum)
+ *
+ * @param[in] freq_hz Frequency in Hertz (e.g. 440, 523, 1046)
+ * @param[in] duration_ms Duration in milliseconds
+ * @param[in] volume_pct Volume percentage from 0.0 (muted) to 100.0 (maximum)
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volume_pct);
 
 /**
  * @brief Play Built-in Synthesized Acoustic System Chime / Notification Sound
- * 
+ *
  * Synthesizes structured melodic tone sequences tailored for system events:
  *  - BSP_CHIME_BOOT: Ascending 4-tone melodic arpeggio (C5 -> E5 -> G5 -> C6)
  *  - BSP_CHIME_WAKE: Quick rising wake cue (G5 -> C6)
@@ -98,26 +103,29 @@ esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volu
  *  - BSP_CHIME_ALARM: High-urgency alternating warning warble (1760 Hz / 880 Hz)
  *  - BSP_CHIME_NOTIFY: Dual-ping notification chirp (1046 Hz -> 1318 Hz)
  *  - BSP_CHIME_EVENT: Tactile click feedback blip (1200 Hz)
- * 
- * @param type Chime event type
+ *
+ * @param[in] type Chime event type
  * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG on unknown chime type
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_audio_play_chime(bsp_chime_type_t type);
 
 /**
  * @brief Register Built-in Chimes with the System Notification Dispatcher
- * 
+ *
  * Automatically connects all bsp_chime_type_t event types to bsp_audio_play_chime(),
  * enabling out-of-the-box acoustic feedback on boot, wake, sleep, shutdown, alarms, and UI clicks.
- * 
+ *
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_audio_register_default_chimes(void);
 
 /**
  * @brief Stop Active Audio Playback and Mute Amplifier
- * 
+ *
  * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 esp_err_t bsp_audio_stop(void);
 

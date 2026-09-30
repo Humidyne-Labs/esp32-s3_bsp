@@ -1,11 +1,11 @@
 /**
  * @file bsp_tb.c
  * @brief ThingsBoard IoT Framework Implementation (MQTTS, RPC, Telemetry, OTA)
- * 
+ *
  * @attribution
  * - ThingsBoard.io Protocol Specifications
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

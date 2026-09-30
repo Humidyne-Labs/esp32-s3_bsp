@@ -1,11 +1,11 @@
 /**
  * @file bsp_prov.c
  * @brief Turnkey BLE GATT Wi-Fi Provisioning & QR Code Generator Implementation
- * 
+ *
  * @attribution
  * - Espressif Systems ESP-IDF network_provisioning
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

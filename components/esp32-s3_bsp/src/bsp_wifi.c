@@ -1,17 +1,17 @@
 /**
  * @file bsp_wifi.c
  * @brief Wi-Fi Station Manager with Fast RTC Reconnect Session Cache Implementation
- * 
+ *
  * Battery Optimization Mechanics:
  *  - Fast Reconnect Cache: Stores BSSID (MAC), Channel (1-13), and SSID in RTC slow memory.
  *  - On boot from deep sleep, `wifi_config_t` has `bssid_set = 1` and `channel = cached_ch`,
  *    allowing the ESP32-S3 to bypass passive/active scanning of all 13 channels and lock onto
  *    the AP within ~350 - 400ms!
- * 
+ *
  * @attribution
  * - Espressif Systems
  * - BSP Implementation: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -45,10 +45,10 @@ static bool               s_is_connected      = false;
  * Preserved across Deep Sleep cycles in RTC Slow/Fast memory.
  */
 typedef struct {
-    uint32_t magic;
-    uint8_t  bssid[6];
-    uint8_t  channel;
-    char     ssid[33];
+    uint32_t magic; ///< magic value
+    uint8_t  bssid[6]; ///< bssid[6] value
+    uint8_t  channel; ///< channel value
+    char     ssid[33]; ///< ssid[33] value
 } rtc_wifi_cache_t;
 
 #define RTC_WIFI_CACHE_MAGIC 0x57494649 // "WIFI"

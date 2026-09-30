@@ -1,18 +1,18 @@
 /**
  * @file bsp_sensors.c
  * @brief Sensirion SHTC3 I2C Environmental Sensor Driver Implementation
- * 
+ *
  * Communication Protocol:
  *  - I2C Address: 0x70
  *  - Commands: 16-bit command words (Big Endian)
  *  - Data format: 2 bytes data + 1 byte CRC for Temperature, followed by
  *                 2 bytes data + 1 byte CRC for Relative Humidity.
  *  - CRC Polynomial: P(x) = x^8 + x^5 + x^4 + 1 = 0x31 (Init = 0xFF)
- * 
+ *
  * @attribution
  * - Sensirion AG (Datasheet SHTC3 Revision 1 - May 2019)
  * - BSP Unification: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -31,26 +31,26 @@
 
 static const char *TAG = "bsp_sensors";
 
-#define C_TO_F(c) (((c) * 1.8f) + 32.0f)          /*!< Conversion MACRO Celsius to Fahrenheit */
-#define C_TO_K(c) ((c) + 273.15f)                 /*!< Conversion MACRO Celsius to Kelvin     */
+#define C_TO_F(c) (((c) * 1.8f) + 32.0f)          ///< Conversion MACRO Celsius to Fahrenheit
+#define C_TO_K(c) ((c) + 273.15f)                 ///< Conversion MACRO Celsius to Kelvin
 
 // SHTC3 16-bit Command Words
-#define SHTC3_CMD_WAKEUP                  0x3517  /*!< Wakeup command                                                  */
-#define SHTC3_CMD_SLEEP                   0xB098  /*!< Sleep command                                                   */
-#define SHTC3_CMD_SWRST                   0x805D  /*!< Software Reset Command                                          */
-#define SHTC3_CMD_READ_ID                 0xEFC8  /*!< Read ID register                                                */
-#define SHTC3_CMD_MEAS_NORMAL_T_FIRST     0x7866  /*!< Measure Normal Power:     Temp First, Clock Stretching Disabled */
-#define SHTC3_CMD_MEAS_NORMAL_R_FIRST     0x58E0  /*!< Measure Normal Power: Humidity First, Clock Stretching Disabled */
+#define SHTC3_CMD_WAKEUP                  0x3517  ///< Wakeup command
+#define SHTC3_CMD_SLEEP                   0xB098  ///< Sleep command
+#define SHTC3_CMD_SWRST                   0x805D  ///< Software Reset Command
+#define SHTC3_CMD_READ_ID                 0xEFC8  ///< Read ID register
+#define SHTC3_CMD_MEAS_NORMAL_T_FIRST     0x7866  ///< Measure Normal Power:     Temp First, Clock Stretching Disabled
+#define SHTC3_CMD_MEAS_NORMAL_R_FIRST     0x58E0  ///< Measure Normal Power: Humidity First, Clock Stretching Disabled
 
 // SHTC3 More 16-bit Command Words (Low-Power-Mode)
-#define SHTC3_CMD_MEAS_LOWPWR_T_FIRST     0x609C /*!< Measure    Low Power:     Temp First, Clock Stretching Disabled  */
-#define SHTC3_CMD_MEAS_LOWPWR_H_FIRST     0x401A /*!< Measure    Low Power: Humidity First, Clock Stretching Disabled  */
+#define SHTC3_CMD_MEAS_LOWPWR_T_FIRST     0x609C ///< Measure    Low Power:     Temp First, Clock Stretching Disabled
+#define SHTC3_CMD_MEAS_LOWPWR_H_FIRST     0x401A ///< Measure    Low Power: Humidity First, Clock Stretching Disabled
 
 // SHTC3 Even More 16-bit Command Words (Clock-Strech-EN)
-#define SHTC3_CMD_MEAS_NORMAL_CS_T_FIRST  0x7CA2 /*!< Measure Normal Power:     Temp First, Clock Stretching Enabled   */
-#define SHTC3_CMD_MEAS_NORMAL_CS_R_FIRST  0x5C24 /*!< Measure Normal Power: Humidity First, Clock Stretching Enabled   */
-#define SHTC3_CMD_MEAS_LOWPWR_CS_T_FIRST  0x6458 /*!< Measure    Low Power:     Temp First, Clock Stretching Enabled   */
-#define SHTC3_CMD_MEAS_LOWPWR_CS_R_FIRST  0x44DE /*!< Measure    Low Power: Humidity First, Clock Stretching Enabled   */
+#define SHTC3_CMD_MEAS_NORMAL_CS_T_FIRST  0x7CA2 ///< Measure Normal Power:     Temp First, Clock Stretching Enabled
+#define SHTC3_CMD_MEAS_NORMAL_CS_R_FIRST  0x5C24 ///< Measure Normal Power: Humidity First, Clock Stretching Enabled
+#define SHTC3_CMD_MEAS_LOWPWR_CS_T_FIRST  0x6458 ///< Measure    Low Power:     Temp First, Clock Stretching Enabled
+#define SHTC3_CMD_MEAS_LOWPWR_CS_R_FIRST  0x44DE ///< Measure    Low Power: Humidity First, Clock Stretching Enabled
 
 
 /* =========================================================================

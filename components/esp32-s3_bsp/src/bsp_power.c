@@ -1,7 +1,7 @@
 /**
  * @file bsp_power.c
  * @brief Power Control Latch, Status LED, Battery ADC, Shutdown Sequence & Dual Sleep Modes Implementation
- * 
+ *
  * Circuit Architecture:
  *  - Power Latch: GPIO 17 (BAT_CTRL) is driven HIGH to turn on the onboard LDO gate and hold power.
  *  - Battery Voltage Divider:
@@ -10,11 +10,11 @@
  *                           GPIO 4 (ADC1_CH3)
  *      V_ADC = VBAT * (R2 / (R1 + R2)) = VBAT / 2
  *      VBAT  = V_ADC * 2.0
- * 
+ *
  * @attribution
  * - Circuit Design: Waveshare Electronics
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -51,8 +51,8 @@ static const char *TAG = "bsp_power";
 #define BATTERY_LUT_SIZE        (sizeof(s_battery_ocv_lut) / sizeof(s_battery_ocv_lut[0]))
 
 typedef struct {
-    uint16_t voltage_mv;
-    uint8_t  percentage;
+    uint16_t voltage_mv; ///< voltage_mv value
+    uint8_t  percentage; ///< percentage value
 } battery_lut_point_t;
 
 static adc_oneshot_unit_handle_t s_adc_handle          = NULL;
@@ -273,12 +273,12 @@ esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw)
     }
 
 	/* Multisampling is no longer needed. */
-	
+
 	int raw_val = 0;
 	esp_err_t err = adc_oneshot_read(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &raw_val);
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "ADC read failed: %s", esp_err_to_name(err));
-		return err;	
+		return err;
 	}
 
     if (out_raw != NULL) {
@@ -330,7 +330,7 @@ uint8_t bsp_battery_get_percentage(void)
 
             uint32_t delta_v = v_high - v_low;
             uint32_t delta_p = p_high - p_low;
-            
+
             // Integer interpolation with half-step rounding (+ delta_v / 2)
             uint32_t interpolated = p_low + (((vbat_mv - v_low) * delta_p + (delta_v / 2)) / delta_v);
             return (uint8_t)interpolated;

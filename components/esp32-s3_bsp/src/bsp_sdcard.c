@@ -1,12 +1,12 @@
 /**
  * @file bsp_sdcard.c
  * @brief MicroSD Card SDMMC 1-Bit Mode FATFS Storage Driver Implementation
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Unification: Humidyne Labs / Humiditron
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

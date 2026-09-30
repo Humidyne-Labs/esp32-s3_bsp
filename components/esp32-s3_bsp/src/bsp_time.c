@@ -1,10 +1,10 @@
 /**
  * @file bsp_time.c
  * @brief SNTP Synchronization, Timezone Management & RTC Bridge Implementation
- * 
+ *
  * @attribution
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 

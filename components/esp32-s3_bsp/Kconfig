@@ -6,11 +6,6 @@ menu "ESP32-S3 ePaper Board Support Package"
         help
             Identifier for the board target.
 
-    config BSP_SHTC3_LOW_POWER
-        bool "Use SHTC3 low-power measurement mode"
-        default y
-        help
-            Use the SHTC3 polling, temperature-first low-power measurement command by default.
 
     config BSP_AUDIO_DEFAULT_VOLUME
         int "Default Audio Volume Percentage (0-100)"

@@ -1,12 +1,12 @@
 /**
  * @file bsp_button.c
  * @brief Button driver state-machine with debounce, clicks, hold detection, and power off trigger.
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Unification: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -27,27 +27,27 @@ static const char *TAG = "bsp_button";
 #define TIMER_INTERVAL_MS 10
 
 typedef enum {
-    STATE_BOOT_WAIT_RELEASE = 0,
-    STATE_IDLE,
-    STATE_DEBOUNCE_PRESS,
-    STATE_PRESSED,
-    STATE_DEBOUNCE_RELEASE,
-    STATE_WAIT_DOUBLE_CLICK,
+    STATE_BOOT_WAIT_RELEASE = 0, ///< STATE_BOOT_WAIT_RELEASE value
+    STATE_IDLE, ///< STATE_IDLE value
+    STATE_DEBOUNCE_PRESS, ///< STATE_DEBOUNCE_PRESS value
+    STATE_PRESSED, ///< STATE_PRESSED value
+    STATE_DEBOUNCE_RELEASE, ///< STATE_DEBOUNCE_RELEASE value
+    STATE_WAIT_DOUBLE_CLICK, ///< STATE_WAIT_DOUBLE_CLICK value
 } button_state_t;
 
 typedef struct {
-    bsp_button_cb_t cb;
-    void *user_data;
+    bsp_button_cb_t cb; ///< cb value
+    void *user_data; ///< user_data value
 } button_callback_entry_t;
 
 typedef struct {
-    gpio_num_t              gpio;
-    button_state_t          state;
-    uint32_t                press_start_tick;
-    uint32_t                release_tick;
-    uint32_t                stable_state_ticks;
-    bool                    long_press_fired;
-    button_callback_entry_t callbacks[BSP_BUTTON_EVENT_MAX];
+    gpio_num_t              gpio; ///< gpio value
+    button_state_t          state; ///< state value
+    uint32_t                press_start_tick; ///< press_start_tick value
+    uint32_t                release_tick; ///< release_tick value
+    uint32_t                stable_state_ticks; ///< stable_state_ticks value
+    bool                    long_press_fired; ///< long_press_fired value
+    button_callback_entry_t callbacks[BSP_BUTTON_EVENT_MAX]; ///< callbacks[BSP_BUTTON_EVENT_MAX] value
 } button_dev_t;
 
 static button_dev_t        s_buttons[BSP_BUTTON_COUNT];
@@ -105,7 +105,7 @@ static void button_timer_cb(void *arg)
 
             case STATE_PRESSED:
                 if (is_down) {
-                    if (!s_buttons[btn].long_press_fired && 
+                    if (!s_buttons[btn].long_press_fired &&
                         (now - s_buttons[btn].press_start_tick) >= s_cfg.long_press_ms) {
                         s_buttons[btn].long_press_fired = true;
                         fire_event(btn, BSP_BUTTON_EVENT_LONG_PRESS);
@@ -240,8 +240,8 @@ esp_err_t bsp_button_wait_for_click(bsp_button_t button, uint32_t timeout_ms)
         return ESP_ERR_INVALID_ARG;
     }
 
-    gpio_num_t gpio = (button == BSP_BUTTON_BOOT) ? 
-                      (gpio_num_t)BSP_PIN_BUTTON_BOOT : 
+    gpio_num_t gpio = (button == BSP_BUTTON_BOOT) ?
+                      (gpio_num_t)BSP_PIN_BUTTON_BOOT :
                       (gpio_num_t)BSP_PIN_BUTTON_POWER;
 
     int64_t start_us   = esp_timer_get_time();

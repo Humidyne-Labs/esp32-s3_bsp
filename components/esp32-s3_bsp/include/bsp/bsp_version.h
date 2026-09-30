@@ -1,14 +1,14 @@
 /**
  * @file bsp_version.h
  * @brief Board Support Package Version Information & Release Tracking
- * 
+ *
  * Hardware Target:
  *  - Microcontroller: Espressif Systems ESP32-S3-PICO-1-N8R8
  *  - Target Board: Waveshare ESP32-S3 ePaper 1.54 V2
- * 
+ *
  * @attribution
  * - BSP Architecture: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -31,15 +31,17 @@ extern "C" {
 
 /**
  * @brief Get BSP SemVer semantic version string
- * 
+ *
  * @return const char* String formatted as "MAJOR.MINOR.PATCH"
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 const char *bsp_get_version(void);
 
 /**
  * @brief Get BSP version as integer representation
- * 
+ *
  * @return uint32_t Version encoded as (MAJOR << 16) | (MINOR << 8) | PATCH
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 uint32_t bsp_get_version_val(void);
 

@@ -1,12 +1,12 @@
 /**
  * @file bsp_audio.c
  * @brief ES8311 I2S Audio Codec, NS4168 Class-D Mono Amplifier Driver & Synthesized Chimes Implementation
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Unification: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -258,7 +258,7 @@ esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volu
 
     const uint32_t sample_rate   = 16000;
     const size_t   total_samples = (sample_rate * duration_ms) / 1000;
-    
+
     // 5ms attack/decay ramp to eliminate audio clicking
     size_t ramp_samples = (sample_rate * 5) / 1000;
     if (ramp_samples > total_samples / 2) {
@@ -269,7 +269,7 @@ esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volu
     const uint32_t phase_step = (uint32_t)(((uint64_t)freq_hz << 32) / sample_rate);
     uint32_t            phase = 0;
 
-    // Small, static streaming buffer (512 samples = 1 KB). 
+    // Small, static streaming buffer (512 samples = 1 KB).
     // Zero heap allocation, no stack bloat, infinite duration headroom.
     int16_t buffer[512];
     size_t  samples_generated = 0;
@@ -280,7 +280,7 @@ esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volu
 
         for (size_t i = 0; i < chunk; i++) {
             size_t idx = samples_generated + i;
-            
+
             // Top 8 bits map 32-bit phase space into the 256-entry table
             uint8_t lut_idx = (uint8_t)(phase >> 24);
             int32_t sample  = SINE_LUT_256[lut_idx];

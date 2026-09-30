@@ -1,12 +1,12 @@
 /**
  * @file bsp_i2c.c
  * @brief Thread-safe I2C driver implementation for ESP-IDF v5/v6 i2c_master
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Unification: Humidyne Labs / Humiditron (2026)
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -31,8 +31,8 @@ static const int               I2C_TIMEOUT_MS   = 100;
 
 #define MAX_CACHED_DEVICES 8
 typedef struct {
-    uint8_t                 addr;
-    i2c_master_dev_handle_t handle;
+    uint8_t                 addr; ///< addr value
+    i2c_master_dev_handle_t handle; ///< handle value
 } cached_i2c_dev_t;
 
 static cached_i2c_dev_t s_dev_cache[MAX_CACHED_DEVICES];

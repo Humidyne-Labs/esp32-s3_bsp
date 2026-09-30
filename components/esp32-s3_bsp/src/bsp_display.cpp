@@ -1,12 +1,12 @@
 /**
  * @file bsp_display.cpp
  * @brief SSD1681 1.54" 200x200 Monochrome e-Paper Display Driver Implementation
- * 
+ *
  * @attribution
  * - Hardware Schematic & Pin Assignments: Waveshare Electronics (https://www.waveshare.com)
  * - Microcontroller: Espressif Systems ESP32-S3 (https://www.espressif.com)
  * - BSP Unification: Humidyne Labs / Humiditron
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
@@ -210,7 +210,7 @@ static void epd_apply_core_registers(bool is_wake_init)
     epd_send_data(0x03); // Increment X, Increment Y
 
     epd_send_cmd (0x3C);
-    epd_send_data(0x05);  
+    epd_send_data(0x05);
 
     epd_send_cmd (0x18);
     epd_send_data(0x80);
@@ -262,7 +262,7 @@ esp_err_t bsp_display_init(void)
 
     // 2. Initialize SPI Master Bus (GPIO 12 SCLK, GPIO 13 MOSI)
     if (s_spi_handle == NULL) {
-        spi_bus_config_t buscfg = {};        
+        spi_bus_config_t buscfg = {};
         buscfg.mosi_io_num      = BSP_PIN_EPD_MOSI;
         buscfg.miso_io_num      = -1;
         buscfg.sclk_io_num      = BSP_PIN_EPD_SCK;
