@@ -30,13 +30,27 @@
 extern "C" {
 #endif
 
+/*
+typedef struct {
+    float temperature_k;      // !< Temperature in native Kelvin (K)    (e.g. 297.35 K = 24.2 °C = 75.6 °F)
+    float humidity_percent;   // !< Relative Humidity in percent (% RH) (0.0 to 100.0)                     
+    bool  valid;              // !< True if sensor CRC-8 checksum verification succeeded                   
+} bsp_shtc3_data_t;
+*/
+
 /**
  * @brief SHTC3 Environmental Sensor Telemetry Data
  */
 typedef struct {
-    float temperature_k;      /*!< Temperature in native Kelvin (K)    (e.g. 297.35 K = 24.2 °C = 75.6 °F) */
-    float humidity_percent;   /*!< Relative Humidity in percent (% RH) (0.0 to 100.0)                      */
-    bool  valid;              /*!< True if sensor CRC-8 checksum verification succeeded                    */
+    float temperature_c;        /*!< Temperature in Celsius    (°C)   */
+	float temperature_f;        /*!< Temperature in Fahrenheit (°F)   */
+    float temperature_k;        /*!< Temperature in Kelvin     (K)    */
+    float humidity_percent;     /*!< Relative Humidity         (%RH)  */
+    float dew_point_c;          /*!< Dew point in Celsius      (°C)   */
+	float dew_point_f;          /*!< Dew point in Fahrenheit   (°F)   */
+	float dew_point_k;          /*!< Dew point in Kelvin       (K)    */
+    float absolute_humidity_g;  /*!< Absolute Humidity in      (g/m³) */
+    bool  valid;
 } bsp_shtc3_data_t;
 
 /**
@@ -62,13 +76,25 @@ static inline esp_err_t bsp_sensors_init(void) { return bsp_shtc3_init(); }
  * raw ADC words into physical units.
  * 
  * Conversion Equations:
- *  - Temperature: T_Kelvin = 228.15 + (175.0 * raw_temp / 65535.0)
- *  - Humidity:    RH_%     = 100.0 * (raw_rh / 65535.0)
+ *  - Temperature: T_Kelvin = 228.15 + (175.0 * raw_temp / 65536.0)
+ *  - Humidity:    RH_%     = 100.0 * (raw_rh / 65536.0)
  * 
  * @param[out] out_data Destination struct to receive telemetry
  * @return esp_err_t ESP_OK on successful read and valid CRC
  */
 esp_err_t bsp_shtc3_read(bsp_shtc3_data_t *out_data);
+
+/**
+ * @brief Read Temperature and Relative Humidity
+ * 
+ * Executes a low-power measurement sequence with clock stretching disabled,
+ * validates the 8-bit CRC polynomial (0x31) on both data words, and converts
+ * raw ADC words into physical units.
+ * 
+ * @param[out] out_data Destination struct to receive telemetry
+ * @return esp_err_t ESP_OK on successful read and valid CRC
+ */
+esp_err_t bsp_shtc3_read_lp(bsp_shtc3_data_t *out_data);
 
 /**
  * @brief Put SHTC3 Sensor into Ultra-Low Power Sleep Mode (< 0.6 µA)

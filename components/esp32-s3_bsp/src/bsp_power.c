@@ -47,6 +47,13 @@ static const char *TAG = "bsp_power";
 
 // ADC Subsystem Handles (ESP32-S3 GPIO 4 = ADC1_CHANNEL_3)
 #define BSP_ADC_BATTERY_CHANNEL ADC_CHANNEL_3
+#define CORRECTION_FACTOR_MV    0 //mV
+#define BATTERY_LUT_SIZE        (sizeof(s_battery_ocv_lut) / sizeof(s_battery_ocv_lut[0]))
+
+typedef struct {
+    uint16_t voltage_mv;
+    uint8_t  percentage;
+} battery_lut_point_t;
 
 static adc_oneshot_unit_handle_t s_adc_handle          = NULL;
 static adc_cali_handle_t         s_cali_handle         = NULL;
@@ -55,6 +62,23 @@ static bool                      s_led_state           = false;
 static bool                      s_power_inited        = false;
 static bsp_power_off_cb_t        s_shutdown_cb         = NULL;
 static void                      *s_shutdown_user_data = NULL;
+
+// Standard 3.7V Li-ion/LiPo discharge curve (rested OCV) sorted ascending
+static const battery_lut_point_t s_battery_ocv_lut[] = {
+    { 3300,   0 },
+    { 3450,   3 },
+    { 3600,   8 },
+    { 3680,  15 },
+    { 3720,  25 },
+    { 3750,  35 },
+    { 3780,  45 },
+    { 3820,  55 },
+    { 3870,  65 },
+    { 3920,  75 },
+    { 3980,  85 },
+    { 4060,  92 },
+    { 4200, 100 }
+};
 
 /* =========================================================================
  * Internal Calibration Helper
@@ -71,7 +95,7 @@ static bool init_adc_calibration(adc_unit_t unit, adc_channel_t channel, adc_att
             .unit_id = unit,
             .chan = channel,
             .atten = atten,
-            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            .bitwidth = ADC_BITWIDTH_DEFAULT, // 12-bits
         };
         ret = adc_cali_create_scheme_curve_fitting(&cali_config, out_handle);
         if (ret == ESP_OK) calibrated = true;
@@ -84,7 +108,7 @@ static bool init_adc_calibration(adc_unit_t unit, adc_channel_t channel, adc_att
         adc_cali_line_fitting_config_t cali_config = {
             .unit_id = unit,
             .atten = atten,
-            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            .bitwidth = ADC_BITWIDTH_DEFAULT, // 12-bits
         };
         ret = adc_cali_create_scheme_line_fitting(&cali_config, out_handle);
         if (ret == ESP_OK) calibrated = true;
@@ -210,7 +234,7 @@ esp_err_t bsp_power_init(void)
 
     adc_oneshot_chan_cfg_t chan_config = {
         .atten    = ADC_ATTEN_DB_12,       // 0 - 3.1V sensing range
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,  // 12-bits
     };
     err = adc_oneshot_config_channel(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &chan_config);
     if (err != ESP_OK) {
@@ -248,35 +272,34 @@ esp_err_t bsp_battery_get_voltage(uint32_t *out_mv, uint32_t *out_raw)
         if (err != ESP_OK) return err;
     }
 
-    // Multisample ADC for noise rejection (16 samples)
-    const int SAMPLES   = 16;
-    int       raw_accum = 0;
-    int       raw_val   = 0;
-
-    for (int i = 0; i < SAMPLES; i++) {
-        esp_err_t err = adc_oneshot_read(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &raw_val);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "ADC read failed: %s", esp_err_to_name(err));
-            return err;
-        }
-        raw_accum += raw_val;
-    }
-    int raw_avg = raw_accum / SAMPLES;
+	/* Multisampling is no longer needed. */
+	
+	int raw_val = 0;
+	esp_err_t err = adc_oneshot_read(s_adc_handle, BSP_ADC_BATTERY_CHANNEL, &raw_val);
+	if (err != ESP_OK) {
+		ESP_LOGE(TAG, "ADC read failed: %s", esp_err_to_name(err));
+		return err;	
+	}
 
     if (out_raw != NULL) {
-        *out_raw = (uint32_t)raw_avg;
+        *out_raw = (uint32_t)raw_val;
     }
 
     int voltage_mv = 0;
     if (s_calibrated && s_cali_handle != NULL) {
-        adc_cali_raw_to_voltage(s_cali_handle, raw_avg, &voltage_mv);
+        adc_cali_raw_to_voltage(s_cali_handle, raw_val, &voltage_mv);
+		// Display Calibrated Voltage in mV
+		ESP_LOGI(TAG, "ADC Cali Voltage: %" PRIu32 " mV", voltage_mv);
     } else {
-        // Fallback: 12-bit ADC -> 3.3V VREF
-        voltage_mv = (raw_avg * 3300) / 4095;
+		// Fallback: 12-bit ADC with 12 dB attenuation (Vref = 1100 mV, k = 0.25 -> 4400 mV full scale)
+        // Add 2047 before division for half-LSB integer rounding
+        voltage_mv = (((uint32_t)raw_val * 4400) + 2047) / 4095;
+		// Display Non Calibrated Voltage in mV
+		ESP_LOGW(TAG, "[FALLBACK] Uncalibrated ADC Pin Voltage: %" PRIu32 " mV", voltage_mv);
     }
 
-    // Compensate for 1:2 resistor divider (R1=100k, R2=100k -> 2.0x factor)
-    *out_mv = (uint32_t)(voltage_mv * 2);
+    // Compensate for 1:2 'external' resistor divider (R1=200k 1%, R2=200k 1% -> 2.0x factor)
+    *out_mv = (uint32_t)(voltage_mv * 2) + CORRECTION_FACTOR_MV; // R_DIV has a 1% Tolerance.
     return ESP_OK;
 }
 
@@ -289,21 +312,32 @@ uint8_t bsp_battery_get_percentage(void)
         return 100;
     }
 
-    // Standard 3.7V LiPo discharge curve approximation
-    // Full charge: 4200 mV (100%), Nominal: 3700 mV (~50%), Cutoff: 3300 mV (0%)
-    if (vbat_mv >= 4200) return 100;
-    if (vbat_mv <= 3300) return 0;
-
-    if (vbat_mv > 3850) {
-        // 3850mV - 4200mV -> 60% to 100%
-        return (uint8_t)(60 + ((vbat_mv - 3850) * 40) / (4200 - 3850));
-    } else if (vbat_mv > 3650) {
-        // 3650mV - 3850mV -> 20% to 60%
-        return (uint8_t)(20 + ((vbat_mv - 3650) * 40) / (3850 - 3650));
-    } else {
-        // 3300mV - 3650mV -> 0% to 20%
-        return (uint8_t)(((vbat_mv - 3300) * 20) / (3650 - 3300));
+    // 1. Boundary Clamping
+    if (vbat_mv <= s_battery_ocv_lut[0].voltage_mv) {
+        return s_battery_ocv_lut[0].percentage;
     }
+    if (vbat_mv >= s_battery_ocv_lut[BATTERY_LUT_SIZE - 1].voltage_mv) {
+        return s_battery_ocv_lut[BATTERY_LUT_SIZE - 1].percentage;
+    }
+
+    // 2. Linear Interpolation between adjacent points
+    for (size_t i = 1; i < BATTERY_LUT_SIZE; i++) {
+        if (vbat_mv < s_battery_ocv_lut[i].voltage_mv) {
+            uint16_t v_low   = s_battery_ocv_lut[i - 1].voltage_mv;
+            uint16_t v_high  = s_battery_ocv_lut[i].voltage_mv;
+            uint8_t  p_low   = s_battery_ocv_lut[i - 1].percentage;
+            uint8_t  p_high  = s_battery_ocv_lut[i].percentage;
+
+            uint32_t delta_v = v_high - v_low;
+            uint32_t delta_p = p_high - p_low;
+            
+            // Integer interpolation with half-step rounding (+ delta_v / 2)
+            uint32_t interpolated = p_low + (((vbat_mv - v_low) * delta_p + (delta_v / 2)) / delta_v);
+            return (uint8_t)interpolated;
+        }
+    }
+
+    return 100;
 }
 
 bool bsp_battery_is_low(uint8_t threshold_pct)
