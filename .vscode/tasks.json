@@ -1,0 +1,204 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "env": {
+      "PATH": "${env:PATH};C:\\Program Files\\doxygen\\bin;C:\\Program Files (x86)\\doxygen\\bin"
+    }
+  },
+  "tasks": [
+    {
+      "label": "ESP-IDF: Build (dev Profile)",
+      "type": "shell",
+      "command": "idf.py -B build_dev build",
+      "options": {
+        "cwd": "${workspaceFolder}/examples/pinout_example"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "detail": "Builds the pinout_example project using the 'dev' profile (debug symbols, info logging, stack canary) into build_dev/."
+    },
+    {
+      "label": "ESP-IDF: Build (prod Profile)",
+      "type": "shell",
+      "command": "idf.py -B build_prod -D PROFILE=prod build",
+      "options": {
+        "cwd": "${workspaceFolder}/examples/pinout_example"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "problemMatcher": ["$gcc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "detail": "Builds the pinout_example project using the 'prod' profile (PERF optimization, stripped logs, minimal binary size) into build_prod/."
+    },
+    {
+      "label": "ESP-IDF: Build (ci Profile)",
+      "type": "shell",
+      "command": "idf.py -B build_ci -D PROFILE=ci build",
+      "options": {
+        "cwd": "${workspaceFolder}/examples/pinout_example"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "problemMatcher": ["$gcc"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "detail": "Builds the pinout_example project using the 'ci' profile for automated testing into build_ci/."
+    },
+    {
+      "label": "ESP-IDF: Flash (dev Profile)",
+      "type": "shell",
+      "command": "idf.py -B build_dev flash",
+      "options": {
+        "cwd": "${workspaceFolder}/examples/pinout_example"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "detail": "Flashes the 'dev' profile binary onto target hardware."
+    },
+    {
+      "label": "ESP-IDF: Flash (prod Profile)",
+      "type": "shell",
+      "command": "idf.py -B build_prod flash",
+      "options": {
+        "cwd": "${workspaceFolder}/examples/pinout_example"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "detail": "Flashes the 'prod' profile release binary onto target hardware."
+    },
+    {
+      "label": "ESP-IDF: Monitor Serial Console",
+      "type": "shell",
+      "command": "idf.py -B build_dev monitor",
+      "options": {
+        "cwd": "${workspaceFolder}/examples/pinout_example"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "detail": "Opens the serial monitor for the connected target board."
+    },
+    {
+      "label": "ESP-IDF: Clean All Profile Build Directories",
+      "type": "shell",
+      "command": "if (Test-Path build_dev) { Remove-Item -Recurse -Force build_dev }; if (Test-Path build_prod) { Remove-Item -Recurse -Force build_prod }; if (Test-Path build_ci) { Remove-Item -Recurse -Force build_ci }; Get-ChildItem -Filter sdkconfig.* | Where-Object { $_.Name -notlike 'sdkconfig.defaults*' } | Remove-Item -Force",
+      "options": {
+        "cwd": "${workspaceFolder}/examples/pinout_example"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "detail": "Removes all profile build output directories (build_dev, build_prod, build_ci) and generated sdkconfig files."
+    },
+    {
+      "label": "Docs: Generate Full API Reference (Doxygen + Moxygen)",
+      "type": "shell",
+      "command": "doxygen Doxyfile; if ($LASTEXITCODE -eq 0 -or $?) { moxygen --flavor github -a -o docs/api.md docs/doxygen/xml }",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      },
+      "detail": "Runs Doxygen to generate XML and converts it into docs/api.md using Moxygen."
+    },
+    {
+      "label": "Docs: Generate Multi-Page API Reference (docs/api/*.md)",
+      "type": "shell",
+      "command": "doxygen Doxyfile; if ($LASTEXITCODE -eq 0 -or $?) { if (!(Test-Path docs/api)) { New-Item -ItemType Directory -Force -Path docs/api }; moxygen --flavor github -a -g -c -o docs/api/%s.md docs/doxygen/xml }",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": true
+      },
+      "detail": "Runs Doxygen and generates multi-page markdown files categorized by groups and classes."
+    },
+    {
+      "label": "Docs: Run Doxygen Only",
+      "type": "shell",
+      "command": "doxygen Doxyfile",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": true
+      },
+      "detail": "Builds Doxygen documentation (XML and HTML) into docs/doxygen/."
+    },
+    {
+      "label": "Docs: Run Moxygen Only (from existing XML)",
+      "type": "shell",
+      "command": "moxygen --flavor github -a -o docs/api.md docs/doxygen/xml",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "clear": true
+      },
+      "detail": "Converts pre-generated docs/doxygen/xml into docs/api.md."
+    },
+    {
+      "label": "Docs: Clean Generated Documentation",
+      "type": "shell",
+      "command": "if (Test-Path docs/doxygen) { Remove-Item -Recurse -Force docs/doxygen }; if (Test-Path docs/api.md) { Remove-Item -Force docs/api.md }; if (Test-Path docs/api) { Remove-Item -Recurse -Force docs/api }",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "detail": "Removes docs/doxygen/, docs/api/, and docs/api.md."
+    }
+  ]
+}

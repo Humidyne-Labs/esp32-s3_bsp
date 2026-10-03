@@ -1,0 +1,13 @@
+*.lock
+/.agents/
+build/
+build_*/
+sdkconfig
+sdkconfig.*
+!sdkconfig.defaults*
+*.bak
+*.log
+
+# Tracking .vscode
+# /.vscode/
+

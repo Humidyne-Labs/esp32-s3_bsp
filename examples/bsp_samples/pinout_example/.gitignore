@@ -1,0 +1,10 @@
+# ESP-IDF Generated Artifacts & Dependencies
+build/
+build_*/
+managed_components/
+dependencies.lock
+sdkconfig
+sdkconfig.*
+!sdkconfig.defaults*
+*.bak
+*.log
