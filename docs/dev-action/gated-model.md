@@ -218,6 +218,174 @@ int16_t ulp_read_probe_temp_centi_c(void) {
 
 - I'm pretty sure the above bullet points correctly discribe the operating conditions and execution flow with a fair degree of accuracy. If you have questions regarding the operating spec or flow, please draft a detailed concerns_and_questions.md in markdown for review, outline anything that's unclear, or that requires further clarification. Please ***do*** create an internal markdown to document your progress throughout the BSP modification/revision during this session.
 
+---
+
+### Code Expansion
+
+Almost forgot, so while working on this new architecture, we should try to cleanly implement everything. I think the additional maths involved should be placed in a file file pair instead of adding it to the shtc3 bsp layer.
+
+All processing, and low level approximation should be in a custom bsp_equ_math.c file. Infact maybe abstracting all mathematical operation into a single file would be a good idea, that way we can see the logic as opposed to math/logic. We can migrate existing math per case, the main priority should be the demo and bsp.
+
+### Tool Chain Build Environment 
+
+If your able, please doc the build chain setup as a front facing public doc for the repo. Please ***try*** to use C as the ULP language. I don't know if we can program it in C or if it's strictly ASM. I need to explore the documentation and project examples in more detail to confirm the language and syntax.
+
+(see below for information scraped by Gemini)
+
+Yes, you can write native C for the ESP32-S3's ULP. Unlike the legacy ESP32 FSM coprocessor, the ESP32-S3 features an actual 32-bit RV32IMC RISC-V core (base integer + hardware multiply/divide + compressed instructions), allowing complete implementation in standard C without assembly macros.
+Toolchain & Development Environment
+The development environment requires no secondary IDE or external configurations beyond the standard ESP-IDF toolchain.
+
+ * Compiler: riscv32-esp-elf-gcc cross-compiler. ESP-IDF automatically fetches and installs this toolchain alongside the main xtensa-esp32s3-elf-gcc compiler whenever running install.sh or install.ps1.
+
+ * Standard Libraries: Runs a stripped freestanding C environment (no standard dynamic memory allocation/malloc, no POSIX threads). Espressif provides an embedded RTC runtime containing optimized delay, GPIO, I2C, and interrupt primitives in ulp_riscv.h, ulp_riscv_gpio.h, and ulp_riscv_i2c.h.
+
+ * IDE / Build Tools: Standard VS Code (with ESP-IDF extension), CLion, or terminal using idf.py build.
+Project Structure & CMake Integration
+The build chain functions as a nested sub-project compilation. When building the host firmware, ESP-IDF isolates the ULP source tree, invokes the RISC-V compiler to emit a standalone ELF and raw binary, and links the resulting binary symbols directly into the Xtensa application.
+
+### Directory Layout
+```
+my_project/
+├── CMakeLists.txt
+├── sdkconfig
+└── main/
+    ├── CMakeLists.txt
+    ├── main.c              <-- Host Xtensa CPU code (ESP32-S3)
+    └── ulp/
+        └── main.c          <-- ULP RISC-V C source code
+```
+main/CMakeLists.txt
+In ESP-IDF v5.x, link the ULP application using the ulp_embed_binary CMake function:
+```
+idf_component_register(SRCS "main.c"
+                       INCLUDE_DIRS ".")
+
+# Define ULP sub-application
+set(ulp_app_name "ulp_main")
+set(ulp_sources "ulp/main.c")
+set(ulp_exp_dep_srcs "main.c")
+
+ulp_embed_binary(${ulp_app_name} "${ulp_sources}" "${ulp_exp_dep_srcs}")
+```
+Required sdkconfig Flags
+Enable the RISC-V ULP coprocessor in Kconfig (idf.py menuconfig -> Component config -> ESP-IDF ULP configuration):
+```
+CONFIG_ULP_COPROC_ENABLED=y
+CONFIG_ULP_COPROC_TYPE_RISCV=y
+CONFIG_ULP_COPROC_RESERVE_MEM=4096   # Default is 4096 bytes (Max 8192 bytes)
+```
+### How the Build Chain Executes Under the Hood
+When executing idf.py build:
+```
+[ulp/main.c]
+     │
+     ▼  riscv32-esp-elf-gcc (-march=rv32imc -mabi=ilp32)
+[ulp_main.elf]
+     │
+     ▼  riscv32-esp-elf-objcopy
+[ulp_main.bin] ───► Embedded into Xtensa flash image as raw binary blob
+     │
+     ▼  esp32ulp_mapgen.py
+[esp_ulp_main.h] & [ulp_main.ld]
+     │
+     ▼
+Exposes shared global variables to Xtensa compiler with "ulp_" prefix
+```
+ * Sub-Project Compilation: CMake triggers a separate build pipeline using riscv32-esp-elf-gcc with flags -march=rv32imc -mabi=ilp32.
+
+ * Binary Extraction: objcopy extracts raw instructions and data from the generated .elf into ulp_main.bin.
+
+ * Symbol Table Generation: The esp32ulp_mapgen.py script parses the ULP ELF symbol table and creates an interface header (esp_ulp_main.h) and linker script (ulp_main.ld). Any global variable declared in the ULP C code is automatically exported with the prefix ulp_.
+
+ * Binary Embedding: The binary blob is linked into the main application. At runtime, the Xtensa CPU copies this blob into RTC SLOW Memory before booting the ULP.
+Code Architecture: ULP vs. Main CPU
+
+#### 1. ULP Implementation (main/ulp/main.c)
+Global variables declared in file scope reside directly in RTC SLOW memory and are accessible by both cores.
+```
+#include <stdint.h>
+#include "ulp_riscv.h"
+#include "ulp_riscv_utils.h"
+#include "ulp_riscv_gpio.h"
+
+/* Exported to Xtensa CPU via esp_ulp_main.h as 'ulp_sample_counter' */
+volatile uint32_t sample_counter = 0;
+volatile uint32_t wake_threshold = 50;
+
+int main(void) 
+{
+    sample_counter++;
+
+    // Check condition to wake the main CPU
+    if (sample_counter >= wake_threshold) {
+        sample_counter = 0;
+        ulp_riscv_wakeup_main_processor();
+    }
+
+    // Must return or abort to enter low-power sleep until next timer trigger
+    return 0;
+}
+```
+#### 2. Host CPU Loading & Booting (main/main.c)
+```
+#include <stdio.h>
+#include "esp_sleep.h"
+#include "nvs_flash.h"
+#include "ulp_riscv.h"
+#include "ulp_main.h"  // Auto-generated header providing ULP symbols
+
+extern const uint8_t ulp_main_bin_start[] asm("_binary_ulp_main_bin_start");
+extern const uint8_t ulp_main_bin_end[]   asm("_binary_ulp_main_bin_end");
+
+void app_main(void)
+{
+    esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+
+    if (cause != ESP_SLEEP_WAKEUP_ULP) {
+        printf("First boot. Initializing ULP...\n");
+
+        // 1. Load ULP binary into RTC Slow Memory
+        ESP_ERROR_CHECK(ulp_riscv_load_binary(
+            ulp_main_bin_start, 
+            (ulp_main_bin_end - ulp_main_bin_start)
+        ));
+
+        // 2. Set ULP wakeup period (e.g., run every 5 seconds)
+        ulp_set_wakeup_period(0, 5000000);
+
+        // 3. Start the ULP RISC-V timer/engine
+        ESP_ERROR_CHECK(ulp_riscv_run());
+    } else {
+        // Read directly from the shared RTC memory variable
+        printf("Woken by ULP! Counter reached: %lu\n", ulp_sample_counter);
+    }
+
+    // Arm ULP wake source and go to deep sleep
+    ESP_ERROR_CHECK(esp_sleep_enable_ulp_wakeup());
+    esp_deep_sleep_start();
+}
+```
+### Hardware & Memory Constraints
+
+ * Memory Budget: The code, global data, and call stack share a maximum pool of 8 KB (RTC SLOW memory). Running large data structures or deep recursion will collide with the stack.
+
+ * Peripherals: The ULP can directly access RTC GPIOs, RTC I2C (software bit-banged or hardware RTC I2C peripheral), and internal temperature sensors. It cannot access main system peripherals (Standard SPI, standard I2C, UART0/1, Wi-Fi/BT hardware).
+
+ * Clock Speeds: Runs on the internal fast RC oscillator (~17.5 MHz) or XTAL32K / RTC_SLOW_CLK (~136 kHz to ~150 kHz), resulting in much slower instruction execution compared to the 240 MHz Xtensa cores.
+Actionable Setup & Verification Checklist
+
+ * Verify Toolchain Detection: Run riscv32-esp-elf-gcc --version in your terminal. If missing, re-run install.sh / install.ps1 from your IDF_PATH.
+
+ * Apply Configuration: Open sdkconfig and verify CONFIG_ULP_COPROC_TYPE_RISCV=y is set.
+
+ * Check Section Sizing: Build the project with idf.py build and inspect the console output:
+
+   * Confirm ulp_main.bin size is well below CONFIG_ULP_COPROC_RESERVE_MEM (typically under 1.5 KB for basic tasks).
+
+ * Validate Header Output: Confirm build/esp-idf/main/ulp_main/esp_ulp_main.h is generated containing the ulp_ prefixed references for your variables.
+
+
 ### end of page
 
 
