@@ -232,7 +232,7 @@ All processing, and low level approximation should be in a custom bsp_equ_math.c
 
 If your able, please doc the build chain setup as a front facing public doc for the repo. Please ***try*** to use C as the ULP language. I don't know if we can program it in C or if it's strictly ASM. I need to explore the documentation and project examples in more detail to confirm the language and syntax.
 
-(see below for information scraped by Gemini)
+> (see below for information scraped by Gemini)
 
 Yes, you can write native C for the ESP32-S3's ULP. Unlike the legacy ESP32 FSM coprocessor, the ESP32-S3 features an actual 32-bit RV32IMC RISC-V core (base integer + hardware multiply/divide + compressed instructions), allowing complete implementation in standard C without assembly macros.
 Toolchain & Development Environment
