@@ -171,9 +171,6 @@ esp_err_t bsp_button_init(const bsp_button_config_t *config)
         s_cfg.auto_power_off_on_hold = true;
     }
 
-    // 1. Ensure master IO configuration is applied (Buttons on GPIO 0 & 18 with pullups)
-    bsp_init_io();
-
     memset(s_buttons, 0, sizeof(s_buttons));
     s_buttons[BSP_BUTTON_BOOT].gpio  = BSP_PIN_BUTTON_BOOT;
     s_buttons[BSP_BUTTON_POWER].gpio = BSP_PIN_BUTTON_POWER;

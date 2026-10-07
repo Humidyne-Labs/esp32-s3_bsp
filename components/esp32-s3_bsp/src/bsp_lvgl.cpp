@@ -71,9 +71,6 @@ static uint32_t lvgl_tick_get_cb(void)
 
 static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    //ESP_LOGI(TAG, "LVGL flush callback: area=(%d,%d)-(%d,%d), px_map=%p",
-    //         area->x1, area->y1, area->x2, area->y2, (void *)px_map);
-
     // Color Format Defense Guard: Ensure display format is LV_COLOR_FORMAT_I1
     lv_color_format_t cf = lv_display_get_color_format(disp);
     if (cf != LV_COLOR_FORMAT_I1) {
@@ -167,8 +164,6 @@ static void lvgl_display_flush_cb(lv_display_t *disp, const lv_area_t *area, uin
     }
 
     lv_display_flush_ready(disp);
-    //ESP_LOGI("TAG", "LVGL flush callback completed: Area (%d,%d)-(%d,%d), Flush Count %u",
-    //         area->x1, area->y1, area->x2, area->y2, (unsigned)s_flush_counter);
 }
 
 esp_err_t bsp_lvgl_init(void)
@@ -295,15 +290,8 @@ esp_err_t bsp_lvgl_stop(void)
 static void bsp_lvgl_port_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "LVGL port task active on Core %d", xPortGetCoreID());
-    uint32_t loop_cnt = 0;
     while (s_lvgl_task_running) {
         uint32_t delay_ms = lv_timer_handler();
-
-        if (loop_cnt % 100 == 0) {
-            ESP_LOGI(TAG, "Port Task Heartbeat #%lu: lv_timer_handler delay = %lu ms", (unsigned long)loop_cnt, (unsigned long)delay_ms);
-        }
-        loop_cnt++;
-
         if (delay_ms < 5)  delay_ms = 5;
         if (delay_ms > 50) delay_ms = 50;
         vTaskDelay(pdMS_TO_TICKS(delay_ms));

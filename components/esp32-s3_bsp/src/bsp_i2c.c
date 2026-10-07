@@ -32,7 +32,7 @@ static const int               I2C_TIMEOUT_MS   = 100;
 
 #define MAX_CACHED_DEVICES 8
 typedef struct {
-    uint8_t                 addr; ///< addr value
+    uint8_t                 addr;   ///< addr value
     i2c_master_dev_handle_t handle; ///< handle value
 } cached_i2c_dev_t;
 
@@ -85,12 +85,6 @@ esp_err_t bsp_i2c_init(void)
         return ESP_OK;
     }
 
-    // 1. Ensure all board power rails are energized and stable before I2C bus access
-    bsp_init_io();
-    gpio_set_level((gpio_num_t)BSP_PIN_POWER_HOLD, 1); // Main LDO power latch ON
-    gpio_set_level((gpio_num_t)BSP_PIN_EPD_3V3_EN, 0); // EPD, Sensor & I2C Pullup 3.3V ON (Active LOW)
-    vTaskDelay(pdMS_TO_TICKS(15));                     // Allow 3.3V rail & sensor power-on-reset to settle
-
     if (s_i2c_mutex == NULL) {
         s_i2c_mutex = xSemaphoreCreateRecursiveMutex();
         if (s_i2c_mutex == NULL) {
@@ -99,44 +93,22 @@ esp_err_t bsp_i2c_init(void)
         }
     }
 
-    // Hardware I2C Bus Recovery: Drive 9 SCL clock pulses to free any slave stuck pulling SDA low
-    gpio_config_t bus_rec_cfg = {
-        .pin_bit_mask = (1ULL << BSP_PIN_I2C_SCL) | (1ULL << BSP_PIN_I2C_SDA),
-        .mode         = GPIO_MODE_INPUT_OUTPUT_OD,
-        .pull_up_en   = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&bus_rec_cfg);
-    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SDA, 1);
-    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 1);
-    esp_rom_delay_us(10);
+    // 1. Un-hold deep sleep pad latches on SDA and SCL
+    //gpio_hold_dis((gpio_num_t)BSP_PIN_I2C_SDA);
+    //gpio_hold_dis((gpio_num_t)BSP_PIN_I2C_SCL);
 
-    for (int i = 0; i < 9; i++) {
-        gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 0);
-        esp_rom_delay_us(10);
-        gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 1);
-        esp_rom_delay_us(10);
-    }
-    // Generate I2C STOP condition
-    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SDA, 0);
-    esp_rom_delay_us(10);
-    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SCL, 1);
-    esp_rom_delay_us(10);
-    gpio_set_level((gpio_num_t)BSP_PIN_I2C_SDA, 1);
-    esp_rom_delay_us(10);
+    // 2. Reset GPIO driver reservations so i2c_master can claim GPIO 47 and 48 without conflict warnings
+    //gpio_reset_pin((gpio_num_t)BSP_PIN_I2C_SDA);
+    //gpio_reset_pin((gpio_num_t)BSP_PIN_I2C_SCL);
 
-    // Release GPIO pins from standard GPIO driver before handing to I2C controller
-    gpio_reset_pin((gpio_num_t)BSP_PIN_I2C_SDA);
-    gpio_reset_pin((gpio_num_t)BSP_PIN_I2C_SCL);
-
+    // 3. Attach ESP-IDF master bus driver (configures open-drain mode natively)
     i2c_master_bus_config_t bus_config = {
         .i2c_port                     = I2C_NUM_0,
         .sda_io_num                   = (gpio_num_t)BSP_PIN_I2C_SDA,
         .scl_io_num                   = (gpio_num_t)BSP_PIN_I2C_SCL,
         .clk_source                   = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt            = 7,
-        .flags.enable_internal_pullup = false, //uses external pullup pair, 4.7k
+        .flags.enable_internal_pullup = false, // uses external 4.7k pullup pair
     };
 
     esp_err_t ret = i2c_new_master_bus(&bus_config, &s_i2c_bus_handle);
@@ -146,7 +118,7 @@ esp_err_t bsp_i2c_init(void)
     }
 
     s_dev_cache_count = 0;
-    ESP_LOGI(TAG, "Shared I2C master bus initialized (SDA: %d, SCL: %d @ 400kHz)",
+    ESP_LOGI(TAG, "Shared I2C master bus quietly initialized (SDA: %d, SCL: %d @ 400kHz)",
              BSP_PIN_I2C_SDA, BSP_PIN_I2C_SCL);
     return ESP_OK;
 }

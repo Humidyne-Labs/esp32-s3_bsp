@@ -6,7 +6,6 @@ set(bsp_srcs
     "src/bsp_power.c"
     "src/bsp_display.cpp"
     "src/bsp_sensors.c"
-    "src/bsp_sensor_cal.c"
     "src/bsp_sdcard.c"
 
     "src/bsp_audio.c"
@@ -18,7 +17,6 @@ set(bsp_srcs
     "src/bsp_time.c"
     "src/bsp_prov.c"
     "src/bsp_ota.c"
-    "src/bsp_lifecycle.c"
 )
 
 set(bsp_requires
@@ -47,7 +45,6 @@ set(bsp_requires
     lvgl
     esp_mmap_assets
     esp_lv_fs
-    esp_codec_dev
     esp_driver_tsens
 )
 

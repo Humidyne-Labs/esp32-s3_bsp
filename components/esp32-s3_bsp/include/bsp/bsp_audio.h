@@ -132,10 +132,44 @@ esp_err_t bsp_audio_register_default_chimes(void);
 esp_err_t bsp_audio_stop(void);
 
 /**
+ * @brief Permanent DAC-Only Low Power & Thermal Optimization Init
+ *
+ * Disables ADC, PGA, and microphone circuits permanently to prevent heating, lowers
+ * analog bias current to Level 0, and configures soft ramp rates for pop-free Class D operation.
+ *
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_audio_init_dac_only(void);
+
+/**
+ * @brief Runtime Soft Mute and DAC Buffer Purge
+ *
+ * Performs zero-cross DSM soft mute, mutes I2S serial audio stream, flushes DAC RAM,
+ * resets DAC digital filters, and drives NS4168 PA control GPIO accordingly.
+ *
+ * @param[in] enable_mute true to soft mute and purge buffers, false to unmute
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_audio_mute(bool enable_mute);
+
+/**
+ * @brief Deep Power Down Sequence for ES8311 Codec (~0 uA IC current)
+ *
+ * Soft-mutes DAC, powers down analog references, bias generators, and CSM while
+ * keeping the codec power rail active (GPIO 42 LOW) to guarantee I2C bus availability.
+ *
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_audio_power_down(void);
+
+/**
  * @brief Enter Ultra-Low Power Standby Mode (~15 uA)
  *
- * Mutes power amplifier, powers down ES8311 analog/digital blocks via I2C,
- * and halts I2S output channel while leaving codec power rail powered (to prevent I2C bus clamping).
+ * Calls bsp_audio_power_down() to mute power amplifier, power down ES8311 analog/digital blocks via I2C,
+ * and halt I2S output channel while leaving codec power rail powered (to prevent I2C bus clamping).
  *
  * @return esp_err_t ESP_OK on success
  * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
@@ -143,9 +177,9 @@ esp_err_t bsp_audio_stop(void);
 esp_err_t bsp_audio_standby(void);
 
 /**
- * @brief Resume ES8311 Codec from Standby Mode
+ * @brief Resume ES8311 Codec from Standby / Power-Down Mode
  *
- * Restores ES8311 analog/digital power registers, configures low power mode,
+ * Uses VMID fast-charge sequence for pop suppression, restores ES8311 analog/digital power registers,
  * re-enables I2S TX channel, and enables NS4168 power amplifier.
  *
  * @return esp_err_t ESP_OK on success
@@ -167,7 +201,7 @@ esp_err_t bsp_audio_set_low_power_mode(bool enable);
 /**
  * @brief Completely De-initialize Audio Subsystem and Release Resources
  *
- * Places ES8311 into standby, disables and deletes I2S channel, and frees codec device handle.
+ * Places ES8311 into power-down mode, disables and deletes I2S channel, and frees codec device handle.
  *
  * @return esp_err_t ESP_OK on success
  * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.

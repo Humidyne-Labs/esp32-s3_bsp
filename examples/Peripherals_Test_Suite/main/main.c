@@ -57,12 +57,142 @@ static const char *TAG = "test_suite";
  * @brief Standalone Thermal Compensation Continuous Loop Test Switch
  * Set to 1 to run infinite thermal telemetry logging on startup. Set to 0 for standard test suite execution.
  */
-#define ENABLE_THERMAL_LOOP_TEST 0
+#define ENABLE_THERMAL_LOOP_TEST         0
+
+/**
+ * @brief Standalone Deep Sleep Heat-Soak Verification Switch
+ * Set to 1 to run deep sleep cycles reading Temp (°F), RH (%), Vbat (V) & displaying on screen.
+ */
+#define ENABLE_DEEP_SLEEP_HEAT_SOAK_TEST 1
+#define DEEP_SLEEP_SOAK_INTERVAL_SEC     60
+
+
+static void run_thermal_comp_loop_test(void)
+{
+    ESP_LOGI(TAG, "==========================================================================================");
+    ESP_LOGI(TAG, "  STARTING STANDALONE SHTC3 DIRECT TELEMETRY LOOP TEST");
+    ESP_LOGI(TAG, "==========================================================================================");
+
+    uint32_t iteration = 0;
+
+    while (1) {
+        bsp_shtc3_data_t data = {0};
+        if (bsp_shtc3_read(&data) == ESP_OK && data.valid) {
+            ESP_LOGI(TAG, "[#%04lu] SHTC3: %5.2f deg C (%5.2f deg F, %6.2f K) | RH: %5.2f%% | DewPoint: %5.2f deg C | AbsHum: %5.2f g/m3",
+                     (unsigned long)++iteration,
+                     data.temperature_c, data.temperature_f, data.temperature_k,
+                     data.humidity_percent, data.dew_point_c, data.absolute_humidity_g);
+        } else {
+            ESP_LOGE(TAG, "[#%04lu] Telemetry read error", (unsigned long)++iteration);
+        }
+        bsp_delay_ms(1000);
+    }
+}
+
+static void run_deep_sleep_heat_soak_test(void)
+{
+    ESP_LOGI(TAG, "==========================================================================================");
+    ESP_LOGI(TAG, "  STARTING STANDALONE DEEP SLEEP HEAT-SOAK TEST LOOP");
+    ESP_LOGI(TAG, "==========================================================================================");
+
+    bsp_rtc_state_t *rtc_st = bsp_rtc_mem_get_state();
+    uint32_t cycle = rtc_st ? (rtc_st->deep_sleep_count + 1) : 1;
+
+    // 1. Read battery voltage
+    uint32_t vbat_mv = 0;
+    bsp_battery_get_voltage(&vbat_mv, NULL);
+    float vbat_v = (float)vbat_mv / 1000.0f;
+    uint8_t batt_pct = bsp_battery_get_percentage();
+
+    // 2. Read direct SHTC3 environmental telemetry
+    bsp_shtc3_data_t shtc_data = {0};
+    esp_err_t ret = bsp_shtc3_read(&shtc_data);
+
+    float temp_f     = 0.0f;
+    float temp_c     = 0.0f;
+    float rh_pct     = 0.0f;
+    float dew_f      = 0.0f;
+
+    if (ret == ESP_OK && shtc_data.valid) {
+        temp_f     = shtc_data.temperature_f;
+        temp_c     = shtc_data.temperature_c;
+        rh_pct     = shtc_data.humidity_percent;
+        dew_f      = shtc_data.dew_point_f;
+    } else {
+        ESP_LOGE(TAG, "[HEAT SOAK #%04lu] SHTC3 read error: %s", (unsigned long)cycle, bsp_err_to_name(ret));
+    }
+
+    ESP_LOGI(TAG, "[HEAT SOAK #%04lu] SHTC3: %.2f deg F (%.2f deg C) | RH: %.2f %% | DewPoint: %.2f deg F | Vbat: %.3f V (%lu mV, %u%%)",
+             (unsigned long)cycle, temp_f, temp_c, rh_pct, dew_f, vbat_v, (unsigned long)vbat_mv, batt_pct);
+
+    // 3. Render clean readout on E-Paper display
+    bsp_lvgl_lock();
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_clean(scr);
+    lv_obj_set_style_bg_color(scr, lv_color_white(), 0);
+
+    // Header Title
+    lv_obj_t *title = lv_label_create(scr);
+    lv_label_set_text_fmt(title, "HEAT SOAK CYCLE #%lu", (unsigned long)cycle);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 4);
+
+    // Line Separator
+    static lv_point_precise_t line_pts[] = {{8, 22}, {192, 22}};
+    lv_obj_t *line = lv_line_create(scr);
+    lv_line_set_points(line, line_pts, 2);
+    lv_obj_set_style_line_width(line, 1, 0);
+    lv_obj_set_style_line_color(line, lv_color_black(), 0);
+
+    // Temperature (°F)
+    lv_obj_t *lbl_temp = lv_label_create(scr);
+    lv_label_set_text_fmt(lbl_temp, "TEMP: %.1f deg F", temp_f);
+    lv_obj_set_style_text_font(lbl_temp, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_temp, LV_ALIGN_TOP_LEFT, 10, 32);
+
+    // Temperature (°C) & Dew Point Detail Line
+    lv_obj_t *lbl_det = lv_label_create(scr);
+    lv_label_set_text_fmt(lbl_det, "%.1f C | Dew: %.1f F", temp_c, dew_f);
+    lv_obj_set_style_text_font(lbl_det, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_det, LV_ALIGN_TOP_LEFT, 10, 52);
+
+    // Relative Humidity (%)
+    lv_obj_t *lbl_rh = lv_label_create(scr);
+    lv_label_set_text_fmt(lbl_rh, "RH:   %.1f %%", rh_pct);
+    lv_obj_set_style_text_font(lbl_rh, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_rh, LV_ALIGN_TOP_LEFT, 10, 78);
+
+    // Battery Voltage (V)
+    lv_obj_t *lbl_vbat = lv_label_create(scr);
+    lv_label_set_text_fmt(lbl_vbat, "VBAT: %.3f V (%lu mV)", vbat_v, (unsigned long)vbat_mv);
+    lv_obj_set_style_text_font(lbl_vbat, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_vbat, LV_ALIGN_TOP_LEFT, 10, 104);
+
+    // Sleep Footer
+    lv_obj_t *lbl_footer = lv_label_create(scr);
+    lv_label_set_text_fmt(lbl_footer, "Deep Sleep: %ds timer", DEEP_SLEEP_SOAK_INTERVAL_SEC);
+    lv_obj_set_style_text_font(lbl_footer, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_footer, LV_ALIGN_TOP_LEFT, 10, 134);
+
+    bsp_lvgl_unlock();
+
+    // 4. Delay briefly for display frame update completion
+    bsp_delay_ms(1500);
+
+    // 5. Enter Deep Sleep
+    bsp_sleep_config_t sleep_cfg = {
+        .mode           = BSP_SLEEP_MODE_DEEP,
+        .duration_sec   = DEEP_SLEEP_SOAK_INTERVAL_SEC,
+        .wake_sources   = BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_BUTTONS,
+        .next_init_mode = BSP_INIT_MODE_FAST,
+    };
+    bsp_lifecycle_enter_sleep(&sleep_cfg);
+}
 
 
 #pragma pack(push, 1)
 typedef struct {
-    uint8_t magic[4];       /*!< Magic number: "MMAP"                                */
+    uint8_t  magic[4];      /*!< Magic number: "MMAP"                                */
     uint32_t version;       /*!< Version number (0x00010000 for v1.0.0)              */
     uint32_t name_len;      /*!< Length of the asset name in table (including \0)    */
     uint32_t files;         /*!< Total number of assets                              */
@@ -148,22 +278,22 @@ static void run_audio_chirps_test(void)
     // Chirp 1: 523 Hz (C5) @ 0% Volume (Muted baseline check)
     ESP_LOGI(TAG, "  Chirp 1/4: 523 Hz (C5) @ 0%% Volume (Muted Baseline)");
     bsp_audio_play_tone(523, 200, 0.0f);
-    vTaskDelay(pdMS_TO_TICKS(600));
+    bsp_delay_ms(600);
 
     // Chirp 2: 659 Hz (E5) @ 35% Volume (Low Chime)
     ESP_LOGI(TAG, "  Chirp 2/4: 659 Hz (E5) @ 35%% Volume (Low Chime)");
     bsp_audio_play_tone(659, 350, 35.0f);
-    vTaskDelay(pdMS_TO_TICKS(600));
+    bsp_delay_ms(600);
 
     // Chirp 3: 784 Hz (G5) @ 70% Volume (Medium Chime)
     ESP_LOGI(TAG, "  Chirp 3/4: 784 Hz (G5) @ 70%% Volume (Medium Chime)");
     bsp_audio_play_tone(784, 350, 70.0f);
-    vTaskDelay(pdMS_TO_TICKS(600));
+    bsp_delay_ms(600);
 
     // Chirp 4: 1046 Hz (C6) @ 100% Volume (Full High Chime)
     ESP_LOGI(TAG, "  Chirp 4/4: 1046 Hz (C6) @ 100%% Volume (Full High Chime)");
     bsp_audio_play_tone(1046, 450, 100.0f);
-    vTaskDelay(pdMS_TO_TICKS(600));
+    bsp_delay_ms(600);
 
     bsp_audio_stop();
 }
@@ -299,12 +429,12 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
             ESP_LOGI(TAG, ">>> Triggering Interactive Deep Sleep (Wake via BOOT button or Ext RTC INT)... <<<");
             test_ui_render_screen("Interactive Deep Sleep\nWake: BOOT / Ext RTC",
                                   "Indefinite Low Power\nPress BOOT (or RTC) to wake");
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            
+            bsp_delay_ms(1000);
+
             while (bsp_button_is_pressed(BSP_BUTTON_BOOT)) {
-                vTaskDelay(pdMS_TO_TICKS(50));
+                bsp_delay_ms(50);
             }
-            vTaskDelay(pdMS_TO_TICKS(100));
+            bsp_delay_ms(100);
 
             bsp_sleep_config_t cfg = {
                 .mode           = BSP_SLEEP_MODE_DEEP,
@@ -327,7 +457,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
 
         test_ui_render_screen("Executing LS-1 (3s)...\nWake: Internal Timer",
                               "Entering Light Sleep\nAuto-wake in 3 seconds");
-        vTaskDelay(pdMS_TO_TICKS(500));
+        bsp_delay_ms(500);
 
         int64_t t_start = esp_timer_get_time();
         bsp_sleep_config_t ls_cfg = {
@@ -336,7 +466,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
             .wake_sources   = BSP_WAKE_SRC_TIMER,
             .next_init_mode = BSP_INIT_MODE_FAST,
         };
-        esp_err_t ret = bsp_lifecycle_enter_sleep(&ls_cfg);
+        esp_err_t ret = bsp_sleep(&ls_cfg);
         int64_t t_elapsed_ms = (esp_timer_get_time() - t_start) / 1000;
 
         bool healthy = verify_peripherals_healthy();
@@ -365,7 +495,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
 
         test_ui_render_screen("Executing LS-2 (3s)...\nWake: PCF85063A INT",
                               "Arming RTC Countdown (3s)\nEntering Light Sleep");
-        vTaskDelay(pdMS_TO_TICKS(500));
+        bsp_delay_ms(500);
 
         bsp_rtc_set_countdown_timer(3);
         int64_t t_start = esp_timer_get_time();
@@ -375,7 +505,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
             .wake_sources   = BSP_WAKE_SRC_EXTERNAL_RTC,
             .next_init_mode = BSP_INIT_MODE_FAST,
         };
-        esp_err_t ret = bsp_lifecycle_enter_sleep(&ls_cfg);
+        esp_err_t ret = bsp_sleep(&ls_cfg);
         int64_t t_elapsed_ms = (esp_timer_get_time() - t_start) / 1000;
 
         bool healthy = verify_peripherals_healthy();
@@ -408,7 +538,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
 
         test_ui_render_screen("Entering DS-1 (4s)...\nWake: Internal Timer",
                               "Next Boot: FAST Mode\nRe-arming Timer (4s)");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        bsp_delay_ms(1000);
 
         bsp_sleep_config_t ds_cfg = {
             .mode           = BSP_SLEEP_MODE_DEEP,
@@ -416,7 +546,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
             .wake_sources   = BSP_WAKE_SRC_TIMER,
             .next_init_mode = BSP_INIT_MODE_FAST,
         };
-        bsp_lifecycle_enter_sleep(&ds_cfg);
+        bsp_sleep(&ds_cfg);
         return;
     }
 
@@ -432,7 +562,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
 
         test_ui_render_screen("Entering DS-2 (4s)...\nWake: PCF85063A INT",
                               "Next Boot: FAST Mode\nArming RTC Countdown (4s)");
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        bsp_delay_ms(1000);
 
         bsp_sleep_config_t ds_cfg = {
             .mode           = BSP_SLEEP_MODE_DEEP,
@@ -440,7 +570,7 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
             .wake_sources   = BSP_WAKE_SRC_EXTERNAL_RTC,
             .next_init_mode = BSP_INIT_MODE_FAST,
         };
-        bsp_lifecycle_enter_sleep(&ds_cfg);
+        bsp_sleep(&ds_cfg);
         return;
     }
 
@@ -449,14 +579,14 @@ static void button_event_handler(bsp_button_t btn, bsp_button_event_t event, voi
         ESP_LOGI(TAG, ">>> Triggering Interactive Light Sleep (5 sec)... <<<");
         test_ui_render_screen("Interactive Light Sleep\nDuration: 5 seconds",
                               "Auto-wake in 5s\nClick BOOT: Sleep Again");
-        vTaskDelay(pdMS_TO_TICKS(500));
+        bsp_delay_ms(500);
         bsp_sleep_config_t ls_cfg = {
             .mode           = BSP_SLEEP_MODE_LIGHT,
             .duration_sec   = 5,
             .wake_sources   = (bsp_wake_source_mask_t)(BSP_WAKE_SRC_TIMER | BSP_WAKE_SRC_BUTTONS),
             .next_init_mode = BSP_INIT_MODE_FAST,
         };
-        bsp_lifecycle_enter_sleep(&ls_cfg);
+        bsp_sleep(&ls_cfg);
         verify_peripherals_healthy();
         test_ui_render_screen("ALL SLEEP MODES: [PASS]\nLS-1: OK | LS-2: OK\nDS-1: OK | DS-2: OK",
                               "Heartbeat Active\nClick: LS(5s) | Hold: DS");
@@ -548,7 +678,7 @@ static void app_on_wake(const bsp_wake_context_t *ctx, void *user_data)
 
         int count = 0;
         while (1) {
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            bsp_delay_ms(5000);
             count++;
             ESP_LOGI(TAG, "[Heartbeat %d] System Normal. Silicon: %s, Deep Sleeps: %lu, Light Sleeps: %lu",
                      count, bsp_get_chip_revision_str(),
@@ -572,7 +702,7 @@ static void app_on_wake(const bsp_wake_context_t *ctx, void *user_data)
 
         int count = 0;
         while (1) {
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            bsp_delay_ms(5000);
             count++;
             ESP_LOGI(TAG, "[Heartbeat %d] System Normal. Silicon: %s, Deep Sleeps: %lu, Light Sleeps: %lu",
                      count, bsp_get_chip_revision_str(),
@@ -623,18 +753,16 @@ static void app_on_cold_boot(void *user_data)
     }
 
     // ----------------------------------------------------
-    // 4. SHTC3 Environmental Sensor & MCU Thermal Calibration
+    // 4. SHTC3 Environmental Sensor Telemetry
     // ----------------------------------------------------
-    // bsp_sensor_cal_init(); // done durring init!
-    bsp_sensor_cal_data_t cal_data = {0};
-    ret = bsp_sensor_cal_read(&cal_data);
-    if (ret == ESP_OK && cal_data.valid) {
-        ESP_LOGI(TAG, "[PASS 4/15] SHTC3 Calibrated: Temp = %.2f C (Raw: %.2f C, Offset: %.2f C), MCU Die = %.2f C, RH = %.2f %%RH (%s)",
-                 cal_data.temperature_c, cal_data.raw_temperature_c, cal_data.thermal_offset_c,
-                 cal_data.die_temp_c, cal_data.humidity_percent,
-                 cal_data.compensated ? "COMPENSATED" : "RAW_BYPASS");
+    bsp_shtc3_data_t shtc_data = {0};
+    ret = bsp_shtc3_read(&shtc_data);
+    if (ret == ESP_OK && shtc_data.valid) {
+        ESP_LOGI(TAG, "[PASS 4/15] SHTC3 Sensor: Temp = %.2f C (%.2f F, %.2f K), RH = %.2f %%RH, DewPoint = %.2f C, AbsHum = %.2f g/m3",
+                 shtc_data.temperature_c, shtc_data.temperature_f, shtc_data.temperature_k,
+                 shtc_data.humidity_percent, shtc_data.dew_point_c, shtc_data.absolute_humidity_g);
     } else {
-        ESP_LOGE(TAG, "[FAIL 4/15] SHTC3 calibrated sensor read error: %s", bsp_err_to_name(ret));
+        ESP_LOGE(TAG, "[FAIL 4/15] SHTC3 sensor read error: %s", bsp_err_to_name(ret));
     }
 
     // ----------------------------------------------------
@@ -687,13 +815,16 @@ static void app_on_cold_boot(void *user_data)
     // ----------------------------------------------------
     // 8. ES8311 Audio Codec, Low-Power Mode & Acoustic Chimes
     // ----------------------------------------------------
+    /**/
     bsp_audio_power_enable(true);
-    bsp_audio_init();
     run_audio_chirps_test();
+    bsp_delay_ms(300);
     bsp_audio_play_chime(BSP_CHIME_NOTIFY);
-    vTaskDelay(pdMS_TO_TICKS(300));
+    bsp_delay_ms(300);
+    //bsp_audio_play_tone(1000, 10000, 50.0f); 1Khz Frequency Test
     bsp_audio_standby();
     ESP_LOGI(TAG, "[PASS 8/16] Audio Codec, Low-Power Mode & Chimes Verified");
+    /**/
 
     // ----------------------------------------------------
     // 9. Timezone & Formatted Time/Date String Generators
@@ -789,12 +920,13 @@ static void app_on_cold_boot(void *user_data)
     lv_obj_align(badge_img, LV_ALIGN_BOTTOM_RIGHT, -8, -8);
     bsp_lvgl_unlock();
 
-    vTaskDelay(pdMS_TO_TICKS(1500));
+    bsp_delay_ms(1500);
     ESP_LOGI(TAG, "[PASS 13/16] LVGL Zero-Copy Image 'S:test_badge.bin' Decoded & Rendered Successfully");
 
     // ----------------------------------------------------
     // 14. MicroSD Card Detection & FATFS Mount Test
     // ----------------------------------------------------
+    /* *********************************************************
     ret = bsp_sdcard_mount();
     if (ret == ESP_OK) {
         float cap_gb = bsp_sdcard_get_capacity_gb();
@@ -810,6 +942,7 @@ static void app_on_cold_boot(void *user_data)
     } else {
         ESP_LOGW(TAG, "[SKIP 14/16] MicroSD Slot Empty / Not Inserted (Status: %s)", bsp_err_to_name(ret));
     }
+    ********************************************************* */
 
     // ----------------------------------------------------
     // 15. Wi-Fi Station & Passive Network Scanner Test
@@ -850,7 +983,7 @@ static void app_on_cold_boot(void *user_data)
     bsp_lvgl_unlock();
 
     // QR display timeout
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    bsp_delay_ms(3000);
 
     // Clear and display Static Tests Passed UI
     test_ui_render_screen("STATIC TESTS: [PASS]\nClick BOOT: Run LS-1",

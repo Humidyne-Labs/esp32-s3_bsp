@@ -113,7 +113,7 @@ extern "C" {
 #define BSP_PIN_I2S_ASDOUT          GPIO_NUM_16  ///< ES8311 Serial Audio Data Out to ESP32 (DIN)
 #define BSP_PIN_I2S_LRCK            GPIO_NUM_38  ///< ES8311 Left/Right Clock (WS)
 #define BSP_PIN_I2S_DSDIN           GPIO_NUM_45  ///< ES8311 Serial Audio Data In from ESP32 (DOUT)
-#define BSP_PIN_PA_EN               GPIO_NUM_42  ///< NS4168 Power Amp Enable (Active Low: 0=ON)
+#define BSP_PIN_PA_EN               GPIO_NUM_42  ///< ES8311 Power Enable (Active Low: 0=ON)
 #define BSP_PIN_PA_CTRL             GPIO_NUM_46  ///< NS4168 Power Amp Control
 
 #define BSP_GPIO_I2S_MCLK           BSP_PIN_I2S_MCLK

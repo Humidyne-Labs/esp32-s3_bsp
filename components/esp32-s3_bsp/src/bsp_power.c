@@ -42,7 +42,6 @@
 #include "bsp/bsp_splash.h"
 #include "bsp/bsp_lvgl.h"
 #include "bsp/bsp_button.h"
-#include "bsp/bsp_lifecycle.h"
 #include "bsp/bsp.h"
 #include "sdkconfig.h"
 
@@ -219,9 +218,6 @@ esp_err_t bsp_power_init(void)
     if (s_power_inited) return ESP_OK;
 
     ESP_LOGI(TAG, "Initializing Battery ADC Monitor (GPIO %d / ADC1_CH3)", BSP_PIN_BATTERY_ADC);
-
-    // 1. Ensure master IO configuration is applied
-    bsp_init_io();
 
     // 2. Configure ADC1 Channel 3 (GPIO 4) for Battery Sensing
     adc_oneshot_unit_init_cfg_t init_config = {
@@ -407,7 +403,6 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
 
     // 5. Mute Audio Power Amp without cutting codec power rail (prevents I2C bus clamping!)
     bsp_audio_standby();
-    gpio_hold_en((gpio_num_t)BSP_PIN_PA_EN);
 
     // 6. Configure Wakeup Triggers
     uint64_t ext1_pin_mask = 0;
@@ -556,14 +551,30 @@ esp_err_t bsp_enter_sleep(const bsp_sleep_config_t *config)
     rtc_gpio_set_level(BSP_PIN_EPD_DC, 1);
     rtc_gpio_hold_en(BSP_PIN_EPD_DC);
 
-    // Maintain Audio Power Amp Mute (GPIO 42 - non-RTC GPIO)
-    gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 0);
+    // Maintain Audio Power Domain Rail (BSP_PIN_PA_EN Active-LOW: 0=ON) enabled during deep sleep to prevent I2C clamping
+    if (rtc_gpio_is_valid_gpio(BSP_PIN_PA_EN)) {
+        rtc_gpio_init(BSP_PIN_PA_EN);
+        rtc_gpio_set_direction(BSP_PIN_PA_EN, RTC_GPIO_MODE_OUTPUT_ONLY);
+        rtc_gpio_set_level(BSP_PIN_PA_EN, 0);
+        rtc_gpio_hold_en(BSP_PIN_PA_EN);
+    } else {
+        gpio_set_level((gpio_num_t)BSP_PIN_PA_EN, 0);
+        gpio_hold_en((gpio_num_t)BSP_PIN_PA_EN);
+    }
+
+    // Latch Audio Class-D Amp Control (BSP_PIN_PA_CTRL GPIO 46 Active-HIGH: 0=OFF/Muted)
+    gpio_set_level((gpio_num_t)BSP_PIN_PA_CTRL, 0);
+    gpio_hold_en((gpio_num_t)BSP_PIN_PA_CTRL);
 
     // Latch Battery LDO Power Latch (GPIO 17 / BAT_CTRL) HIGH in RTC IO domain so board power is NEVER dropped in deep sleep!
     rtc_gpio_init(BSP_PIN_POWER_HOLD);
     rtc_gpio_set_direction(BSP_PIN_POWER_HOLD, RTC_GPIO_MODE_OUTPUT_ONLY);
     rtc_gpio_set_level(BSP_PIN_POWER_HOLD, 1);
     rtc_gpio_hold_en(BSP_PIN_POWER_HOLD);
+
+    // Latch Shared I2C SDA (GPIO 47) and SCL (GPIO 48) pad state to prevent line glitches during sleep transitions
+    //gpio_hold_en((gpio_num_t)BSP_PIN_I2C_SDA);
+    //gpio_hold_en((gpio_num_t)BSP_PIN_I2C_SCL);
 
     // Enable Global Deep Sleep Pad Hold
     gpio_deep_sleep_hold_en();

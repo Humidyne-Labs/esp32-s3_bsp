@@ -20,8 +20,8 @@
 static const char *TAG = "bsp_rtc_mem";
 
 RTC_DATA_ATTR static bsp_rtc_state_t s_rtc_state;
-RTC_DATA_ATTR static uint8_t         s_rtc_frame_buffer[5000];
-RTC_DATA_ATTR static bool            s_rtc_frame_valid = false;
+RTC_FAST_ATTR static uint8_t         s_rtc_frame_buffer[5000];
+RTC_FAST_ATTR static bool            s_rtc_frame_valid = false;
 static bool                          s_boot_counted    = false;
 
 esp_err_t bsp_rtc_mem_init(void)

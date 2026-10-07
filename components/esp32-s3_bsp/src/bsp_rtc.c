@@ -105,28 +105,12 @@ static bool datetime_is_valid(const bsp_rtc_datetime_t *datetime)
 
 esp_err_t bsp_rtc_init(void)
 {
-    // 1. Ensure master IO configuration is applied (RTC_INT on GPIO 5)
-    bsp_init_io();
-
     // 2. Ensure I2C bus is initialized
     esp_err_t ret = bsp_i2c_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize I2C bus: %s", esp_err_to_name(ret));
         return ret;
     }
-
-    // 3. Fast probe test (3 retries with short 20ms delays)
-	/*
-    bool ready = false;
-    uint8_t test_reg = 0;
-    for (int retry = 0; retry < 3; retry++) {
-        if (bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, &test_reg, 1) == ESP_OK) {
-            ready = true;
-            break;
-        }
-        vTaskDelay(pdMS_TO_TICKS(20));
-    }
-	*/
 
 	uint8_t test_reg = 0x00;
     if (bsp_i2c_read_reg(BSP_I2C_ADDR_PCF85063, BSP_RTC_REG_CONTROL_1, &test_reg, 1) != ESP_OK) {

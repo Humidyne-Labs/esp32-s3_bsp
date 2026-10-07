@@ -22,7 +22,6 @@
 | [`battery_lut_point_t`](#battery_lut_point_t) |  |
 | [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t) | Comprehensive Application Lifecycle Configuration. |
 | [`bsp_button_config_t`](#bsp_button_config_t) | Button Timing & Feature Configuration. |
-| [`bsp_sensor_cal_data_t`](#bsp_sensor_cal_data_t) | Calibrated Environmental & Diagnostic Sensor Telemetry. |
 | [`button_callback_entry_t`](#button_callback_entry_t) |  |
 
 ## Macros
@@ -41,7 +40,7 @@
     .init_rtc     = true,      \
     .init_buttons = true,      \
     .init_audio   = true,      \
-    .audio_volume = 80.0f,     \
+    .audio_volume = 60.0f,     \
     .init_sdcard  = false,     \
     .init_display = true,      \
     .init_nvs     = true,      \
@@ -49,7 +48,7 @@
 }
 ```
 
-Defined in bsp/bsp.h:73
+Defined in bsp/bsp.h:71
 
 Default Hardware Initialization Configuration Macro.
 
@@ -63,9 +62,61 @@ Default Hardware Initialization Configuration Macro.
 #define BSP_CHARSET_UNAMBIGUOUS "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 ```
 
-Defined in bsp/bsp.h:150
+Defined in bsp/bsp.h:148
 
 Base57 character set excluding visually ambiguous characters (0, O, o, 1, l, I).
+
+---
+
+{#bsp_sleep_deep}
+
+### bsp_sleep_deep
+
+```cpp
+#define bsp_sleep_deep(sec) bsp_sleep(&(bsp_sleep_config_t){\
+    .mode           = BSP_SLEEP_MODE_DEEP,\
+    .duration_sec   = (sec),\
+    .wake_sources   = BSP_WAKE_SRC_ALL,\
+    .next_init_mode = BSP_INIT_MODE_FAST\
+})
+```
+
+Defined in bsp/bsp.h:237
+
+Helper Macro for Deep Sleep Entry.
+
+---
+
+{#bsp_sleep_light}
+
+### bsp_sleep_light
+
+```cpp
+#define bsp_sleep_light(sec) bsp_sleep(&(bsp_sleep_config_t){\
+    .mode           = BSP_SLEEP_MODE_LIGHT,\
+    .duration_sec   = (sec),\
+    .wake_sources   = BSP_WAKE_SRC_ALL,\
+    .next_init_mode = BSP_INIT_MODE_FAST\
+})
+```
+
+Defined in bsp/bsp.h:247
+
+Helper Macro for Light Sleep Entry.
+
+---
+
+{#bsp_lifecycle_enter_sleep}
+
+### bsp_lifecycle_enter_sleep
+
+```cpp
+#define bsp_lifecycle_enter_sleep(cfg) bsp_sleep(cfg)
+```
+
+Defined in bsp/bsp.h:311
+
+Legacy Deep Sleep Alias (Maps to bsp_sleep_deep).
 
 ---
 
@@ -627,7 +678,7 @@ ES8311 Serial Audio Data In from ESP32 (DOUT).
 
 Defined in bsp/pinout.h:116
 
-NS4168 Power Amp Enable (Active Low: 0=ON).
+ES8311 Power Enable (Active Low: 0=ON).
 
 ---
 
@@ -1334,6 +1385,438 @@ Default Deep Sleep Configuration Macro.
 
 ---
 
+{#es8311_i2c_addr}
+
+### ES8311_I2C_ADDR
+
+```cpp
+#define ES8311_I2C_ADDR BSP_I2C_ADDR_ES8311
+```
+
+Defined in bsp_audio.c:36
+
+---
+
+{#es8311_reg_reset}
+
+### ES8311_REG_RESET
+
+```cpp
+#define ES8311_REG_RESET 0x00
+```
+
+Defined in bsp_audio.c:38
+
+---
+
+{#es8311_reg_clk_mgr1}
+
+### ES8311_REG_CLK_MGR1
+
+```cpp
+#define ES8311_REG_CLK_MGR1 0x01
+```
+
+Defined in bsp_audio.c:39
+
+---
+
+{#es8311_reg_clk_mgr2}
+
+### ES8311_REG_CLK_MGR2
+
+```cpp
+#define ES8311_REG_CLK_MGR2 0x02
+```
+
+Defined in bsp_audio.c:40
+
+---
+
+{#es8311_reg_clk_mgr3}
+
+### ES8311_REG_CLK_MGR3
+
+```cpp
+#define ES8311_REG_CLK_MGR3 0x03
+```
+
+Defined in bsp_audio.c:41
+
+---
+
+{#es8311_reg_clk_mgr4}
+
+### ES8311_REG_CLK_MGR4
+
+```cpp
+#define ES8311_REG_CLK_MGR4 0x04
+```
+
+Defined in bsp_audio.c:42
+
+---
+
+{#es8311_reg_clk_mgr5}
+
+### ES8311_REG_CLK_MGR5
+
+```cpp
+#define ES8311_REG_CLK_MGR5 0x05
+```
+
+Defined in bsp_audio.c:43
+
+---
+
+{#es8311_reg_clk_mgr6}
+
+### ES8311_REG_CLK_MGR6
+
+```cpp
+#define ES8311_REG_CLK_MGR6 0x06
+```
+
+Defined in bsp_audio.c:44
+
+---
+
+{#es8311_reg_clk_mgr7}
+
+### ES8311_REG_CLK_MGR7
+
+```cpp
+#define ES8311_REG_CLK_MGR7 0x07
+```
+
+Defined in bsp_audio.c:45
+
+---
+
+{#es8311_reg_clk_gate}
+
+### ES8311_REG_CLK_GATE
+
+```cpp
+#define ES8311_REG_CLK_GATE 0x08
+```
+
+Defined in bsp_audio.c:46
+
+---
+
+{#es8311_reg_sdp_in}
+
+### ES8311_REG_SDP_IN
+
+```cpp
+#define ES8311_REG_SDP_IN 0x09
+```
+
+Defined in bsp_audio.c:47
+
+---
+
+{#es8311_reg_sdp_out}
+
+### ES8311_REG_SDP_OUT
+
+```cpp
+#define ES8311_REG_SDP_OUT 0x0A
+```
+
+Defined in bsp_audio.c:48
+
+---
+
+{#es8311_reg_pwr_up_a}
+
+### ES8311_REG_PWR_UP_A
+
+```cpp
+#define ES8311_REG_PWR_UP_A 0x0B
+```
+
+Defined in bsp_audio.c:49
+
+---
+
+{#es8311_reg_system_0c}
+
+### ES8311_REG_SYSTEM_0C
+
+```cpp
+#define ES8311_REG_SYSTEM_0C 0x0C
+```
+
+Defined in bsp_audio.c:50
+
+---
+
+{#es8311_reg_sys_pwr_ana}
+
+### ES8311_REG_SYS_PWR_ANA
+
+```cpp
+#define ES8311_REG_SYS_PWR_ANA 0x0D
+```
+
+Defined in bsp_audio.c:51
+
+---
+
+{#es8311_reg_sys_pga_mod}
+
+### ES8311_REG_SYS_PGA_MOD
+
+```cpp
+#define ES8311_REG_SYS_PGA_MOD 0x0E
+```
+
+Defined in bsp_audio.c:52
+
+---
+
+{#es8311_reg_sys_lp_mod}
+
+### ES8311_REG_SYS_LP_MOD
+
+```cpp
+#define ES8311_REG_SYS_LP_MOD 0x0F
+```
+
+Defined in bsp_audio.c:53
+
+---
+
+{#es8311_reg_sys_bias}
+
+### ES8311_REG_SYS_BIAS
+
+```cpp
+#define ES8311_REG_SYS_BIAS 0x10
+```
+
+Defined in bsp_audio.c:54
+
+---
+
+{#es8311_reg_sys_vmid}
+
+### ES8311_REG_SYS_VMID
+
+```cpp
+#define ES8311_REG_SYS_VMID 0x11
+```
+
+Defined in bsp_audio.c:55
+
+---
+
+{#es8311_reg_dac_pwr}
+
+### ES8311_REG_DAC_PWR
+
+```cpp
+#define ES8311_REG_DAC_PWR 0x12
+```
+
+Defined in bsp_audio.c:56
+
+---
+
+{#es8311_reg_sys_pwr3}
+
+### ES8311_REG_SYS_PWR3
+
+```cpp
+#define ES8311_REG_SYS_PWR3 0x13
+```
+
+Defined in bsp_audio.c:57
+
+---
+
+{#es8311_reg_adc_pwr}
+
+### ES8311_REG_ADC_PWR
+
+```cpp
+#define ES8311_REG_ADC_PWR 0x14
+```
+
+Defined in bsp_audio.c:58
+
+---
+
+{#es8311_reg_adc_gain}
+
+### ES8311_REG_ADC_GAIN
+
+```cpp
+#define ES8311_REG_ADC_GAIN 0x15
+```
+
+Defined in bsp_audio.c:59
+
+---
+
+{#es8311_reg_adc_vol}
+
+### ES8311_REG_ADC_VOL
+
+```cpp
+#define ES8311_REG_ADC_VOL 0x16
+```
+
+Defined in bsp_audio.c:60
+
+---
+
+{#es8311_reg_adc_alc}
+
+### ES8311_REG_ADC_ALC
+
+```cpp
+#define ES8311_REG_ADC_ALC 0x17
+```
+
+Defined in bsp_audio.c:61
+
+---
+
+{#es8311_reg_adc_hpf1}
+
+### ES8311_REG_ADC_HPF1
+
+```cpp
+#define ES8311_REG_ADC_HPF1 0x1B
+```
+
+Defined in bsp_audio.c:62
+
+---
+
+{#es8311_reg_adc_hpf2}
+
+### ES8311_REG_ADC_HPF2
+
+```cpp
+#define ES8311_REG_ADC_HPF2 0x1C
+```
+
+Defined in bsp_audio.c:63
+
+---
+
+{#es8311_reg_dac_mute}
+
+### ES8311_REG_DAC_MUTE
+
+```cpp
+#define ES8311_REG_DAC_MUTE 0x31
+```
+
+Defined in bsp_audio.c:64
+
+---
+
+{#es8311_reg_dac_vol}
+
+### ES8311_REG_DAC_VOL
+
+```cpp
+#define ES8311_REG_DAC_VOL 0x32
+```
+
+Defined in bsp_audio.c:65
+
+---
+
+{#es8311_reg_dac_ramp}
+
+### ES8311_REG_DAC_RAMP
+
+```cpp
+#define ES8311_REG_DAC_RAMP 0x37
+```
+
+Defined in bsp_audio.c:66
+
+---
+
+{#es8311_reg_gpio_cfg}
+
+### ES8311_REG_GPIO_CFG
+
+```cpp
+#define ES8311_REG_GPIO_CFG 0x44
+```
+
+Defined in bsp_audio.c:67
+
+---
+
+{#es8311_reg_gpio_pull}
+
+### ES8311_REG_GPIO_PULL
+
+```cpp
+#define ES8311_REG_GPIO_PULL 0x45
+```
+
+Defined in bsp_audio.c:68
+
+---
+
+{#es8311_reg_chip_id1}
+
+### ES8311_REG_CHIP_ID1
+
+```cpp
+#define ES8311_REG_CHIP_ID1 0xFD
+```
+
+Defined in bsp_audio.c:69
+
+---
+
+{#es8311_reg_chip_id2}
+
+### ES8311_REG_CHIP_ID2
+
+```cpp
+#define ES8311_REG_CHIP_ID2 0xFE
+```
+
+Defined in bsp_audio.c:70
+
+---
+
+{#es8311_reg_chip_ver}
+
+### ES8311_REG_CHIP_VER
+
+```cpp
+#define ES8311_REG_CHIP_VER 0xFF
+```
+
+Defined in bsp_audio.c:71
+
+---
+
+{#sample_chunk_frames}
+
+### SAMPLE_CHUNK_FRAMES
+
+```cpp
+#define SAMPLE_CHUNK_FRAMES 256
+```
+
+Defined in bsp_audio.c:73
+
+---
+
 {#bsp_adc_battery_channel}
 
 ### BSP_ADC_BATTERY_CHANNEL
@@ -1342,7 +1825,7 @@ Default Deep Sleep Configuration Macro.
 #define BSP_ADC_BATTERY_CHANNEL ADC_CHANNEL_3
 ```
 
-Defined in bsp_power.c:52
+Defined in bsp_power.c:51
 
 ---
 
@@ -1354,7 +1837,7 @@ Defined in bsp_power.c:52
 #define CONFIG_BSP_BATTERY_CORRECTION_FACTOR_MV 50
 ```
 
-Defined in bsp_power.c:54
+Defined in bsp_power.c:53
 
 ---
 
@@ -1366,7 +1849,7 @@ Defined in bsp_power.c:54
 #define BATTERY_LUT_SIZE (sizeof(s_battery_ocv_lut) / sizeof(s_battery_ocv_lut[0]))
 ```
 
-Defined in bsp_power.c:56
+Defined in bsp_power.c:55
 
 ---
 
@@ -1449,7 +1932,7 @@ Defined in bsp/bsp_version.h:27
 ### BSP_VERSION_MINOR
 
 ```cpp
-#define BSP_VERSION_MINOR 0
+#define BSP_VERSION_MINOR 1
 ```
 
 Defined in bsp/bsp_version.h:28
@@ -1473,7 +1956,7 @@ Defined in bsp/bsp_version.h:29
 ### BSP_VERSION_STRING
 
 ```cpp
-#define BSP_VERSION_STRING "1.0.0"
+#define BSP_VERSION_STRING "1.1.0"
 ```
 
 Defined in bsp/bsp_version.h:30
@@ -1735,30 +2218,6 @@ Defined in bsp_display.cpp:30
 ```
 
 Defined in bsp_display.cpp:31
-
----
-
-{#c_to_f-1}
-
-### C_TO_F
-
-```cpp
-#define C_TO_F(c) (((c) * 1.8f) + 32.0f)
-```
-
-Defined in bsp_sensor_cal.c:23
-
----
-
-{#c_to_k-1}
-
-### C_TO_K
-
-```cpp
-#define C_TO_K(c) ((c) + 273.15f)
-```
-
-Defined in bsp_sensor_cal.c:24
 
 ## Enumerations
 
@@ -2080,6 +2539,62 @@ Sleep Execution Modes.
 
 ---
 
+{#bsp_cold_boot_cb_t}
+
+### bsp_cold_boot_cb_t
+
+```cpp
+using bsp_cold_boot_cb_t = void(*)
+```
+
+Defined in bsp/bsp.h:182
+
+Callback executed on cold boot (Power-On Reset, Brownout, Software Restart, etc.).
+
+---
+
+{#bsp_wake_cb_t}
+
+### bsp_wake_cb_t
+
+```cpp
+using bsp_wake_cb_t = void(*)
+```
+
+Defined in bsp/bsp.h:187
+
+Callback executed on resume from Deep Sleep or Light Sleep.
+
+---
+
+{#bsp_before_sleep_cb_t}
+
+### bsp_before_sleep_cb_t
+
+```cpp
+using bsp_before_sleep_cb_t = void(*)
+```
+
+Defined in bsp/bsp.h:192
+
+Callback executed right before entering Deep or Light Sleep (for app cleanup / display badge).
+
+---
+
+{#bsp_shutdown_cb_t}
+
+### bsp_shutdown_cb_t
+
+```cpp
+using bsp_shutdown_cb_t = void(*)
+```
+
+Defined in bsp/bsp.h:197
+
+Callback executed immediately prior to system power off / clean shutdown.
+
+---
+
 {#bsp_tb_rpc_cb_t}
 
 ### bsp_tb_rpc_cb_t
@@ -2263,62 +2778,6 @@ Audio Chime Callback Signature.
 | `type` |  | Chime event type |
 | `user_data` |  | User context pointer passed during registration |
 
----
-
-{#bsp_cold_boot_cb_t}
-
-### bsp_cold_boot_cb_t
-
-```cpp
-using bsp_cold_boot_cb_t = void(*)
-```
-
-Defined in bsp/bsp_lifecycle.h:60
-
-Callback executed on cold boot (Power-On Reset, Brownout, Software Restart, etc.).
-
----
-
-{#bsp_wake_cb_t}
-
-### bsp_wake_cb_t
-
-```cpp
-using bsp_wake_cb_t = void(*)
-```
-
-Defined in bsp/bsp_lifecycle.h:65
-
-Callback executed on resume from Deep Sleep or Light Sleep.
-
----
-
-{#bsp_before_sleep_cb_t}
-
-### bsp_before_sleep_cb_t
-
-```cpp
-using bsp_before_sleep_cb_t = void(*)
-```
-
-Defined in bsp/bsp_lifecycle.h:70
-
-Callback executed right before entering Deep or Light Sleep (for app cleanup / display badge).
-
----
-
-{#bsp_shutdown_cb_t}
-
-### bsp_shutdown_cb_t
-
-```cpp
-using bsp_shutdown_cb_t = void(*)
-```
-
-Defined in bsp/bsp_lifecycle.h:75
-
-Callback executed immediately prior to system power off / clean shutdown.
-
 ## Functions
 
 ---
@@ -2331,7 +2790,7 @@ Callback executed immediately prior to system power off / clean shutdown.
 esp_err_t bsp_board_init(void)
 ```
 
-Defined in bsp/bsp.h:96
+Defined in bsp/bsp.h:94
 
 Comprehensive Board Initialization.
 
@@ -2352,7 +2811,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_init_mode(bsp_init_mode_t mode)
 ```
 
-Defined in bsp/bsp.h:108
+Defined in bsp/bsp.h:106
 
 Dynamic Hardware Initialization by Mode (FULL, FAST).
 
@@ -2380,7 +2839,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_board_init_with_config(const bsp_config_t * config)
 ```
 
-Defined in bsp/bsp.h:117
+Defined in bsp/bsp.h:115
 
 Custom Board Initialization.
 
@@ -2405,7 +2864,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_init_io(void)
 ```
 
-Defined in bsp/bsp.h:125
+Defined in bsp/bsp.h:123
 
 Initialize all GPIO output pins (power latch, audio PA, display power rail, LED).
 
@@ -2424,7 +2883,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_get_device_id(char * buf, size_t max_len)
 ```
 
-Defined in bsp/bsp.h:135
+Defined in bsp/bsp.h:133
 
 Retrieve Unique Hardware Device ID string from MAC address (e.g.
 
@@ -2452,7 +2911,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_get_device_name(char * buf, size_t max_len)
 ```
 
-Defined in bsp/bsp.h:145
+Defined in bsp/bsp.h:143
 
 Retrieve Human-Readable Device Name string (e.g.
 
@@ -2480,7 +2939,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_generate_unambiguous_key(char * buf, size_t len, const char * charset)
 ```
 
-Defined in bsp/bsp.h:161
+Defined in bsp/bsp.h:159
 
 Generate a cryptographically random, unambiguous key string (excluding 0, O, o, 1, l, I).
 
@@ -2499,6 +2958,181 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
+{#bsp_app_start}
+
+### bsp_app_start
+
+```cpp
+esp_err_t bsp_app_start(const bsp_app_lifecycle_t * lifecycle)
+```
+
+Defined in bsp/bsp.h:220
+
+Start Unified BSP Application Engine with Lifecycle Hooks.
+
+Automatically initializes RTC memory, inspects reset reason, selects optimal hardware init mode (FULL on cold boot, FAST on wake), populates wake context, clears RTC flags, and dispatches on_cold_boot / on_wake.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `lifecycle` | const [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t) * | Pointer to [bsp_app_lifecycle_t](#bsp_app_lifecycle_t) configuration |
+
+---
+
+{#bsp_sleep}
+
+### bsp_sleep
+
+```cpp
+esp_err_t bsp_sleep(const bsp_sleep_config_t * config)
+```
+
+Defined in bsp/bsp.h:232
+
+Single Unified Sleep Entry Point.
+
+Dispatches before_sleep hook, triggers optional sleep splash/chime, powers down peripherals, arms wake sources, sets RTC pad holds, and enters hardware light or deep sleep.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `config` | const [`bsp_sleep_config_t`](#bsp_sleep_config_t) * | Sleep configuration (mode, duration, wake sources, next init mode) |
+
+---
+
+{#bsp_lifecycle_get_context}
+
+### bsp_lifecycle_get_context
+
+```cpp
+esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t * ctx)
+```
+
+Defined in bsp/bsp.h:261
+
+Retrieve current wake context.
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ctx` | [`bsp_wake_context_t`](#bsp_wake_context_t) * | Pointer to [bsp_wake_context_t](#bsp_wake_context_t) destination |
+
+---
+
+{#bsp_lifecycle_set_stage}
+
+### bsp_lifecycle_set_stage
+
+```cpp
+esp_err_t bsp_lifecycle_set_stage(uint8_t stage)
+```
+
+Defined in bsp/bsp.h:270
+
+Set application stage index in RTC Slow Memory.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `stage` | `uint8_t` | Stage identifier (0..255) |
+
+---
+
+{#bsp_lifecycle_get_stage}
+
+### bsp_lifecycle_get_stage
+
+```cpp
+uint8_t bsp_lifecycle_get_stage(void)
+```
+
+Defined in bsp/bsp.h:278
+
+Get application stage index from RTC Slow Memory.
+
+#### Returns
+uint8_t Current stage identifier
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_lifecycle_save_state}
+
+### bsp_lifecycle_save_state
+
+```cpp
+esp_err_t bsp_lifecycle_save_state(const void * data, size_t len)
+```
+
+Defined in bsp/bsp.h:288
+
+Save custom application state struct to RTC Slow Memory scratchpad (max 31 bytes).
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `const void *` | Source buffer |
+| `len` | `size_t` | Byte count (max 31) |
+
+---
+
+{#bsp_lifecycle_load_state}
+
+### bsp_lifecycle_load_state
+
+```cpp
+esp_err_t bsp_lifecycle_load_state(void * out_data, size_t len)
+```
+
+Defined in bsp/bsp.h:298
+
+Load custom application state struct from RTC Slow Memory scratchpad.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `out_data` | `void *` | Destination buffer |
+| `len` | `size_t` | Byte count (max 31) |
+
+---
+
 {#bsp_system_shutdown}
 
 ### bsp_system_shutdown
@@ -2507,11 +3141,35 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_system_shutdown(void)
 ```
 
-Defined in bsp/bsp.h:167
+Defined in bsp/bsp.h:304
 
-Perform Clean System Shutdown.
+Perform Clean System Shutdown (Deprecates bsp_system_shutdown / bsp_lifecycle_power_off).
 
 Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_lifecycle_power_off}
+
+### bsp_lifecycle_power_off
+
+```cpp
+void bsp_lifecycle_power_off(void)
+```
+
+Defined in bsp/bsp.h:305
+
+---
+
+{#bsp_lifecycle_invoke_shutdown}
+
+### bsp_lifecycle_invoke_shutdown
+
+```cpp
+void bsp_lifecycle_invoke_shutdown(void)
+```
+
+Defined in bsp/bsp.h:306
 
 ---
 
@@ -2523,17 +3181,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_system_deep_sleep(uint32_t sleep_sec)
 ```
 
-Defined in bsp/bsp.h:175
-
-Enter Ultra-Low Power Deep Sleep Mode.
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `sleep_sec` | `uint32_t` | Duration in seconds (0 for button wakeup only) |
+Defined in bsp/bsp.h:312
 
 ---
 
@@ -2545,7 +3193,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_delay_ms(uint32_t ms)
 ```
 
-Defined in bsp/bsp.h:187
+Defined in bsp/bsp.h:324
 
 Generic Millisecond Delay Helper.
 
@@ -2569,7 +3217,7 @@ Memory ownership: none. Behavior: Blocking / Task Yield. Thread safety: Thread-s
 void bsp_delay_us(uint32_t us)
 ```
 
-Defined in bsp/bsp.h:198
+Defined in bsp/bsp.h:335
 
 Generic Microsecond Delay Helper.
 
@@ -4648,7 +5296,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: thread-safe guarantee
 esp_err_t bsp_i2c_deinit(void)
 ```
 
-Defined in bsp_i2c.c:154
+Defined in bsp_i2c.c:126
 
 De-initialize Shared I2C Master Bus.
 
@@ -4667,7 +5315,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 i2c_master_bus_handle_t bsp_i2c_get_handle(void)
 ```
 
-Defined in bsp_i2c.c:182
+Defined in bsp_i2c.c:154
 
 Get the underlying I2C master bus handle.
 
@@ -4686,7 +5334,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_i2c_add_device(const i2c_device_config_t * dev_cfg, i2c_master_dev_handle_t * dev_handle)
 ```
 
-Defined in bsp_i2c.c:190
+Defined in bsp_i2c.c:162
 
 Add a device to the shared I2C master bus.
 
@@ -4712,7 +5360,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_i2c_write(uint8_t addr, const uint8_t * data, size_t len)
 ```
 
-Defined in bsp_i2c.c:200
+Defined in bsp_i2c.c:172
 
 Write Raw Bytes to an I2C Slave Device (Thread-Safe).
 
@@ -4739,7 +5387,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: thread-safe guarantee
 esp_err_t bsp_i2c_read(uint8_t addr, uint8_t * data, size_t len)
 ```
 
-Defined in bsp_i2c.c:220
+Defined in bsp_i2c.c:192
 
 Read Raw Bytes from an I2C Slave Device (Thread-Safe).
 
@@ -4766,7 +5414,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: thread-safe guarantee
 esp_err_t bsp_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t * data, size_t len)
 ```
 
-Defined in bsp_i2c.c:240
+Defined in bsp_i2c.c:212
 
 Write Bytes to a Specific 8-bit Register on an I2C Slave (Thread-Safe).
 
@@ -4794,7 +5442,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: thread-safe guarantee
 esp_err_t bsp_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t * data, size_t len)
 ```
 
-Defined in bsp_i2c.c:259
+Defined in bsp_i2c.c:231
 
 Read Bytes from a Specific 8-bit Register on an I2C Slave (Thread-Safe).
 
@@ -4822,7 +5470,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: thread-safe guarantee
 esp_err_t bsp_i2c_probe(uint8_t addr)
 ```
 
-Defined in bsp_i2c.c:279
+Defined in bsp_i2c.c:251
 
 Probe whether an I2C slave responds on the bus.
 
@@ -5343,7 +5991,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_deinit(void)
 ```
 
-Defined in bsp_rtc.c:152
+Defined in bsp_rtc.c:136
 
 Deinitialize RTC handle and release bus resources.
 
@@ -5361,7 +6009,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_software_reset(void)
 ```
 
-Defined in bsp_rtc.c:157
+Defined in bsp_rtc.c:141
 
 Perform a software reset on the PCF85063A (Command 0x58).
 
@@ -5379,7 +6027,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_is_running(bool * is_running)
 ```
 
-Defined in bsp_rtc.c:163
+Defined in bsp_rtc.c:147
 
 Check if the oscillator is running and time integrity is guaranteed.
 
@@ -5403,7 +6051,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_get_datetime(bsp_rtc_datetime_t * datetime)
 ```
 
-Defined in bsp_rtc.c:176
+Defined in bsp_rtc.c:160
 
 Read current date and time from the RTC in a single atomic transaction.
 
@@ -5427,7 +6075,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_set_datetime(const bsp_rtc_datetime_t * datetime)
 ```
 
-Defined in bsp_rtc.c:200
+Defined in bsp_rtc.c:184
 
 Set current date and time on the RTC and clear the OS (Oscillator Stop) flag.
 
@@ -5451,7 +6099,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_set_offset(int8_t offset, bsp_rtc_offset_mode_t mode)
 ```
 
-Defined in bsp_rtc.c:232
+Defined in bsp_rtc.c:216
 
 Configure the PCF85063A offset calibration register.
 
@@ -5476,7 +6124,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_set_alarm(const bsp_rtc_alarm_t * alarm)
 ```
 
-Defined in bsp_rtc.c:243
+Defined in bsp_rtc.c:227
 
 Configure the PCF85063A hardware alarm.
 
@@ -5500,7 +6148,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_clear_alarm(void)
 ```
 
-Defined in bsp_rtc.c:266
+Defined in bsp_rtc.c:250
 
 Disable and clear the RTC alarm.
 
@@ -5518,7 +6166,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_set_countdown_timer(uint8_t seconds)
 ```
 
-Defined in bsp_rtc.c:277
+Defined in bsp_rtc.c:261
 
 Configure the PCF85063A 1Hz periodic countdown timer.
 
@@ -5542,7 +6190,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_clear_countdown_timer(void)
 ```
 
-Defined in bsp_rtc.c:299
+Defined in bsp_rtc.c:283
 
 Disable the countdown timer.
 
@@ -5560,7 +6208,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_get_and_clear_interrupts(bool * alarm_flag, bool * timer_flag)
 ```
 
-Defined in bsp_rtc.c:310
+Defined in bsp_rtc.c:294
 
 Read and clear interrupt flags (AF / TF) while preserving control registers.
 
@@ -5585,7 +6233,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_disable_clkout(void)
 ```
 
-Defined in bsp_rtc.c:324
+Defined in bsp_rtc.c:308
 
 Disable CLKOUT square wave output on PCF85063A (COF = 0x07).
 
@@ -5606,7 +6254,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_rtc_stop_oscillator(void)
 ```
 
-Defined in bsp_rtc.c:335
+Defined in bsp_rtc.c:319
 
 Stop the PCF85063A 32.768 kHz quartz crystal oscillator.
 
@@ -5627,7 +6275,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_rtc_start_oscillator(void)
 ```
 
-Defined in bsp_rtc.c:349
+Defined in bsp_rtc.c:333
 
 Start/Resume the PCF85063A 32.768 kHz quartz crystal oscillator.
 
@@ -5648,7 +6296,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_rtc_enable_wakeup(bool deep_sleep)
 ```
 
-Defined in bsp_rtc.c:364
+Defined in bsp_rtc.c:348
 
 Configure ESP32-S3 sleep wakeup source from the RTC INT line (GPIO 5).
 
@@ -5672,7 +6320,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 esp_err_t bsp_rtc_ram_read(uint8_t * val)
 ```
 
-Defined in bsp_rtc.c:377
+Defined in bsp_rtc.c:361
 
 Read the PCF85063A 8-bit general storage RAM byte (Register 0x03).
 
@@ -5699,7 +6347,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_rtc_ram_write(uint8_t val)
 ```
 
-Defined in bsp_rtc.c:383
+Defined in bsp_rtc.c:367
 
 Write the PCF85063A 8-bit general storage RAM byte (Register 0x03).
 
@@ -7461,6 +8109,75 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
+{#bsp_audio_init_dac_only}
+
+### bsp_audio_init_dac_only
+
+```cpp
+esp_err_t bsp_audio_init_dac_only(void)
+```
+
+Defined in bsp/bsp_audio.h:143
+
+Permanent DAC-Only Low Power & Thermal Optimization Init.
+
+Disables ADC, PGA, and microphone circuits permanently to prevent heating, lowers analog bias current to Level 0, and configures soft ramp rates for pop-free Class D operation.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_audio_mute}
+
+### bsp_audio_mute
+
+```cpp
+esp_err_t bsp_audio_mute(bool enable_mute)
+```
+
+Defined in bsp/bsp_audio.h:155
+
+Runtime Soft Mute and DAC Buffer Purge.
+
+Performs zero-cross DSM soft mute, mutes I2S serial audio stream, flushes DAC RAM, resets DAC digital filters, and drives NS4168 PA control GPIO accordingly.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `enable_mute` | `bool` | true to soft mute and purge buffers, false to unmute |
+
+---
+
+{#bsp_audio_power_down}
+
+### bsp_audio_power_down
+
+```cpp
+esp_err_t bsp_audio_power_down(void)
+```
+
+Defined in bsp/bsp_audio.h:166
+
+Deep Power Down Sequence for ES8311 Codec (~0 uA IC current).
+
+Soft-mutes DAC, powers down analog references, bias generators, and CSM while keeping the codec power rail active (GPIO 42 LOW) to guarantee I2C bus availability.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
 {#bsp_audio_standby}
 
 ### bsp_audio_standby
@@ -7469,11 +8186,11 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_standby(void)
 ```
 
-Defined in bsp/bsp_audio.h:143
+Defined in bsp/bsp_audio.h:177
 
 Enter Ultra-Low Power Standby Mode (~15 uA).
 
-Mutes power amplifier, powers down ES8311 analog/digital blocks via I2C, and halts I2S output channel while leaving codec power rail powered (to prevent I2C bus clamping).
+Calls [bsp_audio_power_down()](#bsp_audio_power_down) to mute power amplifier, power down ES8311 analog/digital blocks via I2C, and halt I2S output channel while leaving codec power rail powered (to prevent I2C bus clamping).
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -7490,11 +8207,11 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_resume(void)
 ```
 
-Defined in bsp/bsp_audio.h:154
+Defined in bsp/bsp_audio.h:188
 
-Resume ES8311 Codec from Standby Mode.
+Resume ES8311 Codec from Standby / Power-Down Mode.
 
-Restores ES8311 analog/digital power registers, configures low power mode, re-enables I2S TX channel, and enables NS4168 power amplifier.
+Uses VMID fast-charge sequence for pop suppression, restores ES8311 analog/digital power registers, re-enables I2S TX channel, and enables NS4168 power amplifier.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -7511,7 +8228,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_set_low_power_mode(bool enable)
 ```
 
-Defined in bsp/bsp_audio.h:165
+Defined in bsp/bsp_audio.h:199
 
 Enable or Disable ES8311 Low-Power Playback Mode (Reg 0x0F).
 
@@ -7538,11 +8255,11 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_deinit(void)
 ```
 
-Defined in bsp/bsp_audio.h:175
+Defined in bsp/bsp_audio.h:209
 
 Completely De-initialize Audio Subsystem and Release Resources.
 
-Places ES8311 into standby, disables and deletes I2S channel, and frees codec device handle.
+Places ES8311 into power-down mode, disables and deletes I2S channel, and frees codec device handle.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -7871,6 +8588,76 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
+{#audio_play_tone_raw}
+
+### audio_play_tone_raw
+
+`static`
+
+```cpp
+static esp_err_t audio_play_tone_raw(uint32_t freq_hz, uint32_t duration_ms, float volume_pct, bool auto_standby)
+```
+
+Defined in bsp_audio.c:469
+
+---
+
+{#bsp_audio_pa_ctrl_enable}
+
+### bsp_audio_pa_ctrl_enable
+
+`static`
+
+```cpp
+static void bsp_audio_pa_ctrl_enable(bool enable)
+```
+
+Defined in bsp_audio.c:154
+
+---
+
+{#bsp_codec_write_reg}
+
+### bsp_codec_write_reg
+
+`static`
+
+```cpp
+static esp_err_t bsp_codec_write_reg(uint8_t reg, uint8_t val)
+```
+
+Defined in bsp_audio.c:123
+
+---
+
+{#bsp_codec_read_reg}
+
+### bsp_codec_read_reg
+
+`static`
+
+```cpp
+static esp_err_t bsp_codec_read_reg(uint8_t reg, uint8_t * val)
+```
+
+Defined in bsp_audio.c:129
+
+---
+
+{#_audio_codec_debug_reg_dump}
+
+### _audio_codec_debug_reg_dump
+
+`static`
+
+```cpp
+static void _audio_codec_debug_reg_dump(void)
+```
+
+Defined in bsp_audio.c:135
+
+---
+
 {#bsp_audio_power_enable-1}
 
 ### bsp_audio_power_enable
@@ -7879,7 +8666,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_audio_power_enable(bool enable)
 ```
 
-Defined in bsp_audio.c:79
+Defined in bsp_audio.c:147
 
 Control Power Rail for Audio Subsystem (GPIO 42).
 
@@ -7893,6 +8680,27 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
+{#bsp_audio_init_dac_only-1}
+
+### bsp_audio_init_dac_only
+
+```cpp
+esp_err_t bsp_audio_init_dac_only(void)
+```
+
+Defined in bsp_audio.c:162
+
+Permanent DAC-Only Low Power & Thermal Optimization Init.
+
+Disables ADC, PGA, and microphone circuits permanently to prevent heating, lowers analog bias current to Level 0, and configures soft ramp rates for pop-free Class D operation.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
 {#bsp_audio_init-1}
 
 ### bsp_audio_init
@@ -7901,7 +8709,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_init(void)
 ```
 
-Defined in bsp_audio.c:85
+Defined in bsp_audio.c:228
 
 Initialize I2S Master Channel & ES8311 Audio Codec.
 
@@ -7914,31 +8722,6 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
-{#bsp_audio_set_volume-1}
-
-### bsp_audio_set_volume
-
-```cpp
-esp_err_t bsp_audio_set_volume(float volume)
-```
-
-Defined in bsp_audio.c:211
-
-Set Software Audio Gain / Volume Scaling.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `volume` | `float` | Volume level from 0.0 (mute) to 100.0 (maximum) |
-
----
-
 {#bsp_audio_play-1}
 
 ### bsp_audio_play
@@ -7947,7 +8730,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_play(const void * data, size_t len, size_t * bytes_written)
 ```
 
-Defined in bsp_audio.c:228
+Defined in bsp_audio.c:324
 
 Play Raw PCM Audio Buffer.
 
@@ -7966,6 +8749,121 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
+{#bsp_audio_set_volume-1}
+
+### bsp_audio_set_volume
+
+```cpp
+esp_err_t bsp_audio_set_volume(float volume)
+```
+
+Defined in bsp_audio.c:339
+
+Set Software Audio Gain / Volume Scaling.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `volume` | `float` | Volume level from 0.0 (mute) to 100.0 (maximum) |
+
+---
+
+{#bsp_audio_mute-1}
+
+### bsp_audio_mute
+
+```cpp
+esp_err_t bsp_audio_mute(bool enable_mute)
+```
+
+Defined in bsp_audio.c:358
+
+Runtime Soft Mute and DAC Buffer Purge.
+
+Performs zero-cross DSM soft mute, mutes I2S serial audio stream, flushes DAC RAM, resets DAC digital filters, and drives NS4168 PA control GPIO accordingly.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `enable_mute` | `bool` | true to soft mute and purge buffers, false to unmute |
+
+---
+
+{#bsp_audio_power_down-1}
+
+### bsp_audio_power_down
+
+```cpp
+esp_err_t bsp_audio_power_down(void)
+```
+
+Defined in bsp_audio.c:373
+
+Deep Power Down Sequence for ES8311 Codec (~0 uA IC current).
+
+Soft-mutes DAC, powers down analog references, bias generators, and CSM while keeping the codec power rail active (GPIO 42 LOW) to guarantee I2C bus availability.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_audio_standby-1}
+
+### bsp_audio_standby
+
+```cpp
+esp_err_t bsp_audio_standby(void)
+```
+
+Defined in bsp_audio.c:413
+
+Enter Ultra-Low Power Standby Mode (~15 uA).
+
+Calls [bsp_audio_power_down()](#bsp_audio_power_down) to mute power amplifier, power down ES8311 analog/digital blocks via I2C, and halt I2S output channel while leaving codec power rail powered (to prevent I2C bus clamping).
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_audio_resume-1}
+
+### bsp_audio_resume
+
+```cpp
+esp_err_t bsp_audio_resume(void)
+```
+
+Defined in bsp_audio.c:418
+
+Resume ES8311 Codec from Standby / Power-Down Mode.
+
+Uses VMID fast-charge sequence for pop suppression, restores ES8311 analog/digital power registers, re-enables I2S TX channel, and enables NS4168 power amplifier.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
 {#bsp_audio_stop-1}
 
 ### bsp_audio_stop
@@ -7974,7 +8872,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_stop(void)
 ```
 
-Defined in bsp_audio.c:249
+Defined in bsp_audio.c:443
 
 Stop Active Audio Playback and Mute Amplifier.
 
@@ -7993,7 +8891,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_set_low_power_mode(bool enable)
 ```
 
-Defined in bsp_audio.c:257
+Defined in bsp_audio.c:449
 
 Enable or Disable ES8311 Low-Power Playback Mode (Reg 0x0F).
 
@@ -8012,69 +8910,6 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
-{#bsp_audio_standby-1}
-
-### bsp_audio_standby
-
-```cpp
-esp_err_t bsp_audio_standby(void)
-```
-
-Defined in bsp_audio.c:276
-
-Enter Ultra-Low Power Standby Mode (~15 uA).
-
-Mutes power amplifier, powers down ES8311 analog/digital blocks via I2C, and halts I2S output channel while leaving codec power rail powered (to prevent I2C bus clamping).
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_audio_resume-1}
-
-### bsp_audio_resume
-
-```cpp
-esp_err_t bsp_audio_resume(void)
-```
-
-Defined in bsp_audio.c:310
-
-Resume ES8311 Codec from Standby Mode.
-
-Restores ES8311 analog/digital power registers, configures low power mode, re-enables I2S TX channel, and enables NS4168 power amplifier.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_audio_deinit-1}
-
-### bsp_audio_deinit
-
-```cpp
-esp_err_t bsp_audio_deinit(void)
-```
-
-Defined in bsp_audio.c:349
-
-Completely De-initialize Audio Subsystem and Release Resources.
-
-Places ES8311 into standby, disables and deletes I2S channel, and frees codec device handle.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
 {#bsp_audio_play_tone-1}
 
 ### bsp_audio_play_tone
@@ -8083,7 +8918,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_play_tone(uint32_t freq_hz, uint32_t duration_ms, float volume_pct)
 ```
 
-Defined in bsp_audio.c:374
+Defined in bsp_audio.c:534
 
 Play Synthesized Sine Tone.
 
@@ -8112,7 +8947,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_audio_play_chime(bsp_chime_type_t type)
 ```
 
-Defined in bsp_audio.c:452
+Defined in bsp_audio.c:539
 
 Play Built-in Synthesized Acoustic System Chime / Notification Sound.
 
@@ -8139,17 +8974,17 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
-{#bsp_default_chime_dispatcher}
+{#bsp_audio_chime_wrapper_cb}
 
-### bsp_default_chime_dispatcher
+### bsp_audio_chime_wrapper_cb
 
 `static`
 
 ```cpp
-static void bsp_default_chime_dispatcher(bsp_chime_type_t type, void * user_data)
+static void bsp_audio_chime_wrapper_cb(bsp_chime_type_t type, void * user_data)
 ```
 
-Defined in bsp_audio.c:515
+Defined in bsp_audio.c:596
 
 ---
 
@@ -8161,11 +8996,32 @@ Defined in bsp_audio.c:515
 esp_err_t bsp_audio_register_default_chimes(void)
 ```
 
-Defined in bsp_audio.c:521
+Defined in bsp_audio.c:602
 
 Register Built-in Chimes with the System Notification Dispatcher.
 
 Automatically connects all [bsp_chime_type_t](#bsp_chime_type_t) event types to [bsp_audio_play_chime()](#bsp_audio_play_chime), enabling out-of-the-box acoustic feedback on boot, wake, sleep, shutdown, alarms, and UI clicks.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_audio_deinit-1}
+
+### bsp_audio_deinit
+
+```cpp
+esp_err_t bsp_audio_deinit(void)
+```
+
+Defined in bsp_audio.c:614
+
+Completely De-initialize Audio Subsystem and Release Resources.
+
+Places ES8311 into power-down mode, disables and deletes I2S channel, and frees codec device handle.
 
 #### Returns
 esp_err_t ESP_OK on success
@@ -8184,7 +9040,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 static bool init_adc_calibration(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t * out_handle)
 ```
 
-Defined in bsp_power.c:91
+Defined in bsp_power.c:90
 
 ---
 
@@ -8196,7 +9052,7 @@ Defined in bsp_power.c:91
 esp_err_t bsp_power_hold(void)
 ```
 
-Defined in bsp_power.c:135
+Defined in bsp_power.c:134
 
 Assert Power Latch (GPIO 17 HIGH) to keep LDO active.
 
@@ -8215,7 +9071,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_power_release(void)
 ```
 
-Defined in bsp_power.c:140
+Defined in bsp_power.c:139
 
 Release Power Latch (GPIO 17 LOW) to shut off battery power.
 
@@ -8234,7 +9090,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_power_register_shutdown_cb(bsp_power_off_cb_t cb, void * user_data)
 ```
 
-Defined in bsp_power.c:146
+Defined in bsp_power.c:145
 
 Register custom shutdown callback hook.
 
@@ -8262,7 +9118,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_power_unregister_shutdown_cb(void)
 ```
 
-Defined in bsp_power.c:153
+Defined in bsp_power.c:152
 
 Unregister shutdown callback hook.
 
@@ -8281,7 +9137,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_power_off(void)
 ```
 
-Defined in bsp_power.c:160
+Defined in bsp_power.c:159
 
 Turn board completely off.
 
@@ -8299,7 +9155,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_power_init(void)
 ```
 
-Defined in bsp_power.c:217
+Defined in bsp_power.c:216
 
 Initialize Power Subsystem & Battery ADC Monitor.
 
@@ -8320,7 +9176,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_led_set(bool state)
 ```
 
-Defined in bsp_power.c:254
+Defined in bsp_power.c:250
 
 Set Status LED Output State.
 
@@ -8342,7 +9198,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_led_toggle(void)
 ```
 
-Defined in bsp_power.c:261
+Defined in bsp_power.c:257
 
 Toggle Status LED Output State.
 
@@ -8358,7 +9214,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_battery_get_voltage(uint32_t * out_mv, uint32_t * out_raw)
 ```
 
-Defined in bsp_power.c:266
+Defined in bsp_power.c:262
 
 Read Raw and Calibrated Battery Terminal Voltage.
 
@@ -8386,7 +9242,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 uint8_t bsp_battery_get_percentage(void)
 ```
 
-Defined in bsp_power.c:309
+Defined in bsp_power.c:305
 
 Calculate Approximate Battery Remaining Percentage (0 - 100%).
 
@@ -8407,7 +9263,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 bool bsp_battery_is_low(uint8_t threshold_pct)
 ```
 
-Defined in bsp_power.c:346
+Defined in bsp_power.c:342
 
 Check if Battery is in Low Warning / Critical Condition.
 
@@ -8432,7 +9288,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_reset_reason_t bsp_get_reset_reason(void)
 ```
 
-Defined in bsp_power.c:351
+Defined in bsp_power.c:347
 
 Get the system reset reason reported by ESP-IDF.
 
@@ -8451,7 +9307,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_sleep_wakeup_cause_t bsp_get_wakeup_cause(void)
 ```
 
-Defined in bsp_power.c:356
+Defined in bsp_power.c:352
 
 Get the sleep wakeup cause reported by ESP-IDF.
 
@@ -8470,7 +9326,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 bsp_init_mode_t bsp_get_recommended_init_mode(void)
 ```
 
-Defined in bsp_power.c:364
+Defined in bsp_power.c:360
 
 Determine the recommended hardware initialization mode based on reset & wake history.
 
@@ -8489,7 +9345,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_enter_sleep(const bsp_sleep_config_t * config)
 ```
 
-Defined in bsp_power.c:379
+Defined in bsp_power.c:375
 
 Low-Level Sleep Execution Driver (Light or Deep Sleep).
 
@@ -9017,7 +9873,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_button_register_cb(bsp_button_t button, bsp_button_event_t event, bsp_button_cb_t cb, void * user_data)
 ```
 
-Defined in bsp_button.c:215
+Defined in bsp_button.c:212
 
 Register Callback for Button Event.
 
@@ -9045,7 +9901,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_button_unregister_cb(bsp_button_t button, bsp_button_event_t event)
 ```
 
-Defined in bsp_button.c:225
+Defined in bsp_button.c:222
 
 Unregister Callback for Button Event.
 
@@ -9071,7 +9927,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 bool bsp_button_is_pressed(bsp_button_t button)
 ```
 
-Defined in bsp_button.c:230
+Defined in bsp_button.c:227
 
 Check if button is currently pressed down.
 
@@ -9096,7 +9952,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_button_wait_for_click(bsp_button_t button, uint32_t timeout_ms)
 ```
 
-Defined in bsp_button.c:238
+Defined in bsp_button.c:235
 
 Synchronously block and wait for a button click (press + release).
 
@@ -9292,7 +10148,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_board_init_with_config(const bsp_config_t * config)
 ```
 
-Defined in bsp_common.c:257
+Defined in bsp_common.c:266
 
 Custom Board Initialization.
 
@@ -9317,7 +10173,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_init_mode(bsp_init_mode_t mode)
 ```
 
-Defined in bsp_common.c:359
+Defined in bsp_common.c:366
 
 Dynamic Hardware Initialization by Mode (FULL, FAST).
 
@@ -9345,7 +10201,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_generate_unambiguous_key(char * buf, size_t len, const char * charset)
 ```
 
-Defined in bsp_common.c:396
+Defined in bsp_common.c:402
 
 Generate a cryptographically random, unambiguous key string (excluding 0, O, o, 1, l, I).
 
@@ -9372,7 +10228,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_board_init(void)
 ```
 
-Defined in bsp_common.c:411
+Defined in bsp_common.c:417
 
 Comprehensive Board Initialization.
 
@@ -9385,6 +10241,154 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
+{#bsp_lifecycle_get_context-1}
+
+### bsp_lifecycle_get_context
+
+```cpp
+esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t * ctx)
+```
+
+Defined in bsp_common.c:428
+
+Retrieve current wake context.
+
+#### Returns
+esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ctx` | [`bsp_wake_context_t`](#bsp_wake_context_t) * | Pointer to [bsp_wake_context_t](#bsp_wake_context_t) destination |
+
+---
+
+{#bsp_lifecycle_set_stage-1}
+
+### bsp_lifecycle_set_stage
+
+```cpp
+esp_err_t bsp_lifecycle_set_stage(uint8_t stage)
+```
+
+Defined in bsp_common.c:437
+
+Set application stage index in RTC Slow Memory.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `stage` | `uint8_t` | Stage identifier (0..255) |
+
+---
+
+{#bsp_lifecycle_get_stage-1}
+
+### bsp_lifecycle_get_stage
+
+```cpp
+uint8_t bsp_lifecycle_get_stage(void)
+```
+
+Defined in bsp_common.c:448
+
+Get application stage index from RTC Slow Memory.
+
+#### Returns
+uint8_t Current stage identifier
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_lifecycle_save_state-1}
+
+### bsp_lifecycle_save_state
+
+```cpp
+esp_err_t bsp_lifecycle_save_state(const void * data, size_t len)
+```
+
+Defined in bsp_common.c:457
+
+Save custom application state struct to RTC Slow Memory scratchpad (max 31 bytes).
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `const void *` | Source buffer |
+| `len` | `size_t` | Byte count (max 31) |
+
+---
+
+{#bsp_lifecycle_load_state-1}
+
+### bsp_lifecycle_load_state
+
+```cpp
+esp_err_t bsp_lifecycle_load_state(void * out_data, size_t len)
+```
+
+Defined in bsp_common.c:470
+
+Load custom application state struct from RTC Slow Memory scratchpad.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `out_data` | `void *` | Destination buffer |
+| `len` | `size_t` | Byte count (max 31) |
+
+---
+
+{#bsp_sleep-1}
+
+### bsp_sleep
+
+```cpp
+esp_err_t bsp_sleep(const bsp_sleep_config_t * config)
+```
+
+Defined in bsp_common.c:483
+
+Single Unified Sleep Entry Point.
+
+Dispatches before_sleep hook, triggers optional sleep splash/chime, powers down peripherals, arms wake sources, sets RTC pad holds, and enters hardware light or deep sleep.
+
+#### Returns
+esp_err_t ESP_OK on success
+
+Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `config` | const [`bsp_sleep_config_t`](#bsp_sleep_config_t) * | Sleep configuration (mode, duration, wake sources, next init mode) |
+
+---
+
 {#bsp_system_shutdown-1}
 
 ### bsp_system_shutdown
@@ -9393,11 +10397,35 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_system_shutdown(void)
 ```
 
-Defined in bsp_common.c:418
+Defined in bsp_common.c:499
 
-Perform Clean System Shutdown.
+Perform Clean System Shutdown (Deprecates bsp_system_shutdown / bsp_lifecycle_power_off).
 
 Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+
+---
+
+{#bsp_lifecycle_power_off-1}
+
+### bsp_lifecycle_power_off
+
+```cpp
+void bsp_lifecycle_power_off(void)
+```
+
+Defined in bsp_common.c:504
+
+---
+
+{#bsp_lifecycle_invoke_shutdown-1}
+
+### bsp_lifecycle_invoke_shutdown
+
+```cpp
+void bsp_lifecycle_invoke_shutdown(void)
+```
+
+Defined in bsp_common.c:509
 
 ---
 
@@ -9409,9 +10437,26 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_system_deep_sleep(uint32_t sleep_sec)
 ```
 
-Defined in bsp_common.c:425
+Defined in bsp_common.c:517
 
-Enter Ultra-Low Power Deep Sleep Mode.
+---
+
+{#bsp_app_start-1}
+
+### bsp_app_start
+
+```cpp
+esp_err_t bsp_app_start(const bsp_app_lifecycle_t * lifecycle)
+```
+
+Defined in bsp_common.c:522
+
+Start Unified BSP Application Engine with Lifecycle Hooks.
+
+Automatically initializes RTC memory, inspects reset reason, selects optimal hardware init mode (FULL on cold boot, FAST on wake), populates wake context, clears RTC flags, and dispatches on_cold_boot / on_wake.
+
+#### Returns
+esp_err_t ESP_OK on success
 
 Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
 
@@ -9419,7 +10464,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `sleep_sec` | `uint32_t` | Duration in seconds (0 for button wakeup only) |
+| `lifecycle` | const [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t) * | Pointer to [bsp_app_lifecycle_t](#bsp_app_lifecycle_t) configuration |
 
 ---
 
@@ -9431,7 +10476,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_get_device_id(char * buf, size_t max_len)
 ```
 
-Defined in bsp_common.c:436
+Defined in bsp_common.c:611
 
 Retrieve Unique Hardware Device ID string from MAC address (e.g.
 
@@ -9459,7 +10504,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_get_device_name(char * buf, size_t max_len)
 ```
 
-Defined in bsp_common.c:450
+Defined in bsp_common.c:625
 
 Retrieve Human-Readable Device Name string (e.g.
 
@@ -9487,7 +10532,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_delay_ms(uint32_t ms)
 ```
 
-Defined in bsp_common.c:464
+Defined in bsp_common.c:639
 
 Generic Millisecond Delay Helper.
 
@@ -9511,7 +10556,7 @@ Memory ownership: none. Behavior: Blocking / Task Yield. Thread safety: Thread-s
 void bsp_delay_us(uint32_t us)
 ```
 
-Defined in bsp_common.c:474
+Defined in bsp_common.c:649
 
 Generic Microsecond Delay Helper.
 
@@ -9537,7 +10582,7 @@ Memory ownership: none. Behavior: Busy-wait delay. Thread safety: Thread-safe.
 static void bsp_lvgl_port_task(void * pvParameters)
 ```
 
-Defined in bsp_lvgl.cpp:295
+Defined in bsp_lvgl.cpp:290
 
 ---
 
@@ -9633,7 +10678,7 @@ Defined in bsp_lvgl.cpp:72
 esp_err_t bsp_lvgl_init(void)
 ```
 
-Defined in bsp_lvgl.cpp:174
+Defined in bsp_lvgl.cpp:169
 
 Initialize LVGL v9 Graphics Subsystem and Register Display Port.
 
@@ -9654,7 +10699,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_lvgl_set_first_flush_mode(bool full_refresh)
 ```
 
-Defined in bsp_lvgl.cpp:232
+Defined in bsp_lvgl.cpp:227
 
 Configure whether the next LVGL display flush performs a full OTP refresh or fast partial update.
 
@@ -9676,7 +10721,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_lvgl_start(int priority, int core_id)
 ```
 
-Defined in bsp_lvgl.cpp:237
+Defined in bsp_lvgl.cpp:232
 
 Start LVGL Background FreeRTOS Execution Task.
 
@@ -9702,7 +10747,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_lvgl_stop(void)
 ```
 
-Defined in bsp_lvgl.cpp:282
+Defined in bsp_lvgl.cpp:277
 
 Stop LVGL Background FreeRTOS Execution Task.
 
@@ -11071,213 +12116,6 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 
 ---
 
-{#bsp_app_start}
-
-### bsp_app_start
-
-```cpp
-esp_err_t bsp_app_start(const bsp_app_lifecycle_t * lifecycle)
-```
-
-Defined in bsp/bsp_lifecycle.h:99
-
-Start BSP Application Engine with Lifecycle Hooks.
-
-Automatically initializes RTC memory, inspects reset reason, selects the optimal hardware initialization mode (FULL on cold boot, FAST/MIN on wake), populates the wake context, and dispatches to on_cold_boot or on_wake.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `lifecycle` | const [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t) * | Pointer to [bsp_app_lifecycle_t](#bsp_app_lifecycle_t) configuration |
-
----
-
-{#bsp_lifecycle_get_context}
-
-### bsp_lifecycle_get_context
-
-```cpp
-esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t * ctx)
-```
-
-Defined in bsp/bsp_lifecycle.h:108
-
-Retrieve current wake context.
-
-#### Returns
-esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `ctx` | [`bsp_wake_context_t`](#bsp_wake_context_t) * | Pointer to [bsp_wake_context_t](#bsp_wake_context_t) destination |
-
----
-
-{#bsp_lifecycle_set_stage}
-
-### bsp_lifecycle_set_stage
-
-```cpp
-esp_err_t bsp_lifecycle_set_stage(uint8_t stage)
-```
-
-Defined in bsp/bsp_lifecycle.h:117
-
-Set application stage index in RTC Slow Memory.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `stage` | `uint8_t` | Stage identifier (0..255) |
-
----
-
-{#bsp_lifecycle_get_stage}
-
-### bsp_lifecycle_get_stage
-
-```cpp
-uint8_t bsp_lifecycle_get_stage(void)
-```
-
-Defined in bsp/bsp_lifecycle.h:125
-
-Get application stage index from RTC Slow Memory.
-
-#### Returns
-uint8_t Current stage identifier
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_lifecycle_save_state}
-
-### bsp_lifecycle_save_state
-
-```cpp
-esp_err_t bsp_lifecycle_save_state(const void * data, size_t len)
-```
-
-Defined in bsp/bsp_lifecycle.h:135
-
-Save custom application state struct to RTC Slow Memory scratchpad (max 31 bytes).
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `data` | `const void *` | Source buffer |
-| `len` | `size_t` | Byte count (max 31) |
-
----
-
-{#bsp_lifecycle_load_state}
-
-### bsp_lifecycle_load_state
-
-```cpp
-esp_err_t bsp_lifecycle_load_state(void * out_data, size_t len)
-```
-
-Defined in bsp/bsp_lifecycle.h:145
-
-Load custom application state struct from RTC Slow Memory scratchpad.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `out_data` | `void *` | Destination buffer |
-| `len` | `size_t` | Byte count (max 31) |
-
----
-
-{#bsp_lifecycle_enter_sleep}
-
-### bsp_lifecycle_enter_sleep
-
-```cpp
-esp_err_t bsp_lifecycle_enter_sleep(const bsp_sleep_config_t * config)
-```
-
-Defined in bsp/bsp_lifecycle.h:154
-
-Enter sleep with automatic before_sleep lifecycle hook and splash/chime execution.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `config` | const [`bsp_sleep_config_t`](#bsp_sleep_config_t) * | Sleep configuration (mode, duration, wake sources, next init mode) |
-
----
-
-{#bsp_lifecycle_power_off}
-
-### bsp_lifecycle_power_off
-
-```cpp
-void bsp_lifecycle_power_off(void)
-```
-
-Defined in bsp/bsp_lifecycle.h:162
-
-Perform clean hardware power off and system shutdown.
-
-Executes registered on_shutdown callback, drops BAT_CTRL power latch, and stops peripherals.
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_lifecycle_invoke_shutdown}
-
-### bsp_lifecycle_invoke_shutdown
-
-```cpp
-void bsp_lifecycle_invoke_shutdown(void)
-```
-
-Defined in bsp/bsp_lifecycle.h:168
-
-Internal lifecycle dispatcher hook invoked by [bsp_power_off()](#bsp_power_off).
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
 {#epd_set_cs}
 
 ### epd_set_cs
@@ -11490,7 +12328,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_display_clear(void)
 ```
 
-Defined in bsp_display.cpp:320
+Defined in bsp_display.cpp:315
 
 Clear Entire In-Memory Framebuffer to Pure White.
 
@@ -11506,7 +12344,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_display_flush(void)
 ```
 
-Defined in bsp_display.cpp:327
+Defined in bsp_display.cpp:322
 
 Full OTP Waveform Hardware Refresh of In-Memory Framebuffer to Screen.
 
@@ -11522,7 +12360,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_display_flush_partial(void)
 ```
 
-Defined in bsp_display.cpp:351
+Defined in bsp_display.cpp:346
 
 Fast Partial Waveform Refresh of Full Screen Area.
 
@@ -11538,7 +12376,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_display_flush_partial_area(uint16_t x_start, uint16_t y_start, uint16_t x_end, uint16_t y_end)
 ```
 
-Defined in bsp_display.cpp:356
+Defined in bsp_display.cpp:351
 
 Fast Partial Waveform Refresh of Specific Bounding Box Area.
 
@@ -11563,7 +12401,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_display_write_frame(const uint8_t * buffer)
 ```
 
-Defined in bsp_display.cpp:409
+Defined in bsp_display.cpp:404
 
 Transmit Arbitrary 1-bit Monochrome Framebuffer to SSD1681 Controller.
 
@@ -11588,7 +12426,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_display_refresh(bool partial_mode)
 ```
 
-Defined in bsp_display.cpp:420
+Defined in bsp_display.cpp:415
 
 Trigger Physical e-Paper Waveform Refresh Cycle.
 
@@ -11613,7 +12451,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 void bsp_display_deep_sleep(void)
 ```
 
-Defined in bsp_display.cpp:430
+Defined in bsp_display.cpp:425
 
 Put SSD1681 Controller into Deep Sleep Mode (< 1 µA).
 
@@ -11629,7 +12467,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 esp_err_t bsp_display_sleep(void)
 ```
 
-Defined in bsp_display.cpp:437
+Defined in bsp_display.cpp:432
 
 Alias for bsp_display_deep_sleep.
 
@@ -11647,7 +12485,7 @@ esp_err_t ESP_OK on success, or appropriate ESP error code.
 void bsp_display_draw_pixel(uint16_t x, uint16_t y, bsp_display_color_t color)
 ```
 
-Defined in bsp_display.cpp:443
+Defined in bsp_display.cpp:438
 
 Draw Single Pixel to Framebuffer.
 
@@ -11671,7 +12509,7 @@ Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guar
 uint8_t * bsp_display_get_buffer(void)
 ```
 
-Defined in bsp_display.cpp:456
+Defined in bsp_display.cpp:451
 
 Retrieve Pointer to In-Memory Framebuffer (5000 bytes).
 
@@ -11679,633 +12517,6 @@ Retrieve Pointer to In-Memory Framebuffer (5000 bytes).
 uint8_t* Buffer pointer
 
 Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_lifecycle_get_context-1}
-
-### bsp_lifecycle_get_context
-
-```cpp
-esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t * ctx)
-```
-
-Defined in bsp_lifecycle.c:33
-
-Retrieve current wake context.
-
-#### Returns
-esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `ctx` | [`bsp_wake_context_t`](#bsp_wake_context_t) * | Pointer to [bsp_wake_context_t](#bsp_wake_context_t) destination |
-
----
-
-{#bsp_lifecycle_set_stage-1}
-
-### bsp_lifecycle_set_stage
-
-```cpp
-esp_err_t bsp_lifecycle_set_stage(uint8_t stage)
-```
-
-Defined in bsp_lifecycle.c:42
-
-Set application stage index in RTC Slow Memory.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `stage` | `uint8_t` | Stage identifier (0..255) |
-
----
-
-{#bsp_lifecycle_get_stage-1}
-
-### bsp_lifecycle_get_stage
-
-```cpp
-uint8_t bsp_lifecycle_get_stage(void)
-```
-
-Defined in bsp_lifecycle.c:53
-
-Get application stage index from RTC Slow Memory.
-
-#### Returns
-uint8_t Current stage identifier
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_lifecycle_save_state-1}
-
-### bsp_lifecycle_save_state
-
-```cpp
-esp_err_t bsp_lifecycle_save_state(const void * data, size_t len)
-```
-
-Defined in bsp_lifecycle.c:62
-
-Save custom application state struct to RTC Slow Memory scratchpad (max 31 bytes).
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `data` | `const void *` | Source buffer |
-| `len` | `size_t` | Byte count (max 31) |
-
----
-
-{#bsp_lifecycle_load_state-1}
-
-### bsp_lifecycle_load_state
-
-```cpp
-esp_err_t bsp_lifecycle_load_state(void * out_data, size_t len)
-```
-
-Defined in bsp_lifecycle.c:75
-
-Load custom application state struct from RTC Slow Memory scratchpad.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `out_data` | `void *` | Destination buffer |
-| `len` | `size_t` | Byte count (max 31) |
-
----
-
-{#bsp_lifecycle_enter_sleep-1}
-
-### bsp_lifecycle_enter_sleep
-
-```cpp
-esp_err_t bsp_lifecycle_enter_sleep(const bsp_sleep_config_t * config)
-```
-
-Defined in bsp_lifecycle.c:88
-
-Enter sleep with automatic before_sleep lifecycle hook and splash/chime execution.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `config` | const [`bsp_sleep_config_t`](#bsp_sleep_config_t) * | Sleep configuration (mode, duration, wake sources, next init mode) |
-
----
-
-{#bsp_lifecycle_power_off-1}
-
-### bsp_lifecycle_power_off
-
-```cpp
-void bsp_lifecycle_power_off(void)
-```
-
-Defined in bsp_lifecycle.c:104
-
-Perform clean hardware power off and system shutdown.
-
-Executes registered on_shutdown callback, drops BAT_CTRL power latch, and stops peripherals.
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_lifecycle_invoke_shutdown-1}
-
-### bsp_lifecycle_invoke_shutdown
-
-```cpp
-void bsp_lifecycle_invoke_shutdown(void)
-```
-
-Defined in bsp_lifecycle.c:110
-
-Internal lifecycle dispatcher hook invoked by [bsp_power_off()](#bsp_power_off).
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_app_start-1}
-
-### bsp_app_start
-
-```cpp
-esp_err_t bsp_app_start(const bsp_app_lifecycle_t * lifecycle)
-```
-
-Defined in bsp_lifecycle.c:118
-
-Start BSP Application Engine with Lifecycle Hooks.
-
-Automatically initializes RTC memory, inspects reset reason, selects the optimal hardware initialization mode (FULL on cold boot, FAST/MIN on wake), populates the wake context, and dispatches to on_cold_boot or on_wake.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `lifecycle` | const [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t) * | Pointer to [bsp_app_lifecycle_t](#bsp_app_lifecycle_t) configuration |
-
----
-
-{#bsp_sensor_cal_init}
-
-### bsp_sensor_cal_init
-
-```cpp
-esp_err_t bsp_sensor_cal_init(void)
-```
-
-Defined in bsp/bsp_sensor_cal.h:68
-
-Initialize Thermal Calibration Subsystem & MCU Internal Temp Sensor.
-
-Instantiates the ESP32-S3 internal TSENS peripheral, sets default K and alpha filter weights from Kconfig, and initializes raw SHTC3 hardware via [bsp_shtc3_init()](#bsp_shtc3_init).
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_sensor_cal_read}
-
-### bsp_sensor_cal_read
-
-```cpp
-esp_err_t bsp_sensor_cal_read(bsp_sensor_cal_data_t * out_data)
-```
-
-Defined in bsp/bsp_sensor_cal.h:81
-
-Read Calibrated & Compensated Environmental Telemetry.
-
-Reads raw SHTC3 telemetry, queries the MCU die temperature, applies EMA filtering, solves the two-node thermal divider model, and equalizes relative humidity. If dynamic compensation is disabled, outputs match 100% raw uncalibrated SHTC3 data.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `out_data` | [`bsp_sensor_cal_data_t`](#bsp_sensor_cal_data_t) * | Destination struct to receive calibrated metrics |
-
----
-
-{#bsp_mcu_temp_read}
-
-### bsp_mcu_temp_read
-
-```cpp
-esp_err_t bsp_mcu_temp_read(float * out_die_temp)
-```
-
-Defined in bsp/bsp_sensor_cal.h:90
-
-Read Raw ESP32-S3 MCU Junction Temperature (°C).
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `out_die_temp` | `float *` | Pointer to receive die temperature in Celsius |
-
----
-
-{#bsp_sensor_cal_set_k}
-
-### bsp_sensor_cal_set_k
-
-```cpp
-void bsp_sensor_cal_set_k(float k)
-```
-
-Defined in bsp/bsp_sensor_cal.h:98
-
-Set Board Thermal Coupling Constant (K).
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `k` | `float` | Thermal coupling ratio R_amb / R_pcb (default 0.380f) |
-
----
-
-{#bsp_sensor_cal_get_k}
-
-### bsp_sensor_cal_get_k
-
-```cpp
-float bsp_sensor_cal_get_k(void)
-```
-
-Defined in bsp/bsp_sensor_cal.h:106
-
-Get Active Board Thermal Coupling Constant (K).
-
-#### Returns
-float Active K value
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
----
-
-{#bsp_sensor_cal_set_alpha}
-
-### bsp_sensor_cal_set_alpha
-
-```cpp
-void bsp_sensor_cal_set_alpha(float alpha)
-```
-
-Defined in bsp/bsp_sensor_cal.h:114
-
-Set MCU Die Temp EMA Low-Pass Filter Alpha Weight.
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `alpha` | `float` | Filter weight from 0.001 to 1.0 (default 0.050f) |
-
----
-
-{#bsp_sensor_cal_get_alpha}
-
-### bsp_sensor_cal_get_alpha
-
-```cpp
-float bsp_sensor_cal_get_alpha(void)
-```
-
-Defined in bsp/bsp_sensor_cal.h:122
-
-Get Active MCU Die Temp EMA Filter Alpha Weight.
-
-#### Returns
-float Active alpha value
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
----
-
-{#bsp_sensor_cal_enable}
-
-### bsp_sensor_cal_enable
-
-```cpp
-void bsp_sensor_cal_enable(bool enable)
-```
-
-Defined in bsp/bsp_sensor_cal.h:130
-
-Enable or Disable Dynamic Thermal Compensation.
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `enable` | `bool` | true to apply dynamic MCU thermal compensation, false to return raw uncalibrated data |
-
----
-
-{#bsp_sensor_cal_is_enabled}
-
-### bsp_sensor_cal_is_enabled
-
-```cpp
-bool bsp_sensor_cal_is_enabled(void)
-```
-
-Defined in bsp/bsp_sensor_cal.h:138
-
-Check if Dynamic Thermal Compensation is Currently Enabled.
-
-#### Returns
-bool true if enabled
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
----
-
-{#calc_dew_point-1}
-
-### calc_dew_point
-
-`static`
-
-```cpp
-static float calc_dew_point(float temp_c, float rh)
-```
-
-Defined in bsp_sensor_cal.c:48
-
----
-
-{#calc_absolute_humidity-1}
-
-### calc_absolute_humidity
-
-`static`
-
-```cpp
-static float calc_absolute_humidity(float temp_c, float rh)
-```
-
-Defined in bsp_sensor_cal.c:60
-
----
-
-{#bsp_mcu_temp_read-1}
-
-### bsp_mcu_temp_read
-
-```cpp
-esp_err_t bsp_mcu_temp_read(float * out_die_temp)
-```
-
-Defined in bsp_sensor_cal.c:73
-
-Read Raw ESP32-S3 MCU Junction Temperature (°C).
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `out_die_temp` | `float *` | Pointer to receive die temperature in Celsius |
-
----
-
-{#bsp_sensor_cal_init-1}
-
-### bsp_sensor_cal_init
-
-```cpp
-esp_err_t bsp_sensor_cal_init(void)
-```
-
-Defined in bsp_sensor_cal.c:98
-
-Initialize Thermal Calibration Subsystem & MCU Internal Temp Sensor.
-
-Instantiates the ESP32-S3 internal TSENS peripheral, sets default K and alpha filter weights from Kconfig, and initializes raw SHTC3 hardware via [bsp_shtc3_init()](#bsp_shtc3_init).
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
----
-
-{#bsp_sensor_cal_read-1}
-
-### bsp_sensor_cal_read
-
-```cpp
-esp_err_t bsp_sensor_cal_read(bsp_sensor_cal_data_t * out_data)
-```
-
-Defined in bsp_sensor_cal.c:121
-
-Read Calibrated & Compensated Environmental Telemetry.
-
-Reads raw SHTC3 telemetry, queries the MCU die temperature, applies EMA filtering, solves the two-node thermal divider model, and equalizes relative humidity. If dynamic compensation is disabled, outputs match 100% raw uncalibrated SHTC3 data.
-
-#### Returns
-esp_err_t ESP_OK on success
-
-Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `out_data` | [`bsp_sensor_cal_data_t`](#bsp_sensor_cal_data_t) * | Destination struct to receive calibrated metrics |
-
----
-
-{#bsp_sensor_cal_set_k-1}
-
-### bsp_sensor_cal_set_k
-
-```cpp
-void bsp_sensor_cal_set_k(float k)
-```
-
-Defined in bsp_sensor_cal.c:199
-
-Set Board Thermal Coupling Constant (K).
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `k` | `float` | Thermal coupling ratio R_amb / R_pcb (default 0.380f) |
-
----
-
-{#bsp_sensor_cal_get_k-1}
-
-### bsp_sensor_cal_get_k
-
-```cpp
-float bsp_sensor_cal_get_k(void)
-```
-
-Defined in bsp_sensor_cal.c:206
-
-Get Active Board Thermal Coupling Constant (K).
-
-#### Returns
-float Active K value
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
----
-
-{#bsp_sensor_cal_set_alpha-1}
-
-### bsp_sensor_cal_set_alpha
-
-```cpp
-void bsp_sensor_cal_set_alpha(float alpha)
-```
-
-Defined in bsp_sensor_cal.c:211
-
-Set MCU Die Temp EMA Low-Pass Filter Alpha Weight.
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `alpha` | `float` | Filter weight from 0.001 to 1.0 (default 0.050f) |
-
----
-
-{#bsp_sensor_cal_get_alpha-1}
-
-### bsp_sensor_cal_get_alpha
-
-```cpp
-float bsp_sensor_cal_get_alpha(void)
-```
-
-Defined in bsp_sensor_cal.c:219
-
-Get Active MCU Die Temp EMA Filter Alpha Weight.
-
-#### Returns
-float Active alpha value
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
----
-
-{#bsp_sensor_cal_enable-1}
-
-### bsp_sensor_cal_enable
-
-```cpp
-void bsp_sensor_cal_enable(bool enable)
-```
-
-Defined in bsp_sensor_cal.c:224
-
-Enable or Disable Dynamic Thermal Compensation.
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
-
-#### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `enable` | `bool` | true to apply dynamic MCU thermal compensation, false to return raw uncalibrated data |
-
----
-
-{#bsp_sensor_cal_is_enabled-1}
-
-### bsp_sensor_cal_is_enabled
-
-```cpp
-bool bsp_sensor_cal_is_enabled(void)
-```
-
-Defined in bsp_sensor_cal.c:230
-
-Check if Dynamic Thermal Compensation is Currently Enabled.
-
-#### Returns
-bool true if enabled
-
-Memory ownership: none. Behavior: Non-blocking. Thread safety: thread-safe.
 
 ## Variables
 
@@ -12719,7 +12930,7 @@ Defined in bsp_wifi.c:57
 const char * TAG = "bsp_audio"
 ```
 
-Defined in bsp_audio.c:30
+Defined in bsp_audio.c:75
 
 ---
 
@@ -12733,7 +12944,7 @@ Defined in bsp_audio.c:30
 const int16_t SINE_LUT_256[256]
 ```
 
-Defined in bsp_audio.c:34
+Defined in bsp_audio.c:78
 
 ---
 
@@ -12747,21 +12958,7 @@ Defined in bsp_audio.c:34
 i2s_chan_handle_t s_tx_chan = NULL
 ```
 
-Defined in bsp_audio.c:69
-
----
-
-{#s_codec}
-
-### s_codec
-
-`static`
-
-```cpp
-esp_codec_dev_handle_t s_codec = NULL
-```
-
-Defined in bsp_audio.c:70
+Defined in bsp_audio.c:114
 
 ---
 
@@ -12775,7 +12972,7 @@ Defined in bsp_audio.c:70
 bool s_audio_inited = false
 ```
 
-Defined in bsp_audio.c:71
+Defined in bsp_audio.c:115
 
 ---
 
@@ -12789,7 +12986,7 @@ Defined in bsp_audio.c:71
 bool s_audio_in_standby = false
 ```
 
-Defined in bsp_audio.c:72
+Defined in bsp_audio.c:116
 
 ---
 
@@ -12803,7 +13000,7 @@ Defined in bsp_audio.c:72
 bool s_low_power_mode = false
 ```
 
-Defined in bsp_audio.c:76
+Defined in bsp_audio.c:117
 
 ---
 
@@ -12817,7 +13014,7 @@ Defined in bsp_audio.c:76
 const char * TAG = "bsp_power"
 ```
 
-Defined in bsp_power.c:49
+Defined in bsp_power.c:48
 
 ---
 
@@ -12831,7 +13028,7 @@ Defined in bsp_power.c:49
 adc_oneshot_unit_handle_t s_adc_handle = NULL
 ```
 
-Defined in bsp_power.c:63
+Defined in bsp_power.c:62
 
 ---
 
@@ -12845,7 +13042,7 @@ Defined in bsp_power.c:63
 adc_cali_handle_t s_cali_handle = NULL
 ```
 
-Defined in bsp_power.c:64
+Defined in bsp_power.c:63
 
 ---
 
@@ -12859,7 +13056,7 @@ Defined in bsp_power.c:64
 bool s_calibrated = false
 ```
 
-Defined in bsp_power.c:65
+Defined in bsp_power.c:64
 
 ---
 
@@ -12873,7 +13070,7 @@ Defined in bsp_power.c:65
 bool s_led_state = false
 ```
 
-Defined in bsp_power.c:66
+Defined in bsp_power.c:65
 
 ---
 
@@ -12887,7 +13084,7 @@ Defined in bsp_power.c:66
 bool s_power_inited = false
 ```
 
-Defined in bsp_power.c:67
+Defined in bsp_power.c:66
 
 ---
 
@@ -12903,7 +13100,7 @@ bsp_power_off_cb_t s_shutdown_cb = NULL
 
 Type: [`bsp_power_off_cb_t`](#bsp_power_off_cb_t)
 
-Defined in bsp_power.c:68
+Defined in bsp_power.c:67
 
 ---
 
@@ -12917,7 +13114,7 @@ Defined in bsp_power.c:68
 void * s_shutdown_user_data = NULL
 ```
 
-Defined in bsp_power.c:69
+Defined in bsp_power.c:68
 
 ---
 
@@ -12931,7 +13128,7 @@ Defined in bsp_power.c:69
 const battery_lut_point_t s_battery_ocv_lut[]
 ```
 
-Defined in bsp_power.c:72
+Defined in bsp_power.c:71
 
 ---
 
@@ -13018,6 +13215,52 @@ const char * TAG = "bsp_common"
 ```
 
 Defined in bsp_common.c:31
+
+---
+
+{#s_active_lifecycle}
+
+### s_active_lifecycle
+
+`static`
+
+```cpp
+bsp_app_lifecycle_t s_active_lifecycle = {0}
+```
+
+Type: [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t)
+
+Defined in bsp_common.c:424
+
+---
+
+{#s_current_context}
+
+### s_current_context
+
+`static`
+
+```cpp
+bsp_wake_context_t s_current_context = {0}
+```
+
+Type: [`bsp_wake_context_t`](#bsp_wake_context_t)
+
+Defined in bsp_common.c:425
+
+---
+
+{#s_context_valid}
+
+### s_context_valid
+
+`static`
+
+```cpp
+bool s_context_valid = false
+```
+
+Defined in bsp_common.c:426
 
 ---
 
@@ -13282,7 +13525,7 @@ Defined in bsp_rtc_mem.c:22
 `static`
 
 ```cpp
-RTC_DATA_ATTR uint8_t s_rtc_frame_buffer[5000]
+RTC_FAST_ATTR uint8_t s_rtc_frame_buffer[5000]
 ```
 
 Defined in bsp_rtc_mem.c:23
@@ -13296,7 +13539,7 @@ Defined in bsp_rtc_mem.c:23
 `static`
 
 ```cpp
-RTC_DATA_ATTR bool s_rtc_frame_valid = false
+RTC_FAST_ATTR bool s_rtc_frame_valid = false
 ```
 
 Defined in bsp_rtc_mem.c:24
@@ -13413,164 +13656,6 @@ uint8_t * s_dma_bounce_buf = NULL
 
 Defined in bsp_display.cpp:91
 
----
-
-{#tag-18}
-
-### TAG
-
-`static`
-
-```cpp
-const char * TAG = "bsp_lifecycle"
-```
-
-Defined in bsp_lifecycle.c:27
-
----
-
-{#s_active_lifecycle}
-
-### s_active_lifecycle
-
-`static`
-
-```cpp
-bsp_app_lifecycle_t s_active_lifecycle = {0}
-```
-
-Type: [`bsp_app_lifecycle_t`](#bsp_app_lifecycle_t)
-
-Defined in bsp_lifecycle.c:29
-
----
-
-{#s_current_context}
-
-### s_current_context
-
-`static`
-
-```cpp
-bsp_wake_context_t s_current_context = {0}
-```
-
-Type: [`bsp_wake_context_t`](#bsp_wake_context_t)
-
-Defined in bsp_lifecycle.c:30
-
----
-
-{#s_context_valid}
-
-### s_context_valid
-
-`static`
-
-```cpp
-bool s_context_valid = false
-```
-
-Defined in bsp_lifecycle.c:31
-
----
-
-{#tag-19}
-
-### TAG
-
-`static`
-
-```cpp
-const char * TAG = "bsp_sensor_cal"
-```
-
-Defined in bsp_sensor_cal.c:21
-
----
-
-{#s_temp_sensor}
-
-### s_temp_sensor
-
-`static`
-
-```cpp
-temperature_sensor_handle_t s_temp_sensor = NULL
-```
-
-Defined in bsp_sensor_cal.c:26
-
----
-
-{#s_mcu_temp_inited}
-
-### s_mcu_temp_inited
-
-`static`
-
-```cpp
-bool s_mcu_temp_inited = false
-```
-
-Defined in bsp_sensor_cal.c:27
-
----
-
-{#s_die_temp_filt}
-
-### s_die_temp_filt
-
-`static`
-
-```cpp
-float s_die_temp_filt = -999.0f
-```
-
-Defined in bsp_sensor_cal.c:28
-
----
-
-{#s_comp_enabled}
-
-### s_comp_enabled
-
-`static`
-
-```cpp
-bool s_comp_enabled = false
-```
-
-Defined in bsp_sensor_cal.c:33
-
----
-
-{#s_coupling_k}
-
-### s_coupling_k
-
-`static`
-
-```cpp
-float s_coupling_k = 0.380f
-```
-
-Defined in bsp_sensor_cal.c:39
-
----
-
-{#s_filter_alpha}
-
-### s_filter_alpha
-
-`static`
-
-```cpp
-float s_filter_alpha = 0.050f
-```
-
-Defined in bsp_sensor_cal.c:45
-
 {#bsp_config_t}
 
 ## bsp_config_t
@@ -13583,7 +13668,7 @@ Defined in bsp_sensor_cal.c:45
 struct bsp_config_t
 ```
 
-Defined in bsp/bsp.h:56
+Defined in bsp/bsp.h:54
 
 Modular Hardware Initialization Configuration.
 
@@ -13613,7 +13698,7 @@ Modular Hardware Initialization Configuration.
 bool init_power
 ```
 
-Defined in bsp/bsp.h:57
+Defined in bsp/bsp.h:55
 
 Hold LDO power rail HIGH and calibrate ADC battery monitor (Default: true).
 
@@ -13627,7 +13712,7 @@ Hold LDO power rail HIGH and calibrate ADC battery monitor (Default: true).
 bool init_i2c
 ```
 
-Defined in bsp/bsp.h:58
+Defined in bsp/bsp.h:56
 
 Initialize shared I2C bus at 400kHz with mutex protection (Default: true).
 
@@ -13641,7 +13726,7 @@ Initialize shared I2C bus at 400kHz with mutex protection (Default: true).
 bool init_sensors
 ```
 
-Defined in bsp/bsp.h:59
+Defined in bsp/bsp.h:57
 
 Initialize Sensirion SHTC3 environmental sensor (Default: true).
 
@@ -13655,7 +13740,7 @@ Initialize Sensirion SHTC3 environmental sensor (Default: true).
 bool init_rtc
 ```
 
-Defined in bsp/bsp.h:60
+Defined in bsp/bsp.h:58
 
 Initialize PCF85063A hardware real-time clock (Default: true).
 
@@ -13669,7 +13754,7 @@ Initialize PCF85063A hardware real-time clock (Default: true).
 bool init_buttons
 ```
 
-Defined in bsp/bsp.h:61
+Defined in bsp/bsp.h:59
 
 Initialize debounced interrupt handlers for BOOT and POWER keys (Default: true).
 
@@ -13683,7 +13768,7 @@ Initialize debounced interrupt handlers for BOOT and POWER keys (Default: true).
 bool init_audio
 ```
 
-Defined in bsp/bsp.h:62
+Defined in bsp/bsp.h:60
 
 Initialize ES8311 I2S audio codec & NS4168 amp (Default: true).
 
@@ -13697,7 +13782,7 @@ Initialize ES8311 I2S audio codec & NS4168 amp (Default: true).
 float audio_volume
 ```
 
-Defined in bsp/bsp.h:63
+Defined in bsp/bsp.h:61
 
 Initial audio volume 0-100 (Default: 80.0).
 
@@ -13711,7 +13796,7 @@ Initial audio volume 0-100 (Default: 80.0).
 bool init_sdcard
 ```
 
-Defined in bsp/bsp.h:64
+Defined in bsp/bsp.h:62
 
 Mount MicroSD card over SDMMC FATFS (Default: false).
 
@@ -13725,7 +13810,7 @@ Mount MicroSD card over SDMMC FATFS (Default: false).
 bool init_display
 ```
 
-Defined in bsp/bsp.h:65
+Defined in bsp/bsp.h:63
 
 Initialize SSD1681 1.54" SPI e-Paper display (Default: true).
 
@@ -13739,7 +13824,7 @@ Initialize SSD1681 1.54" SPI e-Paper display (Default: true).
 bool init_nvs
 ```
 
-Defined in bsp/bsp.h:66
+Defined in bsp/bsp.h:64
 
 Initialize non-volatile flash storage (Default: true).
 
@@ -13753,7 +13838,7 @@ Initialize non-volatile flash storage (Default: true).
 bool start_lvgl
 ```
 
-Defined in bsp/bsp.h:67
+Defined in bsp/bsp.h:65
 
 Spawn LVGL v9 FreeRTOS render task pinned to Core 1 (Default: true).
 
@@ -15313,14 +15398,14 @@ Hardware initialization mode to perform on wake.
 ## bsp_wake_context_t
 
 ```cpp
-#include <bsp/bsp_lifecycle.h>
+#include <bsp/bsp.h>
 ```
 
 ```cpp
 struct bsp_wake_context_t
 ```
 
-Defined in bsp/bsp_lifecycle.h:42
+Defined in bsp/bsp.h:164
 
 Structured Wake Context passed to application on_wake callback.
 
@@ -15351,7 +15436,7 @@ Structured Wake Context passed to application on_wake callback.
 esp_reset_reason_t reset_reason
 ```
 
-Defined in bsp/bsp_lifecycle.h:43
+Defined in bsp/bsp.h:165
 
 Reset reason (e.g. ESP_RST_DEEPSLEEP, ESP_RST_POWERON).
 
@@ -15365,7 +15450,7 @@ Reset reason (e.g. ESP_RST_DEEPSLEEP, ESP_RST_POWERON).
 esp_sleep_wakeup_cause_t wake_cause
 ```
 
-Defined in bsp/bsp_lifecycle.h:44
+Defined in bsp/bsp.h:166
 
 Wakeup cause (e.g. EXT1, TIMER, GPIO).
 
@@ -15379,7 +15464,7 @@ Wakeup cause (e.g. EXT1, TIMER, GPIO).
 uint64_t ext1_wakeup_pins
 ```
 
-Defined in bsp/bsp_lifecycle.h:45
+Defined in bsp/bsp.h:167
 
 GPIO mask of pins that triggered EXT1 wakeup.
 
@@ -15393,7 +15478,7 @@ GPIO mask of pins that triggered EXT1 wakeup.
 bool woke_from_button
 ```
 
-Defined in bsp/bsp_lifecycle.h:46
+Defined in bsp/bsp.h:168
 
 True if wake was triggered by BOOT or POWER button.
 
@@ -15409,7 +15494,7 @@ bsp_button_t wake_button
 
 Type: [`bsp_button_t`](#bsp_button_t)
 
-Defined in bsp/bsp_lifecycle.h:47
+Defined in bsp/bsp.h:169
 
 Which button triggered wakeup (if button wake).
 
@@ -15425,7 +15510,7 @@ bsp_init_mode_t init_mode
 
 Type: [`bsp_init_mode_t`](#bsp_init_mode_t)
 
-Defined in bsp/bsp_lifecycle.h:48
+Defined in bsp/bsp.h:170
 
 Initialization profile executed (FULL, FAST, MIN).
 
@@ -15439,7 +15524,7 @@ Initialization profile executed (FULL, FAST, MIN).
 uint32_t sleep_duration_sec
 ```
 
-Defined in bsp/bsp_lifecycle.h:49
+Defined in bsp/bsp.h:171
 
 Configured sleep duration from previous cycle.
 
@@ -15453,7 +15538,7 @@ Configured sleep duration from previous cycle.
 uint32_t boot_count
 ```
 
-Defined in bsp/bsp_lifecycle.h:50
+Defined in bsp/bsp.h:172
 
 Monotonic system boot count.
 
@@ -15467,7 +15552,7 @@ Monotonic system boot count.
 uint32_t deep_sleep_count
 ```
 
-Defined in bsp/bsp_lifecycle.h:51
+Defined in bsp/bsp.h:173
 
 Total deep sleep cycles.
 
@@ -15481,7 +15566,7 @@ Total deep sleep cycles.
 uint32_t light_sleep_count
 ```
 
-Defined in bsp/bsp_lifecycle.h:52
+Defined in bsp/bsp.h:174
 
 Total light sleep cycles.
 
@@ -15495,7 +15580,7 @@ Total light sleep cycles.
 uint8_t app_stage
 ```
 
-Defined in bsp/bsp_lifecycle.h:53
+Defined in bsp/bsp.h:175
 
 Persistent application stage code (from RTC memory).
 
@@ -15509,7 +15594,7 @@ Persistent application stage code (from RTC memory).
 void * user_data
 ```
 
-Defined in bsp/bsp_lifecycle.h:54
+Defined in bsp/bsp.h:176
 
 User data pointer passed during lifecycle start.
 
@@ -15521,7 +15606,7 @@ User data pointer passed during lifecycle start.
 struct battery_lut_point_t
 ```
 
-Defined in bsp_power.c:58
+Defined in bsp_power.c:57
 
 ### Public Attributes
 
@@ -15540,7 +15625,7 @@ Defined in bsp_power.c:58
 uint16_t voltage_mv
 ```
 
-Defined in bsp_power.c:59
+Defined in bsp_power.c:58
 
 voltage_mv value
 
@@ -15554,7 +15639,7 @@ voltage_mv value
 uint8_t percentage
 ```
 
-Defined in bsp_power.c:60
+Defined in bsp_power.c:59
 
 percentage value
 
@@ -15563,14 +15648,14 @@ percentage value
 ## bsp_app_lifecycle_t
 
 ```cpp
-#include <bsp/bsp_lifecycle.h>
+#include <bsp/bsp.h>
 ```
 
 ```cpp
 struct bsp_app_lifecycle_t
 ```
 
-Defined in bsp/bsp_lifecycle.h:80
+Defined in bsp/bsp.h:202
 
 Comprehensive Application Lifecycle Configuration.
 
@@ -15596,7 +15681,7 @@ bsp_cold_boot_cb_t on_cold_boot
 
 Type: [`bsp_cold_boot_cb_t`](#bsp_cold_boot_cb_t)
 
-Defined in bsp/bsp_lifecycle.h:81
+Defined in bsp/bsp.h:203
 
 Handler for initial cold boot.
 
@@ -15612,7 +15697,7 @@ bsp_wake_cb_t on_wake
 
 Type: [`bsp_wake_cb_t`](#bsp_wake_cb_t)
 
-Defined in bsp/bsp_lifecycle.h:82
+Defined in bsp/bsp.h:204
 
 Handler for sleep wake events.
 
@@ -15628,7 +15713,7 @@ bsp_before_sleep_cb_t on_before_sleep
 
 Type: [`bsp_before_sleep_cb_t`](#bsp_before_sleep_cb_t)
 
-Defined in bsp/bsp_lifecycle.h:83
+Defined in bsp/bsp.h:205
 
 Hook called immediately prior to sleep entry.
 
@@ -15644,7 +15729,7 @@ bsp_shutdown_cb_t on_shutdown
 
 Type: [`bsp_shutdown_cb_t`](#bsp_shutdown_cb_t)
 
-Defined in bsp/bsp_lifecycle.h:84
+Defined in bsp/bsp.h:206
 
 Hook called immediately prior to power off.
 
@@ -15658,7 +15743,7 @@ Hook called immediately prior to power off.
 void * user_data
 ```
 
-Defined in bsp/bsp_lifecycle.h:85
+Defined in bsp/bsp.h:207
 
 Custom application context pointer.
 
@@ -15742,237 +15827,6 @@ bool auto_power_off_on_hold
 Defined in bsp/bsp_button.h:66
 
 Auto power off system on POWER long press (Default: true).
-
-{#bsp_sensor_cal_data_t}
-
-## bsp_sensor_cal_data_t
-
-```cpp
-#include <bsp/bsp_sensor_cal.h>
-```
-
-```cpp
-struct bsp_sensor_cal_data_t
-```
-
-Defined in bsp/bsp_sensor_cal.h:39
-
-Calibrated Environmental & Diagnostic Sensor Telemetry.
-
-### Public Attributes
-
-| Return | Name | Description |
-|--------|------|-------------|
-| `float` | [`temperature_c`](#temperature_c-1)  | Temperature in Celsius (°C). |
-| `float` | [`temperature_f`](#temperature_f-1)  | Temperature in Fahrenheit (°F). |
-| `float` | [`temperature_k`](#temperature_k-1)  | Temperature in Kelvin (K). |
-| `float` | [`humidity_percent`](#humidity_percent-1)  | Relative Humidity (RH). |
-| `float` | [`dew_point_c`](#dew_point_c-1)  | Dew Point in Celsius (°C). |
-| `float` | [`dew_point_f`](#dew_point_f-1)  | Dew Point in Fahrenheit (°F). |
-| `float` | [`dew_point_k`](#dew_point_k-1)  | Dew Point in Kelvin (K). |
-| `float` | [`absolute_humidity_g`](#absolute_humidity_g-1)  | Absolute Humidity (g/m³). |
-| `float` | [`raw_temperature_c`](#raw_temperature_c)  | Pure Uncompensated Raw SHTC3 Temperature (°C). |
-| `float` | [`raw_humidity_percent`](#raw_humidity_percent)  | Pure Uncompensated Raw SHTC3 Relative Humidity (RH). |
-| `float` | [`die_temp_c`](#die_temp_c)  | Filtered ESP32-S3 MCU Junction Temperature (°C). |
-| `float` | [`thermal_offset_c`](#thermal_offset_c)  | Applied Thermal Offset (°C) (0.0°C when deactivated). |
-| `bool` | [`compensated`](#compensated)  | True if thermal compensation was active, false if bypassed. |
-| `bool` | [`valid`](#valid-1)  | True if SHTC3 CRC verified. |
-
----
-
-{#temperature_c-1}
-
-#### temperature_c
-
-```cpp
-float temperature_c
-```
-
-Defined in bsp/bsp_sensor_cal.h:41
-
-Temperature in Celsius (°C).
-
----
-
-{#temperature_f-1}
-
-#### temperature_f
-
-```cpp
-float temperature_f
-```
-
-Defined in bsp/bsp_sensor_cal.h:42
-
-Temperature in Fahrenheit (°F).
-
----
-
-{#temperature_k-1}
-
-#### temperature_k
-
-```cpp
-float temperature_k
-```
-
-Defined in bsp/bsp_sensor_cal.h:43
-
-Temperature in Kelvin (K).
-
----
-
-{#humidity_percent-1}
-
-#### humidity_percent
-
-```cpp
-float humidity_percent
-```
-
-Defined in bsp/bsp_sensor_cal.h:44
-
-Relative Humidity (RH).
-
----
-
-{#dew_point_c-1}
-
-#### dew_point_c
-
-```cpp
-float dew_point_c
-```
-
-Defined in bsp/bsp_sensor_cal.h:45
-
-Dew Point in Celsius (°C).
-
----
-
-{#dew_point_f-1}
-
-#### dew_point_f
-
-```cpp
-float dew_point_f
-```
-
-Defined in bsp/bsp_sensor_cal.h:46
-
-Dew Point in Fahrenheit (°F).
-
----
-
-{#dew_point_k-1}
-
-#### dew_point_k
-
-```cpp
-float dew_point_k
-```
-
-Defined in bsp/bsp_sensor_cal.h:47
-
-Dew Point in Kelvin (K).
-
----
-
-{#absolute_humidity_g-1}
-
-#### absolute_humidity_g
-
-```cpp
-float absolute_humidity_g
-```
-
-Defined in bsp/bsp_sensor_cal.h:48
-
-Absolute Humidity (g/m³).
-
----
-
-{#raw_temperature_c}
-
-#### raw_temperature_c
-
-```cpp
-float raw_temperature_c
-```
-
-Defined in bsp/bsp_sensor_cal.h:51
-
-Pure Uncompensated Raw SHTC3 Temperature (°C).
-
----
-
-{#raw_humidity_percent}
-
-#### raw_humidity_percent
-
-```cpp
-float raw_humidity_percent
-```
-
-Defined in bsp/bsp_sensor_cal.h:52
-
-Pure Uncompensated Raw SHTC3 Relative Humidity (RH).
-
----
-
-{#die_temp_c}
-
-#### die_temp_c
-
-```cpp
-float die_temp_c
-```
-
-Defined in bsp/bsp_sensor_cal.h:53
-
-Filtered ESP32-S3 MCU Junction Temperature (°C).
-
----
-
-{#thermal_offset_c}
-
-#### thermal_offset_c
-
-```cpp
-float thermal_offset_c
-```
-
-Defined in bsp/bsp_sensor_cal.h:54
-
-Applied Thermal Offset (°C) (0.0°C when deactivated).
-
----
-
-{#compensated}
-
-#### compensated
-
-```cpp
-bool compensated
-```
-
-Defined in bsp/bsp_sensor_cal.h:55
-
-True if thermal compensation was active, false if bypassed.
-
----
-
-{#valid-1}
-
-#### valid
-
-```cpp
-bool valid
-```
-
-Defined in bsp/bsp_sensor_cal.h:56
-
-True if SHTC3 CRC verified.
 
 {#button_callback_entry_t}
 

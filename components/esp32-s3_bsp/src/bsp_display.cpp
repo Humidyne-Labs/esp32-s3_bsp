@@ -256,11 +256,6 @@ esp_err_t bsp_display_init(void)
         memset(s_prev_frame_buffer, 0xFF, BSP_DISPLAY_BUFFER_SIZE);
     }
 
-    // 1. Ensure master IO configuration is applied and EPD 3.3V rail is active (Active LOW: 0 = ON)
-    bsp_init_io();
-    gpio_set_level(BSP_PIN_EPD_3V3_EN, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
-
     // 2. Initialize SPI Master Bus (GPIO 12 SCLK, GPIO 13 MOSI)
     if (s_spi_handle == NULL) {
         spi_bus_config_t buscfg = {};

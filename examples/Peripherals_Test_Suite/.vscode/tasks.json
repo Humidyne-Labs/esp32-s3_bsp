@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "2.2.0",
   "tasks": [
     {
       "label": "ESP-IDF: Build (dev Profile)",
@@ -23,7 +23,7 @@
         "focus": true,
         "panel": "shared"
       },
-      "detail": "Builds the Peripherals_Test_Suite project using the 'dev' profile (debug symbols, info logging, stack canary) into build_dev/."
+      "detail": "Builds the Peripherals_Test_Suite project using the 'dev' profile into build_dev/."
     },
     {
       "label": "ESP-IDF: Build (prod Profile)",
@@ -47,7 +47,7 @@
         "focus": true,
         "panel": "shared"
       },
-      "detail": "Builds the Peripherals_Test_Suite project using the 'prod' profile (PERF optimization, stripped logs, minimal binary size) into build_prod/."
+      "detail": "Builds the Peripherals_Test_Suite project using the 'prod' profile into build_prod/."
     },
     {
       "label": "ESP-IDF: Build (ci Profile)",
@@ -74,11 +74,14 @@
       "detail": "Builds the Peripherals_Test_Suite project using the 'ci' profile for automated testing into build_ci/."
     },
     {
-      "label": "ESP-IDF: Flash (dev Profile)",
+      "label": "esptool: Flash (dev Profile)",
       "type": "shell",
-      "command": ". 'C:\\Espressif\\tools\\Microsoft.v6.1.PowerShell_profile.ps1'; idf.py -B build_dev flash",
+      "command": ". 'C:\\Espressif\\tools\\Microsoft.v6.1.PowerShell_profile.ps1'; Set-Location build_dev; $p = if ($env:ESPPORT) { @('-p', $env:ESPPORT) } else { @() }; python -m esptool @p -b 460800 --before default-reset --after hard-reset write-flash '@flash_args'",
       "options": {
         "cwd": "${workspaceFolder}",
+        "env": {
+          "ESPPORT": "COM3"
+        },
         "shell": {
           "executable": "powershell.exe",
           "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
@@ -90,14 +93,17 @@
         "focus": true,
         "panel": "shared"
       },
-      "detail": "Flashes the 'dev' profile binary onto target hardware."
+      "detail": "Flashes the 'dev' build using python -m esptool write-flash. Reads '@flash_args' with kebab-case reset modes."
     },
     {
-      "label": "ESP-IDF: Flash (prod Profile)",
+      "label": "esptool: Flash (prod Profile)",
       "type": "shell",
-      "command": ". 'C:\\Espressif\\tools\\Microsoft.v6.1.PowerShell_profile.ps1'; idf.py -B build_prod flash",
+      "command": ". 'C:\\Espressif\\tools\\Microsoft.v6.1.PowerShell_profile.ps1'; Set-Location build_prod; $p = if ($env:ESPPORT) { @('-p', $env:ESPPORT) } else { @() }; python -m esptool @p -b 460800 --before default-reset --after hard-reset write-flash '@flash_args'",
       "options": {
         "cwd": "${workspaceFolder}",
+        "env": {
+          "ESPPORT": "COM3"
+        },
         "shell": {
           "executable": "powershell.exe",
           "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
@@ -109,7 +115,29 @@
         "focus": true,
         "panel": "shared"
       },
-      "detail": "Flashes the 'prod' profile release binary onto target hardware."
+      "detail": "Flashes the 'prod' build using python -m esptool write-flash. Reads '@flash_args' with kebab-case reset modes."
+    },
+    {
+      "label": "esptool: Erase Flash",
+      "type": "shell",
+      "command": ". 'C:\\Espressif\\tools\\Microsoft.v6.1.PowerShell_profile.ps1'; $p = if ($env:ESPPORT) { @('-p', $env:ESPPORT) } else { @() }; python -m esptool @p erase-flash",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "ESPPORT": "COM3"
+        },
+        "shell": {
+          "executable": "powershell.exe",
+          "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "detail": "Erases the entire target flash memory using python -m esptool erase-flash."
     },
     {
       "label": "ESP-IDF: Monitor Serial Console",
@@ -117,6 +145,9 @@
       "command": ". 'C:\\Espressif\\tools\\Microsoft.v6.1.PowerShell_profile.ps1'; idf.py -B build_dev monitor",
       "options": {
         "cwd": "${workspaceFolder}",
+        "env": {
+          "ESPPORT": "COM3"
+        },
         "shell": {
           "executable": "powershell.exe",
           "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
@@ -136,6 +167,9 @@
       "command": ". 'C:\\Espressif\\tools\\Microsoft.v6.1.PowerShell_profile.ps1'; if (Test-Path build_dev) { Remove-Item -Recurse -Force build_dev }; if (Test-Path build_prod) { Remove-Item -Recurse -Force build_prod }; if (Test-Path build_ci) { Remove-Item -Recurse -Force build_ci }; Get-ChildItem -Filter sdkconfig.* | Where-Object { $_.Name -notlike 'sdkconfig.defaults*' } | Remove-Item -Force",
       "options": {
         "cwd": "${workspaceFolder}",
+        "env": {
+          "ESPPORT": "COM3"
+        },
         "shell": {
           "executable": "powershell.exe",
           "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]

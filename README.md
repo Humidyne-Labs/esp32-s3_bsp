@@ -3,7 +3,7 @@
 [![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.1%20|%20v5.3%20|%20v6.1-blue.svg)](https://idf.espressif.com/)
 [![Target](https://img.shields.io/badge/Hardware-Waveshare%20ESP32--S3--ePaper--1.54%20V2-green.svg)](https://www.waveshare.com)
 [![Graphics](https://img.shields.io/badge/LVGL-v9.6.0-orange.svg)](https://lvgl.io/)
-[![Version](https://img.shields.io/badge/SemVer-1.0.0-brightgreen.svg)](components/esp32-s3_bsp/include/bsp/bsp_version.h)
+[![Version](https://img.shields.io/badge/SemVer-1.1.0-brightgreen.svg)](components/esp32-s3_bsp/include/bsp/bsp_version.h)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 An industrial-grade, production-ready Board Support Package (BSP), event-driven application lifecycle framework, and peripheral driver architecture for the **Waveshare ESP32-S3 ePaper 1.54" V2** development board (ESP32-S3-PICO-1-N8R8). Engineered for ultra-low power IoT telemetry nodes, smart badges, battery-powered environmental monitors, and ThingsBoard cloud integrations under **ESP-IDF v5.1+ and v6.1**.
@@ -73,7 +73,7 @@ To prevent network communications, TLS handshakes, and cryptographic hashing fro
 
 | Subsystem | Header | Implementation | Description |
 |---|---|---|---|
-| **Version & SemVer** | `bsp/bsp_version.h` | `bsp_common.c` | SemVer string `1.0.0`, major/minor/patch macros, version value. |
+| **Version & SemVer** | `bsp/bsp_version.h` | `bsp_common.c` | SemVer string `1.1.0`, major/minor/patch macros, version value. |
 | **Diagnostics & Errors** | `bsp/bsp_err.h` | `bsp_common.c` | Standardized `bsp_err_t`, error names, diagnostics snapshot, silicon revision access. |
 | **Lifecycle Engine** | `bsp/bsp_lifecycle.h` | `bsp_lifecycle.c` | Event-driven application lifecycle, cold boot/wake/sleep/shutdown dispatcher, persistent stages. |
 | **Master Bringup** | `bsp/bsp.h` | `bsp_common.c` | Modular `bsp_init_mode()`, recommended init mode from reset/wake cause, Base57 generator. |

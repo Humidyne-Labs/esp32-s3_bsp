@@ -27,7 +27,6 @@
 #include "bsp/bsp_power.h"
 #include "bsp/bsp_i2c.h"
 #include "bsp/bsp_sensors.h"
-#include "bsp/bsp_sensor_cal.h"
 #include "bsp/bsp_rtc.h"
 #include "bsp/bsp_button.h"
 #include "bsp/bsp_audio.h"
@@ -44,7 +43,6 @@
 #if CONFIG_BSP_ENABLE_THINGSBOARD
 #include "bsp/bsp_tb.h"
 #endif
-#include "bsp/bsp_lifecycle.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,7 +75,7 @@ typedef struct {
     .init_rtc     = true,      \
     .init_buttons = true,      \
     .init_audio   = true,      \
-    .audio_volume = 80.0f,     \
+    .audio_volume = 60.0f,     \
     .init_sdcard  = false,     \
     .init_display = true,      \
     .init_nvs     = true,      \
@@ -161,17 +159,156 @@ esp_err_t bsp_get_device_name(char *buf, size_t max_len);
 esp_err_t bsp_generate_unambiguous_key(char *buf, size_t len, const char *charset);
 
 /**
- * @brief Perform Clean System Shutdown
+ * @brief Structured Wake Context passed to application on_wake callback
+ */
+typedef struct {
+    esp_reset_reason_t       reset_reason;       ///< Reset reason (e.g. ESP_RST_DEEPSLEEP, ESP_RST_POWERON)
+    esp_sleep_wakeup_cause_t wake_cause;         ///< Wakeup cause (e.g. EXT1, TIMER, GPIO)
+    uint64_t                 ext1_wakeup_pins;   ///< GPIO mask of pins that triggered EXT1 wakeup
+    bool                     woke_from_button;   ///< True if wake was triggered by BOOT or POWER button
+    bsp_button_t             wake_button;        ///< Which button triggered wakeup (if button wake)
+    bsp_init_mode_t          init_mode;          ///< Initialization profile executed (FULL, FAST, MIN)
+    uint32_t                 sleep_duration_sec; ///< Configured sleep duration from previous cycle
+    uint32_t                 boot_count;         ///< Monotonic system boot count
+    uint32_t                 deep_sleep_count;   ///< Total deep sleep cycles
+    uint32_t                 light_sleep_count;  ///< Total light sleep cycles
+    uint8_t                  app_stage;          ///< Persistent application stage code (from RTC memory)
+    void                     *user_data;         ///< User data pointer passed during lifecycle start
+} bsp_wake_context_t;
+
+/**
+ * @brief Callback executed on cold boot (Power-On Reset, Brownout, Software Restart, etc.)
+ */
+typedef void (*bsp_cold_boot_cb_t)(void *user_data);
+
+/**
+ * @brief Callback executed on resume from Deep Sleep or Light Sleep
+ */
+typedef void (*bsp_wake_cb_t)(const bsp_wake_context_t *ctx, void *user_data);
+
+/**
+ * @brief Callback executed right before entering Deep or Light Sleep (for app cleanup / display badge)
+ */
+typedef void (*bsp_before_sleep_cb_t)(bsp_sleep_mode_t mode, uint32_t duration_sec, void *user_data);
+
+/**
+ * @brief Callback executed immediately prior to system power off / clean shutdown
+ */
+typedef void (*bsp_shutdown_cb_t)(void *user_data);
+
+/**
+ * @brief Comprehensive Application Lifecycle Configuration
+ */
+typedef struct {
+    bsp_cold_boot_cb_t    on_cold_boot;    ///< Handler for initial cold boot
+    bsp_wake_cb_t         on_wake;         ///< Handler for sleep wake events
+    bsp_before_sleep_cb_t on_before_sleep; ///< Hook called immediately prior to sleep entry
+    bsp_shutdown_cb_t     on_shutdown;     ///< Hook called immediately prior to power off
+    void                  *user_data;      ///< Custom application context pointer
+} bsp_app_lifecycle_t;
+
+/**
+ * @brief Start Unified BSP Application Engine with Lifecycle Hooks
+ *
+ * Automatically initializes RTC memory, inspects reset reason, selects optimal hardware init mode
+ * (FULL on cold boot, FAST on wake), populates wake context, clears RTC flags, and dispatches on_cold_boot / on_wake.
+ *
+ * @param[in] lifecycle Pointer to bsp_app_lifecycle_t configuration
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_app_start(const bsp_app_lifecycle_t *lifecycle);
+
+/**
+ * @brief Single Unified Sleep Entry Point
+ *
+ * Dispatches before_sleep hook, triggers optional sleep splash/chime, powers down peripherals,
+ * arms wake sources, sets RTC pad holds, and enters hardware light or deep sleep.
+ *
+ * @param[in] config Sleep configuration (mode, duration, wake sources, next init mode)
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_sleep(const bsp_sleep_config_t *config);
+
+/**
+ * @brief Helper Macro for Deep Sleep Entry
+ */
+#define bsp_sleep_deep(sec) bsp_sleep(&(bsp_sleep_config_t){\
+    .mode           = BSP_SLEEP_MODE_DEEP,\
+    .duration_sec   = (sec),\
+    .wake_sources   = BSP_WAKE_SRC_ALL,\
+    .next_init_mode = BSP_INIT_MODE_FAST\
+})
+
+/**
+ * @brief Helper Macro for Light Sleep Entry
+ */
+#define bsp_sleep_light(sec) bsp_sleep(&(bsp_sleep_config_t){\
+    .mode           = BSP_SLEEP_MODE_LIGHT,\
+    .duration_sec   = (sec),\
+    .wake_sources   = BSP_WAKE_SRC_ALL,\
+    .next_init_mode = BSP_INIT_MODE_FAST\
+})
+
+/**
+ * @brief Retrieve current wake context
+ *
+ * @param[out] ctx Pointer to bsp_wake_context_t destination
+ * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_STATE if context is not available
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_lifecycle_get_context(bsp_wake_context_t *ctx);
+
+/**
+ * @brief Set application stage index in RTC Slow Memory
+ *
+ * @param[in] stage Stage identifier (0..255)
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_lifecycle_set_stage(uint8_t stage);
+
+/**
+ * @brief Get application stage index from RTC Slow Memory
+ *
+ * @return uint8_t Current stage identifier
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+uint8_t bsp_lifecycle_get_stage(void);
+
+/**
+ * @brief Save custom application state struct to RTC Slow Memory scratchpad (max 31 bytes)
+ *
+ * @param[in] data Source buffer
+ * @param[in] len Byte count (max 31)
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_lifecycle_save_state(const void *data, size_t len);
+
+/**
+ * @brief Load custom application state struct from RTC Slow Memory scratchpad
+ *
+ * @param[out] out_data Destination buffer
+ * @param[in] len Byte count (max 31)
+ * @return esp_err_t ESP_OK on success
+ * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ */
+esp_err_t bsp_lifecycle_load_state(void *out_data, size_t len);
+
+/**
+ * @brief Perform Clean System Shutdown (Deprecates bsp_system_shutdown / bsp_lifecycle_power_off)
  * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
  */
 void bsp_system_shutdown(void);
+void bsp_lifecycle_power_off(void);
+void bsp_lifecycle_invoke_shutdown(void);
 
 /**
- * @brief Enter Ultra-Low Power Deep Sleep Mode
- *
- * @param[in] sleep_sec Duration in seconds (0 for button wakeup only)
- * @details Memory ownership: none. Behavior: Blocking. Thread safety: no thread safety guarantees.
+ * @brief Legacy Deep Sleep Alias (Maps to bsp_sleep_deep)
  */
+#define bsp_lifecycle_enter_sleep(cfg) bsp_sleep(cfg)
 void bsp_system_deep_sleep(uint32_t sleep_sec);
 
 /**
