@@ -192,6 +192,8 @@ int16_t ulp_read_probe_temp_centi_c(void) {
  * Timeout Boundary Test: Force y_delta_drop_centi_c = 1000 (an unattainable 10°C drop) and verify via debugger or serial log that the ULP unlocks sampling exactly at t = x (elapsed_ticks >= x_timeout_ticks).
  * Delta Trigger Validation: Warm the board via a 5-second Wi-Fi transmission, sleep, and record last_probed_temp_centi_c every 60 seconds to determine the board's exact cooling curve time constant (\tau) under still-air enclosure conditions.
 
+> source: Gemini
+
 ---
 
 ## Sudo Execution Flow
