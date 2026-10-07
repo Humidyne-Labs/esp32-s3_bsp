@@ -299,7 +299,7 @@ esp_err_t bsp_audio_init(void)
     }
 
     /* Log Register Verification Dump */
-    _audio_codec_debug_reg_dump();
+    //_audio_codec_debug_reg_dump();
 
     s_audio_inited     = true;
     s_audio_in_standby = false;
